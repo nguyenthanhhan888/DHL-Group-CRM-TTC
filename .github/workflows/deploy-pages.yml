@@ -1,0 +1,58 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Lấy mã nguồn
+        uses: actions/checkout@v6
+
+      - name: Cấu hình GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Chuẩn bị website
+        run: |
+          mkdir -p dist
+          cp index.html dist/
+          cp -R src dist/src
+          touch dist/.nojekyll
+
+      - name: Tạo cấu hình Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          node -e "const fs=require('fs'); const config={supabaseUrl:process.env.SUPABASE_URL,supabaseAnonKey:process.env.SUPABASE_ANON_KEY}; if(!config.supabaseUrl || !config.supabaseAnonKey) throw new Error('Thiếu Supabase Secrets'); fs.writeFileSync('dist/config.local.js','window.DHL_CONFIG = '+JSON.stringify(config,null,2)+';\n');"
+
+      - name: Đóng gói website
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Triển khai
+        id: deployment
+        uses: actions/deploy-pages@v4

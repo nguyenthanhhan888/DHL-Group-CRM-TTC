@@ -1,0 +1,36 @@
+# Cấu hình cục bộ chứa thông tin nhạy cảm
+.env.local
+config.local.js
+
+# Thư mục chứa các gói phụ thuộc
+/node_modules
+
+# Cấu hình của các trình soạn thảo code
+.vscode/
+.idea/
+
+# Cấu hình local do Vercel CLI tạo
+.vercel/
+
+# Artifact local khi kiểm UI bằng Playwright CLI
+.playwright-cli/
+.vercel
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# macOS
+.DS_Store
+
+# Build
+dist/
+build/
+
+# Logs
+*.log
+
+.env
+.env.*
+.DS_Store

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Lấy Facebook ID</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f3f5f9;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 520px;
+            padding: 32px;
+            background: white;
+            border-radius: 18px;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-size: 28px;
+            text-align: center;
+        }
+
+        .description {
+            margin-bottom: 24px;
+            color: #667085;
+            text-align: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #d0d5dd;
+            border-radius: 10px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #1877f2;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 14px;
+            padding: 14px;
+            border: 0;
+            border-radius: 10px;
+            background: #1877f2;
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+
+        .result {
+            display: none;
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 10px;
+            background: #ecfdf3;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result.error {
+            background: #fef3f2;
+            color: #b42318;
+        }
+
+        .id-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .facebook-id {
+            font-size: 20px;
+            font-weight: 700;
+            word-break: break-all;
+        }
+
+        .copy-button {
+            width: auto;
+            margin: 0;
+            padding: 9px 14px;
+            background: #101828;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <main class="card">
+        <h1>Lấy Facebook ID</h1>
+
+        <p class="description">
+            Nhập một đường dẫn Facebook để lấy UID.
+        </p>
+
+        <form id="idForm">
+            <input
+                id="facebookUrl"
+                type="url"
+                placeholder="https://www.facebook.com/username"
+                autocomplete="off"
+                required
+            >
+
+            <button id="submitButton" type="submit">
+                Lấy Facebook ID
+            </button>
+        </form>
+
+        <div id="result" class="result"></div>
+    </main>
+
+    <script>
+        const form = document.getElementById("idForm");
+        const urlInput = document.getElementById("facebookUrl");
+        const submitButton = document.getElementById("submitButton");
+        const resultBox = document.getElementById("result");
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const url = urlInput.value.trim();
+
+            if (!url) {
+                showError("Vui lòng nhập URL Facebook.");
+                return;
+            }
+
+            submitButton.disabled = true;
+            submitButton.textContent = "Đang lấy ID...";
+            resultBox.className = "result";
+            resultBox.innerHTML = "";
+
+            try {
+                const response = await fetch("/api/get-id", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(
+                        data.error || "Không thể lấy Facebook ID."
+                    );
+                }
+
+                showResult(data.id);
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = "Lấy Facebook ID";
+            }
+        });
+
+        function showResult(id) {
+            resultBox.className = "result show";
+
+            resultBox.innerHTML = `
+                <div class="id-row">
+                    <div>
+                        <div>Facebook ID</div>
+                        <div class="facebook-id">${escapeHtml(id)}</div>
+                    </div>
+
+                    <button
+                        type="button"
+                        class="copy-button"
+                        id="copyButton"
+                    >
+                        Sao chép
+                    </button>
+                </div>
+            `;
+
+            document
+                .getElementById("copyButton")
+                .addEventListener("click", async () => {
+                    await navigator.clipboard.writeText(id);
+
+                    const copyButton =
+                        document.getElementById("copyButton");
+
+                    copyButton.textContent = "Đã chép";
+
+                    setTimeout(() => {
+                        copyButton.textContent = "Sao chép";
+                    }, 1500);
+                });
+        }
+
+        function showError(message) {
+            resultBox.className = "result show error";
+            resultBox.textContent = message;
+        }
+
+        function escapeHtml(value) {
+            const div = document.createElement("div");
+            div.textContent = value;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

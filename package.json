@@ -1,0 +1,11 @@
+{
+  "name": "kiosk-crm-v1",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/generate-config.mjs",
+    "test": "node --test tests/*.test.*"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

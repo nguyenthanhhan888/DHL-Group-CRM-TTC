@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hệ thống quản lý DHL | CRM Kiosk</title>
+  <meta
+    name="description"
+    content="Hệ thống quản lý nội bộ cho khách hàng, kiosk, thanh toán và danh mục của cộng đồng Diễn Châu - À Đây Rồi."
+  />
+  <link rel="canonical" href="https://adayroidc.com/" />
+  <meta property="og:url" content="https://adayroidc.com/" />
+  <link rel="icon" type="image/png" href="./images/favicon.PNG" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./src/styles/app.css" />
+  <script>
+    window.DHL_CONFIG = window.DHL_CONFIG || {
+      supabaseUrl: '',
+      supabaseAnonKey: '',
+    };
+  </script>
+  <script src="./config.js"></script>
+  <script src="./config.local.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <noscript>DHL Management System cần JavaScript để hoạt động.</noscript>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
