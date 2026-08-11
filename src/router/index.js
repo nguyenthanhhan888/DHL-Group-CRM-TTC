@@ -1,9 +1,19 @@
 const DEFAULT_ROUTE = 'dashboard';
 
 export function createRouter({ outlet, routes, fallback, onRouteChange, defaultRoute = DEFAULT_ROUTE, canAccess }) {
+  let started = false;
+
   function start() {
+    if (started) return;
+    started = true;
     window.addEventListener('hashchange', render);
     render();
+  }
+
+  function stop() {
+    if (!started) return;
+    window.removeEventListener('hashchange', render);
+    started = false;
   }
 
   function render() {
@@ -24,7 +34,7 @@ export function createRouter({ outlet, routes, fallback, onRouteChange, defaultR
     page.afterRender?.({ route, params, outlet });
   }
 
-  return { start };
+  return { render, start, stop };
 }
 
 function parseRoute(hash, defaultRoute) {

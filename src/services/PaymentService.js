@@ -24,6 +24,32 @@ export const PaymentService = {
     return { data };
   },
 
+  async adminManualRenewKiosk({
+    kioskId,
+    months,
+    startDate,
+    baseAmount,
+    discount = 0,
+    discountReason = '',
+    paymentMethod,
+    note = '',
+  } = {}) {
+    const supabase = requireSupabaseClient();
+    const { data } = await runQuery(
+      supabase.rpc('admin_manual_renew_kiosk', {
+        kiosk_id_input: positiveInteger(kioskId, 'Kiosk'),
+        months_input: positiveInteger(months, 'Số tháng'),
+        start_date_input: requiredText(startDate, 'Kỳ bắt đầu'),
+        base_amount_input: nonNegativeNumber(baseAmount, 'Giá gốc'),
+        discount_input: nonNegativeNumber(discount, 'Giảm giá'),
+        discount_reason_input: normalizeOptionalText(discountReason),
+        payment_method_input: requiredText(paymentMethod, 'Phương thức thanh toán'),
+        note_input: normalizeOptionalText(note),
+      }),
+    );
+    return { data };
+  },
+
   async list({
     searchTerm = '',
     status = '',

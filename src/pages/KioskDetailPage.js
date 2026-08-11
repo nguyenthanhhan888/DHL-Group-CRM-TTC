@@ -210,7 +210,7 @@ function renderPaymentHistory(payments) {
               <td>${escapeHtml(paymentPeriod(payment))}</td>
               <td>${escapeHtml(paymentMonths(payment))}</td>
               <td>${formatCurrency(payment.total_amount || 0)}</td>
-              <td>${escapeHtml(payment.payment_method || '—')}</td>
+              <td>${escapeHtml(paymentMethodLabel(payment.payment_method))}</td>
               <td>${renderPaymentStatusBadge(payment.payment_status)}</td>
               <td>${escapeHtml(payment.note || '—')}</td>
             </tr>
@@ -229,7 +229,7 @@ function filterPaymentHistory(payments) {
     paymentPeriod(payment),
     paymentMonths(payment),
     formatCurrency(payment.total_amount || 0),
-    payment.payment_method,
+    paymentMethodLabel(payment.payment_method),
     payment.payment_status,
     payment.note,
   ].some((value) => normalizeSearch(value).includes(term)));
@@ -237,6 +237,17 @@ function filterPaymentHistory(payments) {
 
 function normalizeSearch(value) {
   return String(value || '').trim().toLocaleLowerCase('vi');
+}
+
+function paymentMethodLabel(value) {
+  return ({
+    admin_manual_transfer: 'Admin · Chuyển khoản',
+    admin_manual_cash: 'Admin · Tiền mặt',
+    admin_manual_other: 'Admin · Khác',
+    transfer: 'Chuyển khoản',
+    cash: 'Tiền mặt',
+    other: 'Khác',
+  })[String(value || '').toLowerCase()] || value || '—';
 }
 
 function detailRow(label, value, isLink = false, isHtml = false) {

@@ -3,6 +3,7 @@ import { renderCategoryChart, renderRevenueChart } from '../components/Dashboard
 import { EmptyState } from '../components/EmptyState.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { StatCard } from '../components/StatCard.js';
+import { openRenewKioskForm } from '../components/RenewKioskForm.js';
 import { DashboardService } from '../services/DashboardService.js';
 import { formatCurrency } from '../utils/currency.js';
 import { daysUntil, formatDate } from '../utils/date.js';
@@ -63,6 +64,15 @@ export function DashboardPage() {
 
 DashboardPage.afterRender = async function afterRenderDashboard() {
   setDashboardLoading();
+  const expiringList = document.getElementById('expiring-list');
+  if (expiringList && !expiringList.dataset.renewBound) {
+    expiringList.dataset.renewBound = 'true';
+    expiringList.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-dashboard-renew-kiosk]');
+      if (!button) return;
+      openRenewKioskForm({ kioskId: button.dataset.dashboardRenewKiosk, onSaved: DashboardPage.afterRender });
+    });
+  }
 
   try {
     const dashboard = await DashboardService.getDashboardData();
@@ -121,7 +131,7 @@ function renderExpiringKiosks(kiosks) {
           <div class="expiring-name">🏪 ${escapeHtml(kiosk.facebook_name || '—')}</div>
           <div class="expiring-date">👤 ${escapeHtml(kiosk.customers?.facebook_name || '—')} · HH: ${formatDate(kiosk.end_date)}</div>
         </div>
-        <span class="expiring-days ${daysClass}">Còn ${days} ngày</span>
+        <div class="inline-actions"><span class="expiring-days ${daysClass}">Còn ${days} ngày</span><button class="table-action-button" type="button" data-dashboard-renew-kiosk="${escapeHtml(kiosk.id)}">Gia hạn</button></div>
       </div>
     `;
   }).join('');

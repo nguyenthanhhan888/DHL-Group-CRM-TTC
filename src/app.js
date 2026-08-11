@@ -32,6 +32,8 @@ import { PermissionsPage } from './pages/PermissionsPage.js';
 import { UserHomePage } from './pages/UserHomePage.js';
 import { TtcPage } from './pages/TtcPage.js';
 import { AdminTtcPage } from './pages/AdminTtcPage.js';
+import { PublicKioskLookupPage } from './pages/RegisterPage.js';
+import { PublicHomePage, PublicLayout, bindPublicNavigation } from './components/OfficialCommunityCard.js';
 
 const routes = {
   dashboard: DashboardPage,
@@ -73,8 +75,12 @@ const routes = {
   'admin-ttc-logs': AdminTtcPage,
 };
 
-const PUBLIC_REGISTRATION_ROUTES = new Set(['register', 'legacy-registration']);
+const PUBLIC_REGISTRATION_ROUTES = new Set(['home', 'register', 'legacy-registration', 'tra-cuu-kiosk']);
 const HIDDEN_WEB_ROUTES = new Set(['payments', 'staff', 'permissions']);
+let appMode = 'boot';
+let activeRouter = null;
+let authRefreshInterval = null;
+let activeKeydownHandler = null;
 
 async function initApp() {
   const root = document.getElementById('app');
@@ -82,7 +88,7 @@ async function initApp() {
 
   try {
     const session = await AuthService.initialize();
-    const initialRoute = normalizePublicPathRoute() || getRouteName();
+    const initialRoute = normalizePublicPathRoute() || getRouteName() || 'home';
 
     if (PUBLIC_REGISTRATION_ROUTES.has(initialRoute)) {
       renderPublicRegistration(root, initialRoute);
@@ -123,6 +129,8 @@ async function initApp() {
 }
 
 function renderAuthenticatedApp(root, profile) {
+  cleanupAuthenticatedRuntime();
+  appMode = 'authenticated';
   const { role, permissions: userPermissions } = profile;
   let permissions;
 
@@ -152,12 +160,6 @@ function renderAuthenticatedApp(root, profile) {
   };
 
   const defaultRoute = getDefaultRoute(role);
-
-  window.addEventListener('hashchange', () => {
-    if (PUBLIC_REGISTRATION_ROUTES.has(getRouteName())) {
-      window.location.reload();
-    }
-  });
 
   if (getRouteName() === 'login') {
     window.location.hash = `#/${defaultRoute}`;
@@ -211,7 +213,6 @@ function renderAuthenticatedApp(root, profile) {
       try {
         await AuthService.signOut();
         window.location.hash = '#/login';
-        window.location.reload();
       } catch (error) {
         button.disabled = false;
         button.textContent = 'Đăng xuất';
@@ -234,7 +235,7 @@ function renderAuthenticatedApp(root, profile) {
   menuToggle?.addEventListener('click', () => setSidebarOpen(!sidebar?.classList.contains('open')));
   sidebarOverlay?.addEventListener('click', () => setSidebarOpen(false));
 
-  document.addEventListener('keydown', (event) => {
+  activeKeydownHandler = (event) => {
     if (event.key !== 'Escape') return;
     if (sidebar?.classList.contains('open')) {
       setSidebarOpen(false);
@@ -242,9 +243,10 @@ function renderAuthenticatedApp(root, profile) {
       return;
     }
     Modal.close();
-  });
+  };
+  document.addEventListener('keydown', activeKeydownHandler);
 
-  createRouter({
+  activeRouter = createRouter({
     outlet,
     routes,
     fallback: NotFoundPage,
@@ -257,16 +259,16 @@ function renderAuthenticatedApp(root, profile) {
         setSidebarOpen(false);
       }
     },
-  }).start();
+  });
+  activeRouter.start();
 
-  window.setInterval(async () => {
+  authRefreshInterval = window.setInterval(async () => {
     try {
       const session = await AuthService.initialize();
       const freshProfile = session ? await AuthService.getCurrentProfile(session.user.id) : null;
       if (!isProfileAllowed(freshProfile)) {
         await AuthService.signOut();
         window.location.hash = '#/login';
-        window.location.reload();
         return;
       }
 
@@ -370,56 +372,73 @@ function normalizePublicPathRoute() {
 }
 
 function renderLogin(root, message = '') {
+  cleanupAuthenticatedRuntime();
+  appMode = 'login';
   if (getRouteName() !== 'login') window.location.hash = '#/login';
   root.innerHTML = LoginPage({ message });
   LoginPage.afterRender();
 }
 
 function renderPublicRegistration(root, route = 'register') {
-  root.innerHTML = `
-    <main class="public-shell">
-      <div class="public-topbar">
-        <div class="public-register-brand">
-          <img src="logo/photo_2026-08-03_06-31-15.jpg" alt="DHL Group - Diễn Châu À Đây Rồi">
-        </div>
-        <a href="#/login" data-open-login>Đăng nhập quản trị</a>
-      </div>
-      <nav class="public-registration-tabs" aria-label="Chọn loại đăng ký">
-        <a href="#/register" data-public-registration-route class="${route === 'register' ? 'active' : ''}" ${route === 'register' ? 'aria-current="page"' : ''}>Đăng ký mới</a>
-        <a href="#/legacy-registration" data-public-registration-route class="${route === 'legacy-registration' ? 'active' : ''}" ${route === 'legacy-registration' ? 'aria-current="page"' : ''}>Bổ sung khách hàng cũ</a>
-      </nav>
-      <div class="public-content" data-route-outlet></div>
-    </main>
-    <div class="modal-overlay hidden" data-modal-overlay>
-      <div class="modal" data-modal role="dialog" aria-modal="true" aria-labelledby="app-modal-title">
-        <div class="modal-header"><h3 id="app-modal-title" data-modal-title></h3><button class="modal-close" type="button" data-modal-close>✕</button></div>
-        <div class="modal-body" data-modal-body></div>
-      </div>
-    </div>
-    <div class="toast-container" data-toast-container aria-live="polite"></div>
-  `;
+  cleanupAuthenticatedRuntime();
+  appMode = 'public';
+  const page = route === 'legacy-registration' ? LegacyRegistrationPage
+    : route === 'tra-cuu-kiosk' ? PublicKioskLookupPage
+      : route === 'home' ? PublicHomePage : RegisterPage;
+  root.innerHTML = PublicLayout({ route, content: page() });
   Modal.mount();
   Toast.mount();
   settingsService.getPublicSettings().catch(() => {
     // Registration remains usable; configured organization links are omitted.
   });
-  root.querySelectorAll('[data-public-registration-route]').forEach((link) => {
-    link.addEventListener('click', (event) => {
-      if (link.classList.contains('active')) return;
-      event.preventDefault();
-      window.location.hash = link.getAttribute('href');
-      window.location.reload();
-    });
-  });
-  root.querySelector('[data-open-login]')?.addEventListener('click', (event) => {
-    event.preventDefault();
-    window.location.hash = '#/login';
-    window.location.reload();
-  });
-  const outlet = root.querySelector('[data-route-outlet]');
-  const page = route === 'legacy-registration' ? LegacyRegistrationPage : RegisterPage;
-  outlet.innerHTML = page();
-  page.afterRender();
+  bindPublicNavigation(root);
+  page.afterRender?.();
+  updatePublicMetadata(route);
+}
+
+function updatePublicMetadata(route) {
+  const metadata = {
+    home: ['Diễn Châu - À Đây Rồi (DHL)', 'Cổng cộng đồng chính thức hỗ trợ đăng ký và tra cứu Kiosk.'],
+    register: ['Đăng ký Kiosk | DHL', 'Đăng ký Kiosk mới trực tuyến với Diễn Châu - À Đây Rồi.'],
+    'legacy-registration': ['Bổ sung Kiosk | DHL', 'Bổ sung thông tin Kiosk đã đăng ký trước đây.'],
+    'tra-cuu-kiosk': ['Tra cứu Kiosk | DHL', 'Tra cứu trạng thái Kiosk bằng số điện thoại đã đăng ký.'],
+  }[route] || [];
+  if (metadata[0]) document.title = metadata[0];
+  document.querySelector('meta[name="description"]')?.setAttribute('content', metadata[1] || 'Cổng cộng đồng Diễn Châu - À Đây Rồi.');
+}
+
+function cleanupAuthenticatedRuntime() {
+  activeRouter?.stop?.();
+  activeRouter = null;
+  if (authRefreshInterval !== null) {
+    window.clearInterval(authRefreshInterval);
+    authRefreshInterval = null;
+  }
+  if (activeKeydownHandler) {
+    document.removeEventListener('keydown', activeKeydownHandler);
+    activeKeydownHandler = null;
+  }
+}
+
+async function handleLocationChange() {
+  const root = document.getElementById('app');
+  if (!root) return;
+  const route = getRouteName() || 'home';
+  if (PUBLIC_REGISTRATION_ROUTES.has(route)) {
+    renderPublicRegistration(root, route);
+    return;
+  }
+  if (route === 'login') {
+    cleanupAuthenticatedRuntime();
+    appMode = 'boot';
+    await initApp();
+    return;
+  }
+  if (appMode === 'authenticated') {
+    // The authenticated router owns protected route-to-route navigation.
+    return;
+  }
+  await initApp();
 }
 
 function getRouteName() {
@@ -503,4 +522,7 @@ function formatNumber(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value || 0));
 }
 
-document.addEventListener('DOMContentLoaded', initApp);
+document.addEventListener('DOMContentLoaded', () => {
+  window.addEventListener('hashchange', handleLocationChange);
+  initApp();
+});

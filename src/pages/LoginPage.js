@@ -1,9 +1,12 @@
 import { AuthService } from '../services/AuthService.js';
 import { ROLES } from '../constants/roles.js';
 import { escapeHtml } from '../utils/html.js';
+import { PublicFooter, PublicHeader, bindPublicNavigation, publicIcon } from '../components/OfficialCommunityCard.js';
 
 export function LoginPage({ message = '' } = {}) {
   return `
+    <div class="auth-public-site public-site">
+    ${PublicHeader({ route: 'login' })}
     <main class="auth-shell">
       <section class="auth-landing auth-landing-expanded">
         <div class="auth-intro-panel">
@@ -24,15 +27,12 @@ export function LoginPage({ message = '' } = {}) {
               </div>
               <div class="auth-story-content">
                 <h2>ADAYROIDC.COM</h2>
-                <p>Giải pháp tăng tương tác Facebook dành cho cá nhân, cửa hàng và doanh nghiệp.</p>
+                <p>Cổng tài khoản dành cho thành viên quản lý Kiosk, ví xu và hoạt động tương tác cộng đồng.</p>
                 <ul class="auth-feature-list">
-                  <li>Tăng lượt thích bài viết</li>
-                  <li>Tăng lượt theo dõi</li>
-                  <li>Tăng bình luận</li>
-                  <li>Tăng chia sẻ</li>
-                  <li>Quản lý chiến dịch tập trung</li>
-                  <li>Kiểm tra và xác minh tự động</li>
-                  <li>Thống kê hiệu quả theo thời gian thực</li>
+                  <li>${publicIcon('check')} Quản lý Kiosk tập trung</li>
+                  <li>${publicIcon('check')} Theo dõi ví xu và thanh toán</li>
+                  <li>${publicIcon('check')} Sử dụng các tính năng tương tác</li>
+                  <li>${publicIcon('check')} Xem lịch sử hoạt động</li>
                 </ul>
                 <p class="auth-story-tagline">Nhanh chóng - Minh bạch - An toàn - Hiệu quả.</p>
               </div>
@@ -41,7 +41,6 @@ export function LoginPage({ message = '' } = {}) {
               <div class="auth-tab-list" role="tablist" aria-label="Tài khoản web">
                 <button class="auth-tab-button active" type="button" role="tab" aria-selected="true" data-auth-tab="login">Đăng nhập</button>
                 <button class="auth-tab-button" type="button" role="tab" aria-selected="false" data-auth-tab="register">Đăng ký tài khoản</button>
-                <a class="auth-tab-button auth-tab-link" role="tab" aria-selected="false" href="#/register" data-open-register>Đăng ký Kiosk</a>
               </div>
               <form id="login-form" class="auth-form-panel" data-auth-panel="login" novalidate>
                 <div class="auth-panel-heading">
@@ -55,7 +54,7 @@ export function LoginPage({ message = '' } = {}) {
                 </label>
                 <label class="form-group">
                   <span>Mật khẩu</span>
-                  <input id="login-password" class="form-control" type="password" autocomplete="current-password" required />
+                  <span class="auth-password-control"><input id="login-password" class="form-control" type="password" autocomplete="current-password" required /><button type="button" aria-label="Hiện mật khẩu" data-password-toggle="login-password">${publicIcon('eye')}</button></span>
                 </label>
                 <button id="login-submit" class="btn-primary auth-submit" type="submit">Đăng nhập</button>
               </form>
@@ -86,11 +85,11 @@ export function LoginPage({ message = '' } = {}) {
                 <div class="form-row">
                   <label class="form-group">
                     <span>Mật khẩu</span>
-                    <input id="register-account-password" class="form-control" type="password" autocomplete="new-password" required />
+                    <span class="auth-password-control"><input id="register-account-password" class="form-control" type="password" autocomplete="new-password" required /><button type="button" aria-label="Hiện mật khẩu" data-password-toggle="register-account-password">${publicIcon('eye')}</button></span>
                   </label>
                   <label class="form-group">
                     <span>Xác nhận mật khẩu</span>
-                    <input id="register-account-confirm" class="form-control" type="password" autocomplete="new-password" required />
+                    <span class="auth-password-control"><input id="register-account-confirm" class="form-control" type="password" autocomplete="new-password" required /><button type="button" aria-label="Hiện mật khẩu" data-password-toggle="register-account-confirm">${publicIcon('eye')}</button></span>
                   </label>
                 </div>
                 <button id="account-register-submit" class="btn-primary auth-submit" type="submit">Tạo tài khoản</button>
@@ -102,7 +101,7 @@ export function LoginPage({ message = '' } = {}) {
                 </div>
                 <div>
                   <strong>Tạo tài khoản nhanh</strong>
-                  <span>Không cần chờ email xác minh Supabase.</span>
+                  <span>Hoàn tất thông tin và đăng nhập ngay sau khi tạo.</span>
                 </div>
                 <div>
                   <strong>Ví xu và Kiosk</strong>
@@ -113,22 +112,26 @@ export function LoginPage({ message = '' } = {}) {
           </div>
         </div>
       </section>
-    </main>
+    </main>${PublicFooter()}</div>
   `;
 }
 
 LoginPage.afterRender = function afterRenderLogin() {
+  bindPublicNavigation(document.querySelector('.auth-public-site'));
   setLoading(document.getElementById('login-submit'), false);
   setLoading(document.getElementById('account-register-submit'), false, 'Đang tạo tài khoản...', 'Tạo tài khoản');
 
   document.querySelectorAll('[data-auth-tab]').forEach((button) => {
     button.addEventListener('click', () => switchAuthTab(button.dataset.authTab || 'login'));
   });
-
-  document.querySelector('[data-open-register]')?.addEventListener('click', (event) => {
-    event.preventDefault();
-    window.location.hash = '#/register';
-    window.location.reload();
+  document.querySelectorAll('[data-password-toggle]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const input = document.getElementById(button.dataset.passwordToggle);
+      if (!input) return;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      button.setAttribute('aria-label', show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
+    });
   });
 
   document.getElementById('login-form')?.addEventListener('submit', async (event) => {
@@ -154,7 +157,6 @@ LoginPage.afterRender = function afterRenderLogin() {
       );
       const profile = await AuthService.getCurrentProfile(authData?.user?.id);
       window.location.hash = profile?.role === ROLES.ADMIN ? '#/dashboard' : '#/user';
-      window.location.reload();
     } catch (error) {
       const message = error?.code === 'AUTH_TIMEOUT'
         ? error.message

@@ -41,7 +41,8 @@ export function FacebookIdResolverFields({
           <span class="field-error hidden" data-facebook-id-error></span>
         </label>
         <button class="btn-secondary facebook-id-resolve-button" type="button" data-facebook-id-resolve>
-          ${buttonLabel}
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 8h-3a4 4 0 0 0 0 8h3m-4-4h4m-1-4h3a4 4 0 0 1 0 8h-3"/></svg>
+          <span data-facebook-id-button-label>${buttonLabel}</span>
         </button>
       </div>
       <div class="facebook-id-resolver-status muted-text" data-facebook-id-status aria-live="polite"></div>
@@ -63,7 +64,8 @@ export function bindFacebookIdResolvers(container = document) {
     if (!urlInput || !idInput || !button || !status) return;
     if (!idInput.dataset) idInput.dataset = {};
 
-    const originalLabel = button.textContent.trim() || 'Lấy Facebook ID';
+    const originalLabel = button.querySelector?.('[data-facebook-id-button-label]')?.textContent?.trim()
+      || button.textContent.trim() || 'Lấy Facebook ID';
     const manualFallback = root.dataset.manualFallback || 'always';
     const hasManualFallback = manualFallback !== 'never';
     const allowManual = () => {
@@ -80,7 +82,7 @@ export function bindFacebookIdResolvers(container = document) {
       if (idInput.value === root.dataset.resolvedId) idInput.value = '';
       if (manualFallback === 'never' || manualFallback === 'on-error') idInput.readOnly = true;
       setStatus(status, 'warning', message);
-      button.textContent = originalLabel;
+      setButtonLabel(button, originalLabel);
     };
 
     urlInput.addEventListener?.('input', () => {
@@ -112,7 +114,7 @@ export function bindFacebookIdResolvers(container = document) {
       button.dataset.loading = 'true';
       root.dataset.resolverState = 'loading';
       button.disabled = true;
-      button.textContent = 'Đang lấy ID...';
+      setButtonLabel(button, 'Đang lấy ID...');
       setStatus(status, 'loading', 'Đang kiểm tra Facebook URL...');
 
       try {
@@ -125,19 +127,25 @@ export function bindFacebookIdResolvers(container = document) {
         idInput.dataset.verifiedUrl = facebookUrl;
         idInput.dispatchEvent(new Event('input', { bubbles: true }));
         setStatus(status, 'success', `Đã lấy ID: ${result.facebookId}. Vui lòng kiểm tra link rồi tiếp tục lưu.`);
-        button.textContent = 'Lấy lại Facebook ID';
+        setButtonLabel(button, 'Lấy lại Facebook ID');
       } catch (error) {
         const state = resolverErrorState(error?.code);
         root.dataset.resolverState = state;
         allowManual();
         setStatus(status, 'error', error?.message || 'Không thể lấy Facebook ID.');
-        button.textContent = 'Thử lại';
+        setButtonLabel(button, 'Thử lại');
       } finally {
         button.dataset.loading = 'false';
         button.disabled = false;
       }
     });
   });
+}
+
+function setButtonLabel(button, label) {
+  const labelElement = button.querySelector?.('[data-facebook-id-button-label]');
+  if (labelElement) labelElement.textContent = label;
+  else button.textContent = label;
 }
 
 function setStatus(element, state, message) {

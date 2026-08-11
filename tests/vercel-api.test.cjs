@@ -6,6 +6,7 @@ const staff = require('../api/staff.js');
 const createPayment = require('../api/payos/create-payment.js');
 const createRegistrationPayment = require('../api/payos/create-registration-payment.js');
 const webhook = require('../api/payos/webhook.js');
+const kioskLookup = require('../api/public/kiosk-lookup.js');
 
 function response() {
   return {
@@ -25,6 +26,7 @@ test('Vercel API handlers reject unsupported methods', async () => {
     [createPayment, 'GET'],
     [createRegistrationPayment, 'GET'],
     [webhook, 'GET'],
+    [kioskLookup, 'GET'],
   ]) {
     const res = response();
     await handler({ method, headers: {} }, res);
