@@ -3,6 +3,7 @@ import { getUserAvatarPath } from '../utils/avatar.js';
 
 export function AppLayout({ navSections, user }) {
   const displayName = user?.display_name || user?.username || 'Người dùng';
+  const username = getAccountUsername(user);
   const roleLabel = getRoleLabel(user?.role);
   const avatarPath = getUserAvatarPath(user);
   const isAdmin = user?.role === 'admin';
@@ -12,6 +13,10 @@ export function AppLayout({ navSections, user }) {
         <div class="sidebar-logo">
           <div class="sidebar-brand-image-wrap" aria-label="DHL Group">
             <img class="sidebar-brand-image" src="logo/photo_2026-08-03_06-31-15.jpg" alt="DHL Group">
+            <div class="sidebar-brand-wordmark" aria-hidden="true">
+              <span>DHL</span>
+              <strong>DHL GROUP</strong>
+            </div>
           </div>
           <div>
             <div class="sidebar-title">Diễn Châu - À Đây Rồi (DHL)</div>
@@ -26,6 +31,7 @@ export function AppLayout({ navSections, user }) {
             <img class="user-avatar" src="${escapeHtml(avatarPath)}" alt="" loading="lazy">
             <div class="sidebar-user-meta">
               <div class="user-name">${escapeHtml(displayName)}</div>
+              <div class="user-username">${escapeHtml(username)}</div>
               <div class="user-role">${escapeHtml(roleLabel)}</div>
             </div>
           </div>
@@ -42,11 +48,12 @@ export function AppLayout({ navSections, user }) {
             <button class="icon-button" type="button" data-menu-toggle aria-label="Mở menu" aria-expanded="false">
               <span class="nav-icon bare-icon" aria-hidden="true">${renderIcon('menu')}</span>
             </button>
+            <img class="top-brand-mark" src="logo/photo_2026-08-03_06-31-15.jpg" alt="DHL Group" loading="lazy">
             <div class="page-title" data-page-title>Tổng quan</div>
           </div>
           ${isAdmin
-            ? renderAdminTopbar()
-            : renderUserTopbar({ displayName, roleLabel, avatarPath })}
+            ? renderAdminTopbar({ displayName, username, roleLabel, avatarPath })
+            : renderUserTopbar({ displayName, username, roleLabel, avatarPath })}
         </header>
         <div class="page-content" data-route-outlet></div>
       </main>
@@ -72,18 +79,50 @@ function getRoleLabel(role) {
   return 'Thành viên';
 }
 
-function renderAdminTopbar() {
+function getAccountUsername(user) {
+  return user?.username
+    || user?.metadata?.username
+    || user?.metadata?.auth_username
+    || user?.metadata?.login_username
+    || user?.email?.split('@')?.[0]
+    || 'Chưa có username';
+}
+
+function renderAdminTopbar({ displayName, username, roleLabel, avatarPath }) {
   return `
-    <div class="top-bar-right">
-      <span class="connection-badge" data-supabase-badge>Chưa kết nối Supabase</span>
-      <span class="current-date" data-current-date></span>
+        <div class="top-bar-right top-bar-user-actions">
+          <span class="connection-badge" data-supabase-badge>Chưa kết nối Supabase</span>
+          <span class="current-date" data-current-date></span>
+          <button class="top-icon-link theme-toggle-button" type="button" data-theme-toggle aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
+            ${renderIcon('moon')}
+          </button>
+          <details class="top-user-menu">
+        <summary class="top-user-trigger" aria-label="Mở menu tài khoản admin">
+          <img class="top-user-avatar" src="${escapeHtml(avatarPath)}" alt="" loading="lazy">
+          <span class="top-user-chevron" aria-hidden="true">${renderIcon('chevron')}</span>
+        </summary>
+        <div class="top-user-dropdown">
+          <div class="top-user-dropdown-head">
+            <strong>Admin</strong>
+            <span>${escapeHtml(displayName)}</span>
+            <span>${escapeHtml(username)}</span>
+            <span>${escapeHtml(roleLabel)}</span>
+          </div>
+          <button type="button" data-admin-change-password><span class="nav-icon" aria-hidden="true">${renderIcon('shield')}</span>Đổi mật khẩu</button>
+          <button type="button" data-admin-mfa><span class="nav-icon" aria-hidden="true">${renderIcon('settings')}</span>Authenticator</button>
+          <button type="button" data-logout><span class="nav-icon" aria-hidden="true">${renderIcon('logout')}</span>Đăng xuất</button>
+        </div>
+      </details>
     </div>
   `;
 }
 
-function renderUserTopbar({ displayName, roleLabel, avatarPath }) {
+function renderUserTopbar({ displayName, username, roleLabel, avatarPath }) {
   return `
     <div class="top-bar-right top-bar-user-actions">
+      <button class="top-icon-link theme-toggle-button" type="button" data-theme-toggle aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
+        ${renderIcon('moon')}
+      </button>
       <a class="top-wallet-pill" href="#/ttc-wallet" aria-label="Mở ví xu">
         <span class="top-action-icon" aria-hidden="true">${renderIcon('wallet')}</span>
         <span data-topbar-wallet>-- xu</span>
@@ -101,8 +140,9 @@ function renderUserTopbar({ displayName, roleLabel, avatarPath }) {
         </summary>
         <div class="top-user-dropdown">
           <div class="top-user-dropdown-head">
-            <strong>Member</strong>
-            <span>${escapeHtml(displayName)} · ${escapeHtml(roleLabel)}</span>
+            <strong>${escapeHtml(username)}</strong>
+            <span>${escapeHtml(displayName)}</span>
+            <span>${escapeHtml(roleLabel)}</span>
           </div>
           <a href="#/user-profile"><span class="nav-icon" aria-hidden="true">${renderIcon('settings')}</span>Cài đặt</a>
           <a href="#/ttc-wallet"><span class="nav-icon" aria-hidden="true">${renderIcon('wallet')}</span>Ví xu</a>
@@ -153,35 +193,46 @@ function renderNavItem(item) {
 }
 
 function renderIcon(name) {
+  const icon = (content) => `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${content}</svg>`;
+  const path = (d) => `<path d="${d}"/>`;
+  const circle = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}"/>`;
+  const rect = (x, y, width, height, rx = 2) => `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="${rx}"/>`;
   const icons = {
-    home: '<svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></svg>',
-    dashboard: '<svg viewBox="0 0 24 24"><path d="M4 5h7v7H4zM13 5h7v4h-7zM13 11h7v8h-7zM4 14h7v5H4z"/></svg>',
-    users: '<svg viewBox="0 0 24 24"><path d="M8.5 12a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm7-1a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7ZM3 20c.5-3.5 2.4-5.4 5.5-5.4S13.5 16.5 14 20H3Zm10.2 0c.2-1.8-.4-3.4-1.3-4.6 1-.5 2.1-.8 3.6-.8 3 0 4.8 1.9 5.3 5.4h-7.6Z"/></svg>',
-    store: '<svg viewBox="0 0 24 24"><path d="M5 4h14l1 6a3 3 0 0 1-4.9 2.3A3 3 0 0 1 12 13a3 3 0 0 1-3.1-.7A3 3 0 0 1 4 10l1-6Zm1 10h12v6H6v-6Zm3 2v4h6v-4H9Z"/></svg>',
-    plus: '<svg viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>',
-    check: '<svg viewBox="0 0 24 24"><path d="m9.2 16.6-4-4 1.5-1.5 2.5 2.5 8.1-8.1L18.8 7z"/></svg>',
-    coin: '<svg viewBox="0 0 24 24"><path d="M12 4c4.4 0 8 1.8 8 4s-3.6 4-8 4-8-1.8-8-4 3.6-4 8-4Zm-8 6.8c1.6 1.5 4.5 2.2 8 2.2s6.4-.8 8-2.2V14c0 2.2-3.6 4-8 4s-8-1.8-8-4v-3.2Zm0 5c1.6 1.5 4.5 2.2 8 2.2s6.4-.8 8-2.2V18c0 2.2-3.6 4-8 4s-8-1.8-8-4v-2.2Z"/></svg>',
-    list: '<svg viewBox="0 0 24 24"><path d="M5 6h14v2H5V6Zm0 5h14v2H5v-2Zm0 5h14v2H5v-2Z"/></svg>',
-    briefcase: '<svg viewBox="0 0 24 24"><path d="M9 5h6l1 3h4v11H4V8h4l1-3Zm1.5 3h3l-.4-1h-2.2l-.4 1Z"/></svg>',
-    report: '<svg viewBox="0 0 24 24"><path d="M5 4h12l2 2v14H5V4Zm4 12h2v-5H9v5Zm4 0h2V8h-2v8Z"/></svg>',
-    target: '<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18Zm0 3a6 6 0 1 0 0 12 6 6 0 0 0 0-12Zm0 3a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z"/></svg>',
-    boost: '<svg viewBox="0 0 24 24"><path d="M13 3h8v8h-2V6.4l-7.3 7.3-3-3L3.4 16 2 14.6l6.7-6.7 3 3L17.6 5H13V3Zm-9 15h16v2H4v-2Z"/></svg>',
-    'user-circle': '<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18Zm0 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5 5.2A6.8 6.8 0 0 0 12 19c1.9 0 3.6-.7 5-1.8-.8-1.9-2.5-3-5-3s-4.2 1.1-5 3Z"/></svg>',
-    wallet: '<svg viewBox="0 0 24 24"><path d="M4 6h15v3h1v10H4V6Zm2 2v9h12v-6h-7V9h6V8H6Zm10 5h2v2h-2v-2Z"/></svg>',
-    sliders: '<svg viewBox="0 0 24 24"><path d="M5 7h8v2H5V7Zm10-2h2v6h-2V5ZM5 15h3v2H5v-2Zm5-2h2v6h-2v-6Zm5 2h4v2h-4v-2Z"/></svg>',
-    alert: '<svg viewBox="0 0 24 24"><path d="M12 3 22 20H2L12 3Zm-1 6v5h2V9h-2Zm0 7v2h2v-2h-2Z"/></svg>',
-    history: '<svg viewBox="0 0 24 24"><path d="M12 5a7 7 0 1 1-6.3 4H3l3.5-4L10 9H7.9A5 5 0 1 0 12 7V5Zm-1 3h2v4l3 2-1 1.7-4-2.4V8Z"/></svg>',
-    facebook: '<svg viewBox="0 0 24 24"><path d="M14 8h3V4h-3c-3 0-5 2-5 5v2H6v4h3v6h4v-6h3l1-4h-4V9c0-.6.4-1 1-1Z"/></svg>',
-    shield: '<svg viewBox="0 0 24 24"><path d="M12 3 20 6v5c0 5-3.2 8.4-8 10-4.8-1.6-8-5-8-10V6l8-3Zm-1 12 5-5-1.4-1.4L11 12.2 9.4 10.6 8 12l3 3Z"/></svg>',
-    settings: '<svg viewBox="0 0 24 24"><path d="M10.6 3h2.8l.5 2.2c.5.2 1 .4 1.4.8l2.1-1 2 2-1 2.1c.3.5.6.9.8 1.5l2.1.4v2.8l-2.1.5c-.2.5-.5 1-.8 1.4l1 2.1-2 2-2.1-1c-.5.3-.9.6-1.4.8l-.5 2.1h-2.8l-.5-2.1c-.5-.2-1-.5-1.4-.8l-2.1 1-2-2 1-2.1c-.3-.5-.6-.9-.8-1.4l-2.1-.5V12l2.1-.4c.2-.6.5-1 .8-1.5l-1-2.1 2-2 2.1 1c.5-.3.9-.6 1.4-.8l.5-2.2ZM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>',
-    logout: '<svg viewBox="0 0 24 24"><path d="M4 4h9v2H6v12h7v2H4V4Zm11 4 5 4-5 4v-3H9v-2h6V8Z"/></svg>',
-    chevron: '<svg viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></svg>',
-    menu: '<svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
-    thumb: '<svg viewBox="0 0 24 24"><path d="M7 11v9H4v-9h3Zm0 0 4-7h2l1 2-1 4h5.4c1 0 1.7.9 1.5 1.9l-1.1 5.8c-.2 1.3-1.3 2.3-2.7 2.3H7"/></svg>',
-    'user-plus': '<svg viewBox="0 0 24 24"><path d="M15 19c-.5-2.8-2.2-4.2-5-4.2S5.5 16.2 5 19h10ZM10 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8-5v6m-3-3h6"/></svg>',
-    message: '<svg viewBox="0 0 24 24"><path d="M5 5h14v10H8l-3 3V5Zm4 4h6m-6 3h4"/></svg>',
-    heart: '<svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-9-9a4.4 4.4 0 0 1 7.2-4.8L12 8l1.8-1.8A4.4 4.4 0 0 1 21 11c-2 4.6-9 9-9 9Z"/></svg>',
-    share: '<svg viewBox="0 0 24 24"><path d="M15 8h3a3 3 0 0 1 3 3v7H3v-7a3 3 0 0 1 3-3h3m3 6V3m0 0 4 4m-4-4L8 7"/></svg>',
+    home: icon(path('M4.5 10.6 12 4.5l7.5 6.1v8.2a1.7 1.7 0 0 1-1.7 1.7h-3.6v-6.1H9.8v6.1H6.2a1.7 1.7 0 0 1-1.7-1.7v-8.2Z')),
+    dashboard: icon(`${rect(4, 4.5, 6.4, 6.4, 1.4)}${rect(13.6, 4.5, 6.4, 4.8, 1.4)}${rect(13.6, 12.5, 6.4, 7, 1.4)}${rect(4, 14, 6.4, 5.5, 1.4)}`),
+    users: icon(`${path('M15.5 19.2c-.4-2.3-2-3.6-4.7-3.6s-4.3 1.3-4.8 3.6')}${circle(10.8, 9, 3.2)}${path('M18.8 18.6c-.2-1.8-1.2-3-3-3.6')}${path('M15.4 6.3a2.8 2.8 0 0 1 0 5.3')}`),
+    store: icon(`${path('M5 10.4 6.1 5h11.8l1.1 5.4')}${path('M5 10.4a2.5 2.5 0 0 0 4.2 1.8 2.5 2.5 0 0 0 3.6 0 2.5 2.5 0 0 0 4.2 0 2.5 2.5 0 0 0 2-1.8')}${path('M6.5 13.2v6.3h11v-6.3')}${path('M9.2 19.5v-4.3h5.6v4.3')}`),
+    plus: icon(path('M12 5v14M5 12h14')),
+    check: icon(path('m5 12.7 4.2 4.1L19 7')),
+    coin: icon(`${ellipse(12, 7.2, 7, 3.2)}${path('M5 7.2v5.2c0 1.8 3.1 3.2 7 3.2s7-1.4 7-3.2V7.2')}${path('M5 12.5v4.3c0 1.8 3.1 3.2 7 3.2s7-1.4 7-3.2v-4.3')}`),
+    list: icon(path('M8 6.5h11M8 12h11M8 17.5h11M4.8 6.5h.1M4.8 12h.1M4.8 17.5h.1')),
+    briefcase: icon(`${rect(4, 7.5, 16, 11.5, 2)}${path('M9.5 7.5V5.8h5v1.7M4 12h16M10.2 12v1.4h3.6V12')}`),
+    report: icon(`${path('M6 4.5h9.2L18 7.3v12.2H6z')}${path('M14.8 4.5v3.1H18M9 16v-4M12 16V9.5M15 16v-2.5')}`),
+    target: icon(`${circle(12, 12, 8)}${circle(12, 12, 4.5)}${circle(12, 12, 1.6)}`),
+    boost: icon(`${path('M4 17.8 9 13l3.3 3.2L20 7.6')}${path('M15.4 7.4H20v4.6')}${path('M4 20h16')}`),
+    'user-circle': icon(`${circle(12, 12, 8.5)}${circle(12, 9.8, 2.7)}${path('M7.3 18.1c.9-2.4 2.5-3.6 4.7-3.6s3.8 1.2 4.7 3.6')}`),
+    wallet: icon(`${rect(4, 6.5, 16, 12, 2)}${path('M4 9.8h13.5A2.5 2.5 0 0 1 20 12.3v.2h-4.2a2.5 2.5 0 0 0 0 5H20')}${path('M16.2 14.8h.1')}`),
+    sliders: icon(path('M5 7h8M17 7h2M5 12h2M11 12h8M5 17h8M17 17h2M13 5v4M7 10v4M13 15v4')),
+    alert: icon(`${path('M12 4.2 21 19H3L12 4.2Z')}${path('M12 9.2v4.4M12 16.8h.1')}`),
+    history: icon(`${path('M7.1 8H4.5V5.4')}${path('M5.2 12a6.8 6.8 0 1 0 1.9-4.7L4.5 9.9')}${path('M12 8.6v3.8l3 1.8')}`),
+    facebook: icon(path('M14.5 8.2h2.3V4.8h-2.6c-2.8 0-4.4 1.7-4.4 4.6v2H7.2v3.4h2.6v5h3.6v-5h2.6l.6-3.4h-3.2V9.5c0-.8.4-1.3 1.1-1.3Z')),
+    shield: icon(`${path('M12 3.8 19 6.5v5.2c0 4.2-2.6 7.3-7 8.6-4.4-1.3-7-4.4-7-8.6V6.5l7-2.7Z')}${path('m8.8 12.2 2.2 2.1 4.4-4.5')}`),
+    settings: icon(path('M4.5 6.5h8M16.5 6.5h3M4.5 12h3M11.5 12h8M4.5 17.5h9M17.5 17.5h2M12.5 4.6v3.8M7.5 10.1v3.8M13.5 15.6v3.8')),
+    support: icon(`${path('M5 13v-1a7 7 0 0 1 14 0v1')}${path('M5 13.2a2 2 0 0 0 2 2h1v-4H7a2 2 0 0 0-2 2ZM19 13.2a2 2 0 0 1-2 2h-1v-4h1a2 2 0 0 1 2 2Z')}${path('M16 17.5c-.8 1.3-2.1 2-4 2h-1.2')}`),
+    moon: icon(path('M20 15.1A7.7 7.7 0 0 1 8.9 4.5 8.3 8.3 0 1 0 20 15.1Z')),
+    sun: icon(`${circle(12, 12, 4)}${path('M12 3.5v2M12 18.5v2M5.6 5.6 7 7M17 17l1.4 1.4M3.5 12h2M18.5 12h2M5.6 18.4 7 17M17 7l1.4-1.4')}`),
+    logout: icon(`${path('M10 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H10')}${path('M14 8l4 4-4 4M18 12H9')}`),
+    chevron: icon(path('m8 10 4 4 4-4')),
+    menu: icon(path('M4.5 7h15M4.5 12h15M4.5 17h15')),
+    thumb: icon(`${path('M7 10.5v9H4.5v-9H7Z')}${path('M7 10.5 11.4 4h1.2c1.1 0 1.8 1 1.5 2l-.8 3.1H18a2 2 0 0 1 2 2.3l-.9 5.3a3.4 3.4 0 0 1-3.4 2.8H7')}`),
+    'user-plus': icon(`${circle(9.8, 8.8, 3.2)}${path('M4.5 19c.5-2.7 2.3-4.2 5.3-4.2 2.2 0 3.8.8 4.6 2.3')}${path('M18 10v6M15 13h6')}`),
+    message: icon(`${path('M5 5.5h14v10.2H8.2L5 18.8V5.5Z')}${path('M8.5 9.4h7M8.5 12.3h4.8')}`),
+    heart: icon(path('M12 20s-7-4.1-8.5-8.8A4.3 4.3 0 0 1 11 7.4L12 8.5l1-1.1a4.3 4.3 0 0 1 7.5 3.8C19 15.9 12 20 12 20Z')),
+    share: icon(`${path('M12 15V4.5')}${path('m8.5 8 3.5-3.5L15.5 8')}${path('M5 12.5v5.8A1.7 1.7 0 0 0 6.7 20h10.6a1.7 1.7 0 0 0 1.7-1.7v-5.8')}`),
   };
   return icons[name] || escapeHtml(name || '');
+}
+
+function ellipse(cx, cy, rx, ry) {
+  return `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"/>`;
 }

@@ -16,7 +16,7 @@ export function RegistrationRequestsPage() {
   return `
     ${PageHeader({
       title: 'Duyệt đơn đăng ký',
-      description: 'Kiểm tra hồ sơ đăng ký Kiosk. Thanh toán PayOS sẽ tự hoàn tất khi ngân hàng xác nhận.',
+      description: 'Kiểm tra hồ sơ đăng ký Kiosk. Thanh toán sẽ tự hoàn tất khi ngân hàng xác nhận.',
     })}
     <div class="toolbar">
       <input
@@ -140,7 +140,7 @@ async function handleAction(event) {
   } else if (!window.confirm(
     isLegacyAction(action)
       ? 'Duyệt hồ sơ và lưu thông tin vào Khách hàng/Kiosk?'
-      : 'Duyệt hồ sơ đăng ký này? Bước này không xác nhận tiền; PayOS/webhook sẽ tự hoàn tất thanh toán.',
+      : 'Duyệt hồ sơ đăng ký này? Bước này không xác nhận tiền; hệ thống sẽ tự hoàn tất khi ngân hàng xác nhận.',
   )) {
     return;
   }
@@ -150,7 +150,7 @@ async function handleAction(event) {
   try {
     if (action === 'approve') {
       const { data } = await RegistrationRequestService.approve(id);
-      Toast.show(`Đã duyệt hồ sơ. Thanh toán #${data?.payment?.id || data?.request?.payment_id || 'mới'} sẽ tự hoàn tất khi PayOS báo đã thanh toán.`, 'success');
+      Toast.show(`Đã duyệt hồ sơ. Thanh toán #${data?.payment?.id || data?.request?.payment_id || 'mới'} sẽ tự hoàn tất khi ngân hàng xác nhận.`, 'success');
     }
     if (action === 'reject') await RegistrationRequestService.reject(id, reason);
     if (action === 'legacy-approve') {

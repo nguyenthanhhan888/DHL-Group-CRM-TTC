@@ -1,4 +1,29 @@
 const organizationSettings = new Map();
+const DEFAULT_EXPIRY_WARNING_DAYS = 30;
+
+export const PUBLIC_BRAND = Object.freeze({
+  name: 'Diễn Châu - À Đây Rồi DHL',
+  communityName: 'Diễn Châu - À Đây Rồi',
+  shortName: 'DHL',
+  assets: Object.freeze({
+    logo: 'logo/dhl-group-logo.jpg',
+    cover: 'images/cover.PNG',
+    avatar: 'images/avatar-1.PNG',
+  }),
+  contacts: Object.freeze({
+    zalo: Object.freeze([
+      Object.freeze({ label: '0888 690 346', number: '0888690346', url: 'https://zalo.me/0888690346' }),
+      Object.freeze({ label: '0888 640 346', number: '0888640346', url: 'https://zalo.me/0888640346' }),
+    ]),
+    hotline: Object.freeze({ label: '0333 015 337', number: '0333015337', url: 'tel:0333015337' }),
+    fanpage: 'https://www.facebook.com/admin.dc.adayroi/',
+    groups: Object.freeze({
+      primary: 'https://www.facebook.com/groups/1145443782801316',
+      secondary: 'https://www.facebook.com/groups/dienchaugroup888',
+      recruitment: 'https://www.facebook.com/groups/320237372898775',
+    }),
+  }),
+});
 
 export function replaceOrganizationSettings(values = {}) {
   organizationSettings.clear();
@@ -9,6 +34,12 @@ export function replaceOrganizationSettings(values = {}) {
 
 export function getOrganizationSetting(key, fallback = '') {
   return organizationSettings.get(key) ?? fallback;
+}
+
+export function getExpiryWarningDays() {
+  const value = Number(getOrganizationSetting('warning_days', DEFAULT_EXPIRY_WARNING_DAYS));
+  if (!Number.isFinite(value) || value <= 0) return DEFAULT_EXPIRY_WARNING_DAYS;
+  return Math.floor(value);
 }
 
 export function getFacebookGroupMemberBaseUrl() {

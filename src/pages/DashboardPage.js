@@ -3,7 +3,7 @@ import { renderCategoryChart, renderRevenueChart } from '../components/Dashboard
 import { EmptyState } from '../components/EmptyState.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { StatCard } from '../components/StatCard.js';
-import { openRenewKioskForm } from '../components/RenewKioskForm.js';
+import { getExpiryWarningDays } from '../config/organization.js';
 import { DashboardService } from '../services/DashboardService.js';
 import { formatCurrency } from '../utils/currency.js';
 import { daysUntil, formatDate } from '../utils/date.js';
@@ -64,22 +64,13 @@ export function DashboardPage() {
 
 DashboardPage.afterRender = async function afterRenderDashboard() {
   setDashboardLoading();
-  const expiringList = document.getElementById('expiring-list');
-  if (expiringList && !expiringList.dataset.renewBound) {
-    expiringList.dataset.renewBound = 'true';
-    expiringList.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-dashboard-renew-kiosk]');
-      if (!button) return;
-      openRenewKioskForm({ kioskId: button.dataset.dashboardRenewKiosk, onSaved: DashboardPage.afterRender });
-    });
-  }
 
   try {
     const dashboard = await DashboardService.getDashboardData();
     renderSummary(dashboard.summary);
     renderRevenueChart(dashboard.charts.monthlyRevenue);
     renderCategoryChart(dashboard.charts.categoryDistribution);
-    renderExpiringKiosks(dashboard.lists.expiringKiosks);
+    renderExpiringKiosks(dashboard.lists.expiringKiosks, dashboard.warningDays);
     renderRecentCustomers(dashboard.lists.recentCustomers);
   } catch (error) {
     renderDashboardError(error);
@@ -110,14 +101,15 @@ function renderSummary(summary) {
   setText('stat-revenue-year', formatCurrency(summary.revenueThisYear));
 }
 
-function renderExpiringKiosks(kiosks) {
+function renderExpiringKiosks(kiosks, warningDays = getExpiryWarningDays()) {
   const element = document.getElementById('expiring-list');
   if (!element) return;
 
+  const expiryWarningDays = normalizeWarningDays(warningDays);
   if (!kiosks.length) {
     element.innerHTML = EmptyState({
       title: 'Không có kiosk sắp hết hạn',
-      message: 'Không tìm thấy kiosk hết hạn trong 30 ngày tới.',
+      message: expiringKiosksEmptyMessage(expiryWarningDays),
     });
     return;
   }
@@ -131,10 +123,19 @@ function renderExpiringKiosks(kiosks) {
           <div class="expiring-name">🏪 ${escapeHtml(kiosk.facebook_name || '—')}</div>
           <div class="expiring-date">👤 ${escapeHtml(kiosk.customers?.facebook_name || '—')} · HH: ${formatDate(kiosk.end_date)}</div>
         </div>
-        <div class="inline-actions"><span class="expiring-days ${daysClass}">Còn ${days} ngày</span><button class="table-action-button" type="button" data-dashboard-renew-kiosk="${escapeHtml(kiosk.id)}">Gia hạn</button></div>
+        <span class="expiring-days ${daysClass}">Còn ${days} ngày</span>
       </div>
     `;
   }).join('');
+}
+
+export function expiringKiosksEmptyMessage(warningDays = getExpiryWarningDays()) {
+  return `Không tìm thấy kiosk sắp hết hạn trong ${normalizeWarningDays(warningDays)} ngày tới.`;
+}
+
+function normalizeWarningDays(value) {
+  const days = Number(value);
+  return Number.isFinite(days) && days > 0 ? Math.floor(days) : getExpiryWarningDays();
 }
 
 function renderRecentCustomers(customers) {

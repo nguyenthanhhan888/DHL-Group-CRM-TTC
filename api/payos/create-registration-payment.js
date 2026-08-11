@@ -4,10 +4,8 @@ const {
   createOrderCode,
   getSupabaseServiceConfig,
   normalizePayosDescription,
-  normalizeAppRedirectUrl,
   parseJsonBody,
   requireEnv,
-  requirePayosEnabled,
   sendError,
   signPaymentRequest,
 } = require('./_utils');
@@ -30,15 +28,14 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
   }
 
   try {
-    requirePayosEnabled();
     enforceRateLimit(req);
     const clientId = requireEnv('PAYOS_CLIENT_ID');
     const apiKey = requireEnv('PAYOS_API_KEY');
     const checksumKey = requireEnv('PAYOS_CHECKSUM_KEY');
     const requestIds = normalizeRequestIds(parsed.value.requestIds || parsed.value.request_ids);
     const phone = normalizePhone(parsed.value.phone);
-    const returnUrl = normalizeAppRedirectUrl(parsed.value.returnUrl || parsed.value.return_url || '/#/register', 'returnUrl');
-    const cancelUrl = normalizeAppRedirectUrl(parsed.value.cancelUrl || parsed.value.cancel_url || '/#/register', 'cancelUrl');
+    const returnUrl = normalizeUrl(parsed.value.returnUrl || parsed.value.return_url || `${originFromRequest(req)}/#/register`);
+    const cancelUrl = normalizeUrl(parsed.value.cancelUrl || parsed.value.cancel_url || `${originFromRequest(req)}/#/register`);
 
     const rows = await fetchRegistrationPayments(requestIds, phone);
     if (rows.length !== requestIds.length) {
@@ -150,6 +147,14 @@ function normalizePhone(value) {
     throw new Error('Số điện thoại xác nhận không hợp lệ.');
   }
   return phone;
+}
+
+function normalizeUrl(value) {
+  const url = new URL(String(value || '').trim());
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new Error('URL chuyển hướng PayOS không hợp lệ.');
+  }
+  return url.toString();
 }
 
 async function fetchRegistrationPayments(requestIds, phone) {
@@ -348,6 +353,7 @@ async function upsertPayosOrder({
 }
 
 function formatPaymentResult(row, order) {
+  const providerData = order.provider_payload?.data || {};
   return {
     requestId: Number(row.id),
     paymentId: Number(row.payment_id),
@@ -356,7 +362,19 @@ function formatPaymentResult(row, order) {
     checkoutUrl: order.checkout_url || null,
     qrCode: order.qr_code || null,
     paymentLinkId: order.payment_link_id || null,
+    accountName: providerData.accountName || providerData.account_name || null,
+    accountNumber: providerData.accountNumber || providerData.account_number || null,
+    bankName: providerData.bankName || providerData.bank_name || null,
+    bin: providerData.bin || null,
+    description: providerData.description || order.description || null,
+    currency: providerData.currency || 'VND',
   };
+}
+
+function originFromRequest(req) {
+  const proto = req.headers['x-forwarded-proto'] || 'http';
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
+  return `${proto}://${host}`;
 }
 
 async function safeJson(response) {

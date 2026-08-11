@@ -15,23 +15,4 @@ config.local.js
 # Artifact local khi kiểm UI bằng Playwright CLI
 .playwright-cli/
 .vercel
-
-# Environment
-.env
-.env.*
-!.env.example
-
-# macOS
-.DS_Store
-
-# Build
-dist/
-build/
-
-# Logs
-*.log
-
-.env
-.env.*
-.DS_Store
 .env*

@@ -139,6 +139,26 @@ export const TtcService = {
     return { data };
   },
 
+  async autoVerifyFacebookTask(taskId) {
+    const client = requireSupabaseClient();
+    const { data: sessionData } = await client.auth.getSession();
+    const accessToken = sessionData?.session?.access_token || '';
+    if (!accessToken) throw new Error('Bạn cần đăng nhập để auto check nhiệm vụ.');
+    const response = await fetch('/api/ttc/verify-facebook-task', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ taskId: positiveInteger(taskId, 'Nhiệm vụ') }),
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.ok) {
+      throw new Error(payload?.message || 'Không thể auto check nhiệm vụ Facebook.');
+    }
+    return payload;
+  },
+
   async cancelCampaign(campaignId, reason, idempotencyKey = createIdempotencyKey('ttc-cancel')) {
     const { data } = await runQuery(requireSupabaseClient().rpc('cancel_ttc_campaign', {
       campaign_id_input: positiveInteger(campaignId, 'Tăng tương tác'),

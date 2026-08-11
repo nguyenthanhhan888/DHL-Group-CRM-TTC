@@ -3,6 +3,7 @@ import { CategoryService } from '../services/CategoryService.js';
 import { LegacyRegistrationService } from '../services/LegacyRegistrationService.js';
 import { settingsService } from '../services/SettingsService.js';
 import { PageHeader } from '../components/PageHeader.js';
+import { PublicSupport } from '../components/PublicSupport.js';
 import { bindFacebookIdResolvers, FacebookIdResolverFields, validateFacebookResolver } from '../components/FacebookIdResolver.js';
 import { Toast } from '../components/Toast.js';
 import { getOrganizationSetting } from '../config/organization.js';
@@ -10,9 +11,7 @@ import { escapeHtml } from '../utils/html.js';
 import { toDateOnly } from '../utils/date.js';
 import { debounce } from '../utils/dom.js';
 import { duplicateValues, isDigits, isValidDateOnly, setInlineError } from '../utils/formValidation.js';
-import { PublicSupportBlock, publicIcon } from '../components/OfficialCommunityCard.js';
-import { bindMoneyInputs, parseMoneyInput } from '../utils/moneyInput.js';
-import { enhanceSearchableSelect, refreshSearchableSelect } from '../components/SearchableSelect.js';
+import { bindCurrencyInput, parseCurrencyInput } from '../utils/currency.js';
 
 const state = {
   mode: 'single',
@@ -25,11 +24,13 @@ const state = {
 export function LegacyRegistrationPage() {
   resetState();
   return `
+    <div class="public-form-flow">
     ${PageHeader({
-      title: 'Bổ sung thông tin Kiosk đã đăng ký trước đây',
-      description: 'Dành cho khách hàng/Kiosk đã đăng ký với Ban quản trị trước đây nhưng chưa có dữ liệu trên hệ thống mới.',
+      title: 'Bổ sung thông tin khách hàng cũ',
+      description: 'Bổ sung thông tin Kiosk đã đăng ký trước đây nhưng hiện chưa có đầy đủ dữ liệu trên hệ thống.',
     })}
     <section class="registration-card legacy-registration-card">
+      <div class="legacy-scope-notice"><p>Bổ sung thông tin Kiosk đã đăng ký trước đây nhưng hiện chưa có đầy đủ dữ liệu trên hệ thống.</p></div>
       <form id="legacy-registration-form" novalidate>
         <div id="legacy-registration-error" class="form-error hidden" role="alert"></div>
         <div id="legacy-registration-warning" class="legacy-warning hidden" role="status"></div>
@@ -60,7 +61,7 @@ export function LegacyRegistrationPage() {
               <p id="legacy-zalo-unavailable" class="muted-text hidden">Thông tin Zalo hỗ trợ đang được cập nhật.</p>
             </div>
             <div class="legacy-zalo-actions">
-              <a id="legacy-zalo-button" class="legacy-zalo-button" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">${publicIcon('message')} Gửi bill qua Zalo</a>
+              <a id="legacy-zalo-button" class="legacy-zalo-button" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">💬 Gửi bill qua Zalo</a>
               <button id="legacy-copy-zalo" class="btn-secondary" type="button" disabled>Sao chép số Zalo</button>
             </div>
           </section>
@@ -80,7 +81,8 @@ export function LegacyRegistrationPage() {
       </form>
       <div id="legacy-registration-success" class="registration-success hidden" aria-live="polite"></div>
     </section>
-    ${PublicSupportBlock({ title: 'Cần hỗ trợ bổ sung dữ liệu?' })}
+    ${PublicSupport()}
+    </div>
   `;
 }
 
@@ -131,7 +133,7 @@ function renderFlow() {
       </div>
       <div id="legacy-kiosk-list">${renderKioskCard()}</div>
       <div class="registration-add-row legacy-add-row">
-        <button class="btn-secondary register-add-kiosk-bottom" id="legacy-add-kiosk" type="button">${publicIcon('store')} Thêm Kiosk</button>
+        <button class="btn-secondary register-add-kiosk-bottom" id="legacy-add-kiosk" type="button">+ Thêm kiosk</button>
         <span class="field-helper">Nhập xong kiosk hiện tại rồi bấm để thêm kiosk tiếp theo.</span>
       </div>
     `;
@@ -208,10 +210,16 @@ function renderKioskCard({ copyCustomer = false } = {}) {
         </label>
       </div>
       <div class="form-row">
-        ${nestedMoneyField('Số tiền đã thanh toán', 'amount', { required: true })}
+        ${nestedField('Số tiền đã thanh toán', 'amount', { type: 'text', inputmode: 'numeric', placeholder: '0 VNĐ', required: true })}
         ${nestedField('Ngày đăng ký', 'start', { type: 'date', value: today, required: true })}
       </div>
-      ${nestedField('Ngày hết hạn', 'end', { type: 'date', value: today, required: true })}
+      <div class="form-row">
+        ${nestedField('Ngày hết hạn', 'end', { type: 'date', value: today, required: true })}
+        <label class="form-group">
+          <span>Ghi chú / Bằng chứng <small class="field-optional">Không bắt buộc</small></span>
+          <textarea class="form-control" data-kiosk-field="note" rows="2"></textarea>
+        </label>
+      </div>
     </section>
   `;
 }
@@ -248,9 +256,7 @@ function bindKioskInputs(container = document) {
     if (card.dataset.bound === 'true') return;
     card.dataset.bound = 'true';
     bindFacebookIdResolvers(card);
-    bindMoneyInputs(card);
-    enhanceSearchableSelect(card.querySelector('[data-kiosk-category]'), { placeholder: 'Tìm danh mục' });
-    enhanceSearchableSelect(card.querySelector('[data-kiosk-business-type]'), { placeholder: 'Tìm dịch vụ' });
+    bindCurrencyInput(card.querySelector('[data-kiosk-field="amount"]'));
     card.querySelector('[data-kiosk-field="name"]')?.addEventListener('input', debounce(checkWarningsAndDuplicates, 500));
     card.querySelector('[data-kiosk-category]')?.addEventListener('change', (event) => {
       renderBusinessTypeSelect(card, event.target.value);
@@ -294,12 +300,11 @@ async function loadBusinessTypes() {
       CategoryService.listActive(),
       BusinessTypeService.listActive(),
     ]);
-    state.categories = categoriesResult.data || [];
-    state.businessTypes = businessTypesResult.data || [];
+    state.categories = sortVietnamese(categoriesResult.data || []);
+    state.businessTypes = sortVietnamese(businessTypesResult.data || []);
     document.querySelectorAll('[data-legacy-kiosk]').forEach((card) => {
       const categorySelect = card.querySelector('[data-kiosk-category]');
       if (categorySelect) categorySelect.innerHTML = categoryOptions();
-      refreshSearchableSelect(categorySelect, { placeholder: 'Tìm danh mục' });
       renderBusinessTypeSelect(card, categorySelect?.value || '');
     });
   } catch (error) {
@@ -309,7 +314,7 @@ async function loadBusinessTypes() {
 
 function categoryOptions() {
   if (!state.categories.length) return '<option value="">Đang tải...</option>';
-  return `<option value="">Chọn danh mục</option>${[...state.categories].sort((a,b) => String(a.name).localeCompare(String(b.name),'vi'))
+  return `<option value="">Chọn danh mục</option>${state.categories
     .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`)
     .join('')}`;
 }
@@ -317,14 +322,13 @@ function categoryOptions() {
 function renderBusinessTypeSelect(card, categoryId) {
   const select = card?.querySelector('[data-kiosk-business-type]');
   if (!select) return;
-  const items = state.businessTypes.filter((item) => String(item.category_id) === String(categoryId)).sort((a,b) => String(a.name).localeCompare(String(b.name),'vi'));
+  const items = state.businessTypes.filter((item) => String(item.category_id) === String(categoryId));
   select.disabled = !categoryId;
   select.innerHTML = categoryId
     ? `<option value="">Chọn dịch vụ</option>${items
       .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`)
       .join('')}`
     : '<option value="">Chọn danh mục trước</option>';
-  refreshSearchableSelect(select, { placeholder: 'Tìm dịch vụ' });
 }
 
 function normalizeFacebookUrl(value) {
@@ -448,7 +452,7 @@ function validateForm(form) {
       setInlineError(idInput, 'Facebook ID bị trùng trong biểu mẫu.');
       return failValidation(idInput, `Kiosk ${index + 1}: Facebook ID bị trùng trong biểu mẫu.`);
     }
-    if (kiosk.amount < 0 || !Number.isFinite(kiosk.amount)) {
+    if (Number(kiosk.amount) < 0 || !Number.isFinite(Number(kiosk.amount))) {
       return failValidation(
         card?.querySelector('[data-kiosk-field="amount"]'),
         `Kiosk ${index + 1}: số tiền không được âm.`,
@@ -482,7 +486,7 @@ async function submitPublicLegacyRequest() {
   success.classList.remove('hidden');
   success.innerHTML = `
     <div class="empty-state">
-      <div class="empty-state-icon">${publicIcon('check')}</div>
+      <div class="empty-state-icon">✓</div>
       <div class="empty-state-title">Đã gửi dữ liệu cũ</div>
       <div class="empty-state-message">Ban quản trị sẽ đối chiếu bằng chứng trước khi cập nhật hệ thống.</div>
     </div>
@@ -531,17 +535,16 @@ function focusInvalidField(element) {
 
 function readKiosks() {
   const copyCustomer = state.mode === 'single' && document.getElementById('legacy-copy-customer')?.checked;
-  const sharedNote = readValue('legacy-customer-note');
   return [...document.querySelectorAll('[data-legacy-kiosk]')].map((card) => ({
     facebook_name: copyCustomer ? readValue('legacy-customer-name') : nestedValue(card, 'name'),
     facebook_id: copyCustomer ? readValue('legacy-customer-id') : nestedValue(card, 'facebook-id'),
     facebook_link: copyCustomer ? readValue('legacy-customer-link') : nestedValue(card, 'link'),
     category_id: card.querySelector('[data-kiosk-category]')?.value || '',
     business_type_id: nestedValue(card, 'business-type'),
-    amount: parseMoneyInput(nestedValue(card, 'amount')),
+    amount: nestedValue(card, 'amount'),
     start_date: nestedValue(card, 'start'),
     end_date: nestedValue(card, 'end'),
-    note: sharedNote,
+    note: nestedValue(card, 'note'),
   }));
 }
 
@@ -609,10 +612,6 @@ function nestedField(label, name, options = {}) {
   return `<label class="form-group"><span>${escapeHtml(label)}${options.required ? ' *' : ''}</span><input class="form-control" data-kiosk-field="${name}" ${inputAttributes(options)} /></label>`;
 }
 
-function nestedMoneyField(label, name, { required = false } = {}) {
-  return `<label class="form-group"><span>${escapeHtml(label)}${required ? ' *' : ''}</span><span class="money-input-shell"><input class="form-control" data-kiosk-field="${name}" data-money-input type="text" inputmode="numeric" autocomplete="off" placeholder="0 VNĐ" ${required ? 'required' : ''}><span class="money-input-suffix">VNĐ</span></span></label>`;
-}
-
 function inputAttributes(options) {
   return [
     `type="${options.type || 'text'}"`,
@@ -622,12 +621,14 @@ function inputAttributes(options) {
     options.pattern ? `pattern="${options.pattern}"` : '',
     options.min != null ? `min="${options.min}"` : '',
     options.step ? `step="${options.step}"` : '',
+    options.placeholder ? `placeholder="${escapeHtml(options.placeholder)}"` : '',
     options.autocomplete ? `autocomplete="${options.autocomplete}"` : 'autocomplete="off"',
   ].filter(Boolean).join(' ');
 }
 
 function nestedValue(card, name) {
   if (name === 'business-type') return card.querySelector('[data-kiosk-business-type]')?.value || '';
+  if (name === 'amount') return String(parseCurrencyInput(card.querySelector('[data-kiosk-field="amount"]')?.value));
   return card.querySelector(`[data-kiosk-field="${name}"]`)?.value.trim() || '';
 }
 
@@ -654,4 +655,8 @@ function clearError() {
 function clearMessages() {
   clearError();
   document.getElementById('legacy-registration-warning')?.classList.add('hidden');
+}
+
+function sortVietnamese(items) {
+  return [...items].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'vi', { sensitivity: 'base' }));
 }

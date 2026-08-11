@@ -154,7 +154,8 @@ begin
       'username', staff_record.username,
       'display_name', staff_record.display_name,
       'role', staff_record.role,
-      'is_active', staff_record.is_active
+      'is_active', staff_record.is_active,
+      'created_at', staff_record.created_at
     );
   end if;
 
@@ -182,6 +183,8 @@ begin
     'role', 'user',
     'status', user_record.status,
     'is_active', user_record.status = 'active',
+    'created_at', user_record.created_at,
+    'updated_at', user_record.updated_at,
     'wallet', case when wallet_record.user_id is null then null else to_jsonb(wallet_record) end
   );
 end;

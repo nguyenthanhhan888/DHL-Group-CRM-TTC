@@ -19,6 +19,9 @@ module.exports = async function authAccountHandler(req, res) {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     if (body.action === 'resolve_login') return await resolveLogin(body, res);
     if (body.action === 'create_user_account') return await createUserAccount(body, res);
+    if (body.action === 'admin_reset_user_password') return await adminResetUserPassword(body, req, res);
+    if (body.action === 'admin_update_user_status') return await adminUpdateUserStatus(body, req, res);
+    if (body.action === 'admin_update_user_profile') return await adminUpdateUserProfile(body, req, res);
     return res.status(400).json({ ok: false, message: 'Thao tác không hợp lệ.' });
   } catch (error) {
     return res.status(error.status || 500).json({
@@ -66,13 +69,13 @@ async function createUserAccount(body, res) {
 
   if (!displayName) return res.status(400).json({ ok: false, message: 'Vui lòng nhập họ tên.' });
   if (!USERNAME_PATTERN.test(username)) return res.status(400).json({ ok: false, message: 'Username cần 3-40 ký tự, chỉ gồm chữ thường, số, dấu chấm, gạch ngang hoặc gạch dưới.' });
-  if (!PHONE_PATTERN.test(phone)) return res.status(400).json({ ok: false, message: 'Số điện thoại không hợp lệ.' });
+  if (phone && !PHONE_PATTERN.test(phone)) return res.status(400).json({ ok: false, message: 'Số điện thoại không hợp lệ.' });
   if (email && !isEmail(email)) return res.status(400).json({ ok: false, message: 'Email không hợp lệ.' });
   if (password.length < 6) return res.status(400).json({ ok: false, message: 'Mật khẩu cần ít nhất 6 ký tự.' });
 
   const [existingUsername, existingPhone] = await Promise.all([
     findUserProfileByUsername(username),
-    findUserProfileMatches(phone),
+    phone ? findUserProfileMatches(phone) : Promise.resolve([]),
   ]);
   if (existingUsername) return res.status(409).json({ ok: false, message: 'Username đã được sử dụng.' });
   if (existingPhone.length) return res.status(409).json({ ok: false, message: 'Số điện thoại đã có tài khoản.' });
@@ -83,7 +86,7 @@ async function createUserAccount(body, res) {
     password,
     displayName,
     username,
-    phone,
+    phone: phone || null,
     contactEmail: email,
   });
   const user = authData?.user || authData;
@@ -94,7 +97,7 @@ async function createUserAccount(body, res) {
     user_id: user.id,
     username,
     display_name: displayName,
-    phone,
+    phone: phone || null,
     email: email || null,
     status: 'active',
     metadata: {
@@ -117,6 +120,75 @@ async function createUserAccount(body, res) {
   }).catch(() => null);
 
   return res.status(200).json({ ok: true, username, email: authEmail });
+}
+
+async function adminResetUserPassword(body, req, res) {
+  const actor = await requireAdminActor(req);
+  void actor;
+  const userId = clean(body.userId, 80);
+  const password = String(body.password || '');
+  if (!userId) return res.status(400).json({ ok: false, message: 'Thiếu user cần khôi phục mật khẩu.' });
+  if (password.length < 6) return res.status(400).json({ ok: false, message: 'Mật khẩu cần ít nhất 6 ký tự.' });
+
+  const profile = await findUserProfileById(userId);
+  if (!profile) return res.status(404).json({ ok: false, message: 'Không tìm thấy user khách hàng.' });
+
+  await updateAuthUserPassword(userId, password);
+  return res.status(200).json({ ok: true });
+}
+
+async function adminUpdateUserStatus(body, req, res) {
+  await requireAdminActor(req);
+  const userId = clean(body.userId, 80);
+  const status = clean(body.status, 40);
+  if (!userId) return res.status(400).json({ ok: false, message: 'Thiếu user cần cập nhật.' });
+  if (!['active', 'locked', 'pending_profile'].includes(status)) {
+    return res.status(400).json({ ok: false, message: 'Trạng thái user không hợp lệ.' });
+  }
+  const profile = await findUserProfileById(userId);
+  if (!profile) return res.status(404).json({ ok: false, message: 'Không tìm thấy user khách hàng.' });
+  await updateUserProfileStatus(userId, status);
+  return res.status(200).json({ ok: true });
+}
+
+async function adminUpdateUserProfile(body, req, res) {
+  await requireAdminActor(req);
+  const userId = clean(body.userId, 80);
+  if (!userId) return res.status(400).json({ ok: false, message: 'Thiếu user cần cập nhật.' });
+
+  const profile = await findUserProfileById(userId);
+  if (!profile) return res.status(404).json({ ok: false, message: 'Không tìm thấy user khách hàng.' });
+
+  const hasDisplayName = Object.prototype.hasOwnProperty.call(body, 'displayName');
+  const hasEmail = Object.prototype.hasOwnProperty.call(body, 'email');
+  const hasPhone = Object.prototype.hasOwnProperty.call(body, 'phone');
+  const hasStatus = Object.prototype.hasOwnProperty.call(body, 'status');
+  const displayName = hasDisplayName ? clean(body.displayName, 100) : profile.display_name;
+  const email = hasEmail ? clean(body.email, 254).toLowerCase() : profile.email;
+  const phone = hasPhone ? clean(body.phone, 40) : profile.phone;
+  const status = hasStatus ? clean(body.status, 40) : profile.status;
+  const metadataPatch = body.metadataPatch && typeof body.metadataPatch === 'object' ? body.metadataPatch : {};
+
+  if (email && !isEmail(email)) return res.status(400).json({ ok: false, message: 'Email không hợp lệ.' });
+  if (phone && !PHONE_PATTERN.test(phone)) return res.status(400).json({ ok: false, message: 'Số điện thoại không hợp lệ.' });
+  if (status && !['active', 'locked', 'pending_profile'].includes(status)) {
+    return res.status(400).json({ ok: false, message: 'Trạng thái user không hợp lệ.' });
+  }
+
+  const updatePayload = {
+    display_name: displayName || null,
+    email: email || null,
+    phone: phone || null,
+    status: status || profile.status || 'pending_profile',
+    metadata: {
+      ...(profile.metadata && typeof profile.metadata === 'object' ? profile.metadata : {}),
+      ...metadataPatch,
+    },
+    updated_at: new Date().toISOString(),
+  };
+
+  await updateUserProfile(userId, updatePayload);
+  return res.status(200).json({ ok: true });
 }
 
 async function insertUserProfile(profile) {
@@ -149,6 +221,29 @@ async function findUserProfileByUsername(username) {
   return rows?.[0] || null;
 }
 
+async function findUserProfileById(userId) {
+  const params = new URLSearchParams({
+    select: 'user_id,username,display_name,email,phone,status,metadata',
+    user_id: `eq.${userId}`,
+    limit: '1',
+  });
+  const rows = await supabaseFetch(`/rest/v1/user_profiles?${params.toString()}`).catch((error) => {
+    if (isMissingUsernameColumn(error)) return findUserProfileByIdWithoutUsernameColumn(userId);
+    throw error;
+  });
+  return rows?.[0] || null;
+}
+
+async function findUserProfileByIdWithoutUsernameColumn(userId) {
+  const params = new URLSearchParams({
+    select: 'user_id,display_name,email,phone,status,metadata',
+    user_id: `eq.${userId}`,
+    limit: '1',
+  });
+  const rows = await supabaseFetch(`/rest/v1/user_profiles?${params.toString()}`);
+  return hydrateProfileUsernames(rows);
+}
+
 async function findUserProfileMatches(identifier) {
   const normalized = clean(identifier, 254).toLowerCase();
   const filters = [`username.eq.${escapePostgrestValue(normalized)}`];
@@ -175,7 +270,8 @@ async function findUserProfileMatchesWithoutUsernameColumn(identifier) {
       phone: `eq.${clean(identifier, 40)}`,
       limit: '2',
     });
-    return supabaseFetch(`/rest/v1/user_profiles?${params.toString()}`);
+    const rows = await supabaseFetch(`/rest/v1/user_profiles?${params.toString()}`);
+    return normalizeProfileMatches(rows);
   }
   if (isEmail(normalized)) {
     const params = new URLSearchParams({
@@ -183,9 +279,11 @@ async function findUserProfileMatchesWithoutUsernameColumn(identifier) {
       email: `eq.${normalized}`,
       limit: '2',
     });
-    return supabaseFetch(`/rest/v1/user_profiles?${params.toString()}`);
+    const rows = await supabaseFetch(`/rest/v1/user_profiles?${params.toString()}`);
+    return normalizeProfileMatches(rows);
   }
-  return findUserProfileByMetadataUsername(normalized);
+  const rows = await findUserProfileByMetadataUsername(normalized);
+  return normalizeProfileMatches(rows);
 }
 
 async function findUserProfileByMetadataUsername(username) {
@@ -198,11 +296,15 @@ async function findUserProfileByMetadataUsername(username) {
 }
 
 function normalizeProfileMatches(rows) {
+  return hydrateProfileUsernames(rows).filter((row) => row.auth_email);
+}
+
+function hydrateProfileUsernames(rows) {
   return (rows || []).map((row) => ({
     ...row,
     username: row.username || row.metadata?.username || '',
     auth_email: row.metadata?.auth_email || row.email,
-  })).filter((row) => row.auth_email);
+  }));
 }
 
 async function findStaffByUsername(username) {
@@ -237,8 +339,74 @@ async function getAuthUserById(userId) {
   return data?.user || data || null;
 }
 
+async function updateAuthUserPassword(userId, password) {
+  return supabaseFetch(`/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ password }),
+  });
+}
+
+async function updateUserProfileStatus(userId, status) {
+  return supabaseFetch(`/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify({ status }),
+  });
+}
+
+async function updateUserProfile(userId, payload) {
+  return supabaseFetch(`/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify(payload),
+  });
+}
+
 async function deleteAuthUser(userId) {
   return supabaseFetch(`/auth/v1/admin/users/${encodeURIComponent(userId)}`, { method: 'DELETE' });
+}
+
+async function requireAdminActor(req) {
+  const accessToken = parseBearer(req.headers.authorization || '');
+  if (!accessToken) {
+    const error = new Error('Bạn cần đăng nhập admin.');
+    error.status = 401;
+    throw error;
+  }
+  const actor = await getCurrentAuthUser(accessToken);
+  const role = await findUserRole(actor.id);
+  if (role?.role !== 'admin' || role.is_active === false) {
+    const error = new Error('Chỉ admin mới được thao tác.');
+    error.status = 403;
+    throw error;
+  }
+  return { ...actor, role: role.role };
+}
+
+async function getCurrentAuthUser(accessToken) {
+  const data = await supabaseFetch('/auth/v1/user', { serviceRole: false, accessToken });
+  const user = data?.user || data;
+  if (!user?.id) {
+    const error = new Error('Phiên đăng nhập không hợp lệ.');
+    error.status = 401;
+    throw error;
+  }
+  return user;
+}
+
+async function findUserRole(userId) {
+  const params = new URLSearchParams({
+    select: 'role,is_active',
+    user_id: `eq.${userId}`,
+    limit: '1',
+  });
+  const rows = await supabaseFetch(`/rest/v1/user_roles?${params.toString()}`);
+  return rows?.[0] || null;
+}
+
+function parseBearer(value) {
+  const match = String(value || '').match(/^Bearer\s+(.+)$/i);
+  return match?.[1] || '';
 }
 
 async function supabaseFetch(path, { serviceRole = true, accessToken = '', ...options } = {}) {

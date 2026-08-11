@@ -1,4 +1,10 @@
-import { applyPagination, applySort, requireSupabaseClient, runQuery } from './BaseService.js';
+import {
+  applyPagination,
+  applySort,
+  requirePublicSupabaseClient,
+  requireSupabaseClient,
+  runQuery,
+} from './BaseService.js';
 
 const CATEGORY_MUTABLE_FIELDS = [
   'name',
@@ -38,6 +44,17 @@ export const CategoryService = {
 
   async listActive() {
     const supabase = requireSupabaseClient();
+    return runQuery(
+      supabase
+        .from('categories')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('sort_order'),
+    );
+  },
+
+  async listPublicActive() {
+    const supabase = requirePublicSupabaseClient();
     return runQuery(
       supabase
         .from('categories')

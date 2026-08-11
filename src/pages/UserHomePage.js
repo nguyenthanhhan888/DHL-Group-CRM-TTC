@@ -2,15 +2,18 @@ import { EmptyState } from '../components/EmptyState.js';
 import { bindFacebookIdResolvers, FacebookIdResolverFields } from '../components/FacebookIdResolver.js';
 import { Modal } from '../components/Modal.js';
 import { PageHeader } from '../components/PageHeader.js';
-import { bindPayosCopyButtons, PayosResultCard } from '../components/PayosResultCard.js';
+import { bindPayosCopyButtons, PayosResultCard, watchPayosPaymentStatus } from '../components/PayosResultCard.js';
 import { Toast } from '../components/Toast.js';
 import { AnnouncementService } from '../services/AnnouncementService.js';
+import { FacebookIdService } from '../services/FacebookIdService.js';
 import { PayosService } from '../services/PayosService.js';
 import { PaymentService } from '../services/PaymentService.js';
+import { AuthService } from '../services/AuthService.js';
 import { UserProfileService } from '../services/UserProfileService.js';
 import { WalletService } from '../services/WalletService.js';
-import { formatCurrency } from '../utils/currency.js';
-import { isMissingDatabaseFeatureError, migrationRequiredMessage } from '../utils/databaseFeature.js';
+import { getOrganizationSetting } from '../config/organization.js';
+import { bindCurrencyInput, formatCurrency, formatVndNumber, parseCurrencyInput } from '../utils/currency.js';
+import { isMissingDatabaseFeatureError } from '../utils/databaseFeature.js';
 import { formatDate, formatDateTime } from '../utils/date.js';
 import { getUserAvatarPath } from '../utils/avatar.js';
 import { escapeHtml } from '../utils/html.js';
@@ -49,6 +52,16 @@ const USER_ROUTE_CONFIG = {
     description: 'Thông tin tài khoản, ví xu và các thiết lập đang có trong hệ thống.',
     sections: ['accountProfile'],
   },
+  'user-announcements': {
+    title: 'Thông báo',
+    description: 'Theo dõi các cập nhật từ hệ thống và admin.',
+    sections: ['announcements'],
+  },
+  'user-support': {
+    title: 'Hỗ trợ',
+    description: 'Thông tin liên hệ hỗ trợ đã được cấu hình trong hệ thống.',
+    sections: ['support'],
+  },
   'user-kiosks': {
     title: 'Danh sách Kiosk',
     description: 'Kiosk thuộc tài khoản của bạn sẽ hiển thị tại đây sau khi được liên kết.',
@@ -56,17 +69,17 @@ const USER_ROUTE_CONFIG = {
   },
   'user-register-kiosk': {
     title: 'Đăng ký Kiosk mới',
-    description: 'Mở form đăng ký Kiosk và tạo PayOS theo luồng đăng ký public.',
+    description: 'Mở form đăng ký Kiosk và tạo mã thanh toán theo luồng đăng ký public.',
     sections: ['kioskEntry'],
   },
   'payments-mine': {
     title: 'Thanh toán của tôi',
-    description: 'Theo dõi khoản thanh toán Kiosk của tài khoản. PayOS tự hoàn tất khi ngân hàng xác nhận.',
+    description: 'Theo dõi khoản thanh toán Kiosk của tài khoản. Hệ thống tự hoàn tất khi ngân hàng xác nhận.',
     sections: ['paymentNotice'],
   },
   'ttc-wallet': {
     title: 'Ví xu',
-    description: 'Xem số dư, nạp xu qua PayOS và dùng xu để tạo tương tác.',
+    description: 'Xem số dư, nạp tiền và dùng xu để tạo tương tác.',
     sections: ['wallet'],
   },
   'ttc-wallet-history': {
@@ -91,6 +104,8 @@ export function UserHomePage({ route = 'user' } = {}) {
     })}
     <div id="user-portal-notice"></div>
     ${hasSection('homeFeed') ? renderUserHomeFeed() : ''}
+    ${hasSection('announcements') ? renderAnnouncementsSection() : ''}
+    ${hasSection('support') ? renderSupportSection() : ''}
     ${hasSection('accountProfile') ? renderAccountProfileSection() : ''}
     ${hasSection('profile') ? `<section class="dash-card">
       <div class="dash-card-header"><h3>Hồ sơ của tôi</h3></div>
@@ -118,22 +133,33 @@ export function UserHomePage({ route = 'user' } = {}) {
       <div id="user-wallet-panel">
         ${EmptyState({ title: 'Đang tải ví xu', message: 'Đang đọc số dư từ Supabase.' })}
       </div>
-      <form id="wallet-topup-form" class="wallet-topup-form">
-        <div class="wallet-topup-heading">Nạp xu qua PayOS</div>
-        <input class="form-control" name="amount" type="number" min="1000" step="1000" placeholder="Nhập số tiền" aria-label="Số tiền nạp qua PayOS" required>
-        <button class="btn-primary" type="submit">Tạo PayOS</button>
+      <form id="wallet-topup-form" class="wallet-topup-form wallet-topup-card">
+        <div class="wallet-topup-heading">
+          <strong>Nạp tiền</strong>
+          <span>Tạo mã thanh toán để cộng xu vào ví sau khi ngân hàng xác nhận.</span>
+        </div>
+        <div class="wallet-topup-presets" aria-label="Chọn nhanh số tiền nạp">
+          <button type="button" data-topup-amount="50000">50.000 VNĐ</button>
+          <button type="button" data-topup-amount="100000">100.000 VNĐ</button>
+          <button type="button" data-topup-amount="200000">200.000 VNĐ</button>
+        </div>
+        <label class="wallet-topup-input">
+          <span>Số tiền muốn nạp</span>
+          <input class="form-control" name="amount" type="text" inputmode="numeric" placeholder="0 VNĐ" aria-label="Số tiền nạp" required>
+        </label>
+        <button class="btn-primary wallet-topup-submit" type="submit">Nạp tiền</button>
       </form>
     </section>` : ''}
     ${hasSection('kioskEntry') ? `<section class="dash-card user-kiosk-entry-card">
       <div class="dash-card-header"><h3>Mua Kiosk mới</h3></div>
-      <p class="muted-text">Form đăng ký tạo hồ sơ Khách hàng/Kiosk và QR/link PayOS cho chính khoản dịch vụ Kiosk. Khoản này không nạp vào ví xu.</p>
+      <p class="muted-text">Form đăng ký tạo hồ sơ Khách hàng/Kiosk và QR/link thanh toán cho chính khoản dịch vụ Kiosk. Khoản này không nạp vào ví xu.</p>
       <div class="list-search-bar">
         <input id="user-kiosk-search" class="form-control" type="search" placeholder="Tìm theo tên Kiosk, khách hàng, Facebook ID hoặc trạng thái" aria-label="Tìm Kiosk của tôi" autocomplete="off">
       </div>
       <div id="user-kiosk-links">
         ${EmptyState({ title: 'Đang tải Kiosk', message: 'Đang đọc các Kiosk đã liên kết với tài khoản.' })}
       </div>
-      <a class="btn-secondary link-button" href="#/register">Đăng ký Kiosk và thanh toán PayOS</a>
+      <a class="btn-secondary link-button" href="#/register">Đăng ký Kiosk và thanh toán</a>
     </section>` : ''}
     ${hasSection('paymentNotice') ? `<section class="dash-card">
       <div class="dash-card-header"><h3>Thanh toán Kiosk của tôi</h3></div>
@@ -156,7 +182,7 @@ export function UserHomePage({ route = 'user' } = {}) {
     </section>` : ''}
     ${hasSection('facebookForm') ? `<section class="dash-card">
       <div class="dash-card-header"><h3>Thêm Facebook</h3></div>
-      <form id="user-facebook-form" class="stacked-form">
+      <form id="user-facebook-form" class="stacked-form" novalidate>
         ${FacebookIdResolverFields({
           urlId: 'user-facebook-url',
           idId: 'user-facebook-id',
@@ -190,6 +216,9 @@ UserHomePage.afterRender = function afterRenderUserHome() {
   resetPageLifecycle();
   bindFacebookIdResolvers(document);
   bindProfileForm();
+  bindAccountTabs();
+  bindAccountPasswordForm();
+  bindAccountSecurityActions();
   bindFacebookForm();
   bindWalletTopupForm();
   bindUserListSearch();
@@ -257,13 +286,67 @@ function renderUserHomeFeed() {
         <div class="user-rank-card">
           <div class="user-rank-head">
             <h3>Bảng xếp hạng</h3>
-            <span>Page 1đ</span>
+            <span>Page 1 VNĐ</span>
           </div>
           ${renderLeaderboard()}
         </div>
       </aside>
     </section>
   `;
+}
+
+function renderAnnouncementsSection() {
+  return `
+    <section class="dash-card user-announcements-page">
+      <div class="dash-card-header"><h3>Thông báo</h3></div>
+      <div id="user-announcement-feed">
+        ${EmptyState({ title: 'Đang tải thông báo', message: 'Đang đọc thông báo hệ thống.' })}
+      </div>
+    </section>
+  `;
+}
+
+function renderSupportSection() {
+  const supportItems = [
+    ['Điện thoại', getOrganizationSetting('support_phone')],
+    ['Zalo hỗ trợ', getOrganizationSetting('zalo_url')],
+    ['Fanpage', getOrganizationSetting('fanpage_url')],
+    ['Nhóm chính', getOrganizationSetting('group_url')],
+    ['Nhóm cộng đồng', getOrganizationSetting('sub_group_url')],
+    ['Tuyển dụng', getOrganizationSetting('recruitment_group_url')],
+  ].filter(([, value]) => String(value || '').trim());
+  return `
+    <section class="dash-card user-support-card">
+      <div class="dash-card-header"><h3>Hỗ trợ</h3></div>
+      ${supportItems.length ? `
+        <div class="settings-list user-support-list">
+          ${supportItems.map(([label, value]) => renderSupportItem(label, value)).join('')}
+        </div>
+      ` : EmptyState({
+        title: 'Chưa có thông tin hỗ trợ',
+        message: 'Admin có thể cấu hình số điện thoại, Zalo, fanpage và nhóm trong Cài đặt.',
+      })}
+    </section>
+  `;
+}
+
+function renderSupportItem(label, value) {
+  const normalized = String(value || '').trim();
+  const href = supportHref(label, normalized);
+  return `
+    <div class="settings-row user-support-row">
+      <span>${escapeHtml(label)}</span>
+      ${href
+        ? `<a class="link-button" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(normalized)}</a>`
+        : `<strong>${escapeHtml(normalized)}</strong>`}
+    </div>
+  `;
+}
+
+function supportHref(label, value) {
+  if (/^https?:\/\//i.test(value)) return value;
+  if (label === 'Điện thoại') return `tel:${value.replace(/\s+/g, '')}`;
+  return '';
 }
 
 function renderLeaderboard() {
@@ -342,7 +425,7 @@ function startWalletPolling(reason = '') {
       panel.innerHTML = `
         <div class="notice success wallet-return-notice">
           <strong>Đang chờ xác nhận thanh toán</strong>
-          <span>Số dư và lịch sử ví sẽ tự làm mới khi bạn quay lại tab hoặc khi webhook PayOS về.</span>
+          <span>Số dư và lịch sử ví sẽ tự làm mới khi ngân hàng xác nhận thanh toán.</span>
         </div>
       `;
     }
@@ -376,7 +459,7 @@ function bindProfileForm() {
       await loadUserPortalData();
     } catch (error) {
       Toast.show(isMissingDatabaseFeatureError(error)
-        ? migrationRequiredMessage('lưu hồ sơ user portal')
+        ? userFriendlyFeatureMessage('lưu hồ sơ user portal')
         : error?.message || 'Không thể lưu hồ sơ.');
     } finally {
       button.disabled = false;
@@ -405,8 +488,11 @@ function populateProfileForm() {
   const profile = state.profile;
   setFormValue(form, 'displayName', profile.display_name || '');
   setFormValue(form, 'phone', profile.phone || '');
-  setFormValue(form, 'email', profile.email || profile.username || '');
+  setFormValue(form, 'email', profile.email || '');
+  setInputValue('user-profile-username', getProfileUsername(profile));
   setInputValue('user-profile-created', formatDate(profile.created_at || profile.createdAt));
+  setTextValue('user-security-created', formatDate(profile.created_at || profile.createdAt));
+  setTextValue('user-security-status', profile.status === 'active' ? 'Hoạt động' : statusLabel(profile.status));
   const status = document.getElementById('user-account-status');
   if (status) {
     status.textContent = profile.status === 'active' ? 'Hoạt động' : statusLabel(profile.status);
@@ -422,6 +508,11 @@ function setFormValue(form, name, value) {
 function setInputValue(id, value) {
   const field = document.getElementById(id);
   if (field) field.value = value || '—';
+}
+
+function setTextValue(id, value) {
+  const field = document.getElementById(id);
+  if (field) field.textContent = value || '—';
 }
 
 async function loadUserPortalData() {
@@ -487,11 +578,11 @@ function renderAccountProfileSection() {
     <section class="user-account-page">
       <div class="user-account-main">
         <div class="account-tabs" role="tablist" aria-label="Tài khoản của tôi">
-          <button class="account-tab active" type="button" role="tab" aria-selected="true">${accountIcon('user')}<span>Thông tin tài khoản</span></button>
-          <button class="account-tab" type="button" role="tab" aria-selected="false" disabled>${accountIcon('shield')}<span>Bảo mật</span></button>
-          <button class="account-tab" type="button" role="tab" aria-selected="false" disabled>${accountIcon('lock')}<span>Đổi mật khẩu</span></button>
+          <button class="account-tab active" type="button" role="tab" aria-selected="true" data-account-tab="profile">${accountIcon('user')}<span>Thông tin tài khoản</span></button>
+          <button class="account-tab" type="button" role="tab" aria-selected="false" data-account-tab="security">${accountIcon('shield')}<span>Bảo mật</span></button>
+          <button class="account-tab" type="button" role="tab" aria-selected="false" data-account-tab="password">${accountIcon('lock')}<span>Đổi mật khẩu</span></button>
         </div>
-        <div class="dash-card account-info-card">
+        <div class="dash-card account-info-card" data-account-panel="profile">
           <div class="dash-card-header">
             <h3><span class="account-heading-icon" aria-hidden="true">${accountIcon('id')}</span>Thông tin tài khoản</h3>
             <span class="status-pill" id="user-account-status">Đang tải</span>
@@ -506,12 +597,20 @@ function renderAccountProfileSection() {
               <input class="form-control" name="phone" type="tel" autocomplete="tel">
             </label>
             <label class="form-group">
+              <span>${accountIcon('user')}Username</span>
+              <input class="form-control" id="user-profile-username" autocomplete="username" readonly>
+            </label>
+            <label class="form-group">
               <span>${accountIcon('mail')}Email</span>
               <input class="form-control" name="email" type="email" autocomplete="email">
             </label>
             <label class="form-group">
-              <span>${accountIcon('facebook')}Facebook chính</span>
-              <input class="form-control" id="user-primary-facebook" value="Đang tải" readonly>
+              <span>${accountIcon('facebook')}FB liên kết TTC</span>
+              <input class="form-control" id="user-ttc-facebook" value="Đang tải" readonly>
+            </label>
+            <label class="form-group">
+              <span>${accountIcon('link')}FB liên kết Kiosk</span>
+              <input class="form-control" id="user-kiosk-facebook" value="Đang tải" readonly>
             </label>
             <label class="form-group">
               <span>${accountIcon('calendar')}Ngày tham gia</span>
@@ -519,17 +618,58 @@ function renderAccountProfileSection() {
             </label>
             <label class="form-group">
               <span>${accountIcon('badge')}Cấp bậc</span>
-              <input class="form-control" value="Khách hàng" readonly>
+              <input class="form-control" value="Thành viên" readonly>
             </label>
             <div class="form-actions">
               <button class="btn-primary account-save-button" type="submit">${accountIcon('save')}<span>Lưu hồ sơ</span></button>
             </div>
           </form>
         </div>
-        <div class="notice account-security-note">
-          <span class="account-note-icon" aria-hidden="true">${accountIcon('shield')}</span>
-          <strong>Bảo mật</strong>
-          <span>Đăng nhập hiện dùng email và mật khẩu qua Supabase Auth. Chức năng đổi mật khẩu riêng sẽ mở khi backend có endpoint đặt lại mật khẩu.</span>
+        <div class="dash-card account-info-card" data-account-panel="security" hidden>
+          <div class="dash-card-header">
+            <h3><span class="account-heading-icon" aria-hidden="true">${accountIcon('shield')}</span>Bảo mật</h3>
+            <button class="table-action-button" type="button" data-user-mfa-open>Quản lý Authenticator</button>
+          </div>
+          <div class="account-security-list">
+            <div class="account-security-row primary-security-row">
+              <span>${accountIcon('shield')}Authenticator</span>
+              <div>
+                <strong id="user-mfa-summary">Đang tải</strong>
+                <small>Bảo vệ đăng nhập bằng mã 6 số từ ứng dụng xác thực.</small>
+              </div>
+              <em class="status-pill" id="user-mfa-status-pill">Đang tải</em>
+            </div>
+            <div class="account-security-row">
+              <span>${accountIcon('mail')}Phương thức đăng nhập</span>
+              <strong>Username / SĐT / Email và mật khẩu</strong>
+            </div>
+            <div class="account-security-row">
+              <span>${accountIcon('shield')}Trạng thái tài khoản</span>
+              <strong id="user-security-status">Đang tải</strong>
+            </div>
+            <div class="account-security-row">
+              <span>${accountIcon('calendar')}Ngày tạo tài khoản</span>
+              <strong id="user-security-created">Đang tải</strong>
+            </div>
+          </div>
+        </div>
+        <div class="dash-card account-info-card" data-account-panel="password" hidden>
+          <div class="dash-card-header">
+            <h3><span class="account-heading-icon" aria-hidden="true">${accountIcon('lock')}</span>Đổi mật khẩu</h3>
+          </div>
+          <form id="user-password-form" class="account-profile-form">
+            <label class="form-group">
+              <span>${accountIcon('lock')}Mật khẩu mới</span>
+              <input class="form-control" name="password" type="password" minlength="6" autocomplete="new-password" required>
+            </label>
+            <label class="form-group">
+              <span>${accountIcon('lock')}Nhập lại mật khẩu</span>
+              <input class="form-control" name="confirmPassword" type="password" minlength="6" autocomplete="new-password" required>
+            </label>
+            <div class="form-actions">
+              <button class="btn-primary account-save-button" type="submit">${accountIcon('save')}<span>Lưu mật khẩu</span></button>
+            </div>
+          </form>
         </div>
       </div>
       <aside class="account-summary-card" id="user-account-summary">
@@ -537,6 +677,255 @@ function renderAccountProfileSection() {
       </aside>
     </section>
   `;
+}
+
+function bindAccountTabs() {
+  document.querySelector('.account-tabs')?.addEventListener('click', (event) => {
+    const tab = event.target.closest('[data-account-tab]');
+    if (!tab) return;
+    const activeTab = tab.dataset.accountTab || 'profile';
+    document.querySelectorAll('[data-account-tab]').forEach((button) => {
+      const active = button.dataset.accountTab === activeTab;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', String(active));
+    });
+    document.querySelectorAll('[data-account-panel]').forEach((panel) => {
+      panel.hidden = panel.dataset.accountPanel !== activeTab;
+    });
+    if (activeTab === 'security') loadUserMfaSummary();
+  });
+}
+
+function bindAccountSecurityActions() {
+  document.querySelector('[data-user-mfa-open]')?.addEventListener('click', openUserMfaModal);
+}
+
+function bindAccountPasswordForm() {
+  document.getElementById('user-password-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const password = form.elements.password.value;
+    const confirmPassword = form.elements.confirmPassword.value;
+    if (password.length < 6) {
+      Toast.show('Mật khẩu cần ít nhất 6 ký tự.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      Toast.show('Xác nhận mật khẩu chưa khớp.');
+      return;
+    }
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    button.textContent = 'Đang lưu...';
+    try {
+      await AuthService.updatePassword(password);
+      form.reset();
+      Toast.show('Đã đổi mật khẩu.');
+    } catch (error) {
+      Toast.show(error?.message || 'Không đổi được mật khẩu.');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Lưu mật khẩu';
+    }
+  });
+}
+
+async function loadUserMfaSummary() {
+  const summary = document.getElementById('user-mfa-summary');
+  const pill = document.getElementById('user-mfa-status-pill');
+  if (!summary && !pill) return;
+  try {
+    const factors = await AuthService.listMfaFactors();
+    const totpFactors = Array.isArray(factors?.totp) ? factors.totp : [];
+    const verifiedFactors = totpFactors.filter((factor) => factor.status === 'verified');
+    if (summary) summary.textContent = verifiedFactors.length ? `${verifiedFactors.length} thiết bị đã bật` : 'Chưa bật Authenticator';
+    if (pill) {
+      pill.textContent = verifiedFactors.length ? 'Đang bật' : 'Chưa bật';
+      pill.className = `status-pill ${verifiedFactors.length ? 'success' : 'warning'}`;
+    }
+  } catch (error) {
+    if (summary) summary.textContent = error?.message || 'Chưa đọc được Authenticator';
+    if (pill) {
+      pill.textContent = 'Chưa sẵn sàng';
+      pill.className = 'status-pill warning';
+    }
+  }
+}
+
+async function openUserMfaModal() {
+  Modal.open({
+    title: 'Authenticator',
+    body: '<div class="modal-loading">Đang đọc trạng thái Authenticator...</div>',
+  });
+  try {
+    await renderUserMfaStatus();
+  } catch (error) {
+    renderUserMfaError(error);
+  }
+}
+
+async function renderUserMfaStatus() {
+  const factors = await AuthService.listMfaFactors();
+  const totpFactors = Array.isArray(factors?.totp) ? factors.totp : [];
+  const verifiedFactors = totpFactors.filter((factor) => factor.status === 'verified');
+  const unverifiedFactors = totpFactors.filter((factor) => factor.status !== 'verified');
+  if (verifiedFactors.length) {
+    Modal.open({
+      title: 'Authenticator',
+      body: `
+        <div class="admin-security-panel">
+          <div class="admin-security-state success">
+            <strong>Authenticator đang bật</strong>
+            <span>${escapeHtml(verifiedFactors.length)} thiết bị đã xác minh.</span>
+          </div>
+          <div class="admin-security-list">
+            ${verifiedFactors.map((factor) => `
+              <div class="admin-security-device">
+                <div>
+                  <strong>${escapeHtml(factor.friendly_name || factor.factor_type || 'Authenticator')}</strong>
+                  <span>${escapeHtml(factor.created_at ? `Tạo lúc ${formatDateTimeSafe(factor.created_at)}` : 'Thiết bị TOTP')}</span>
+                </div>
+                <button class="table-action-button danger-action" type="button" data-user-mfa-unenroll="${escapeHtml(factor.id)}">Gỡ</button>
+              </div>
+            `).join('')}
+          </div>
+          <div class="modal-actions">
+            <button class="btn-secondary" type="button" data-user-mfa-enroll>Thêm thiết bị</button>
+            <button class="btn-primary" type="button" data-user-mfa-close>Hoàn tất</button>
+          </div>
+        </div>
+      `,
+    });
+    bindUserMfaStatusEvents();
+    return;
+  }
+  if (unverifiedFactors.length) {
+    renderUserMfaEnrollment(unverifiedFactors[0]);
+    return;
+  }
+  Modal.open({
+    title: 'Authenticator',
+    body: `
+      <div class="admin-security-panel">
+        <div class="admin-security-state">
+          <strong>Chưa bật Authenticator</strong>
+          <span>Quét QR bằng Google Authenticator, Authy hoặc ứng dụng tương tự rồi nhập mã 6 số để bật bảo vệ đăng nhập.</span>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" type="button" data-user-mfa-close>Để sau</button>
+          <button class="btn-primary" type="button" data-user-mfa-enroll>Bật Authenticator</button>
+        </div>
+      </div>
+    `,
+  });
+  bindUserMfaStatusEvents();
+}
+
+function bindUserMfaStatusEvents() {
+  document.querySelector('[data-user-mfa-close]')?.addEventListener('click', () => {
+    Modal.close();
+    loadUserMfaSummary();
+  });
+  document.querySelector('[data-user-mfa-enroll]')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = 'Đang tạo...';
+    try {
+      const factor = await AuthService.enrollTotpMfa({ friendlyName: 'DHL User Authenticator' });
+      renderUserMfaEnrollment(factor);
+    } catch (error) {
+      renderUserMfaError(error);
+    }
+  });
+  document.querySelectorAll('[data-user-mfa-unenroll]').forEach((button) => {
+    button.addEventListener('click', async (event) => {
+      const currentButton = event.currentTarget;
+      currentButton.disabled = true;
+      currentButton.textContent = 'Đang gỡ...';
+      try {
+        await AuthService.unenrollMfaFactor(currentButton.dataset.userMfaUnenroll);
+        Toast.show('Đã gỡ thiết bị Authenticator.');
+        await renderUserMfaStatus();
+        await loadUserMfaSummary();
+      } catch (error) {
+        currentButton.disabled = false;
+        currentButton.textContent = 'Gỡ';
+        Toast.show(error?.message || 'Không gỡ được Authenticator.');
+      }
+    });
+  });
+}
+
+function renderUserMfaEnrollment(factor) {
+  const totp = factor?.totp || {};
+  const factorId = factor?.id || factor?.factorId || '';
+  const qrCode = qrCodeImageSource(totp.qr_code || totp.qrCode || '');
+  const secret = totp.secret || '';
+  Modal.open({
+    title: 'Cài Authenticator',
+    body: `
+      <form id="user-mfa-verify-form" class="modal-form">
+        <div class="admin-mfa-setup">
+          ${qrCode ? `<img class="admin-mfa-qr" src="${escapeHtml(qrCode)}" alt="QR Authenticator">` : ''}
+          <div>
+            <p class="modal-note">Quét QR bằng ứng dụng Authenticator, sau đó nhập mã 6 số để hoàn tất.</p>
+            ${secret ? `
+              <label class="form-group">
+                <span>Mã secret dự phòng</span>
+                <input class="form-control" value="${escapeHtml(secret)}" readonly>
+              </label>
+            ` : ''}
+          </div>
+        </div>
+        <label class="form-group">
+          <span>Mã xác minh 6 số</span>
+          <input class="form-control" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+        </label>
+        <div class="modal-actions">
+          <button class="btn-secondary" type="button" data-user-mfa-back>Quay lại</button>
+          <button class="btn-primary" type="submit">Xác minh</button>
+        </div>
+      </form>
+    `,
+  });
+  document.querySelector('[data-user-mfa-back]')?.addEventListener('click', () => {
+    renderUserMfaStatus().catch(renderUserMfaError);
+  });
+  document.getElementById('user-mfa-verify-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    button.textContent = 'Đang xác minh...';
+    try {
+      await AuthService.verifyTotpMfa(factorId, form.elements.code.value);
+      Toast.show('Đã bật Authenticator.');
+      await renderUserMfaStatus();
+      await loadUserMfaSummary();
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = 'Xác minh';
+      Toast.show(error?.message || 'Mã Authenticator chưa đúng.');
+    }
+  });
+}
+
+function renderUserMfaError(error) {
+  Modal.open({
+    title: 'Authenticator',
+    body: `
+      <div class="admin-security-panel">
+        <div class="admin-security-state warning">
+          <strong>Chưa thể mở Authenticator</strong>
+          <span>${escapeHtml(error?.message || 'Supabase MFA chưa sẵn sàng.')}</span>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-primary" type="button" data-user-mfa-close>Đã hiểu</button>
+        </div>
+      </div>
+    `,
+  });
+  document.querySelector('[data-user-mfa-close]')?.addEventListener('click', Modal.close);
 }
 
 function renderPayosReturnStatus() {
@@ -570,6 +959,9 @@ async function loadWallet() {
   try {
     const { data } = await WalletService.getMyWallet();
     state.wallet = data || null;
+    window.dispatchEvent(new CustomEvent('dhl-wallet-updated', {
+      detail: { wallet: state.wallet },
+    }));
     if (panel) panel.innerHTML = `
       <div class="stats-grid">
         <div><strong>${escapeHtml(String(data?.balance ?? 0))}</strong><br><span class="muted-text">Số dư hiện tại</span></div>
@@ -583,7 +975,7 @@ async function loadWallet() {
     if (panel) panel.innerHTML = EmptyState({
       title: 'Chưa có ví xu',
       message: isMissingDatabaseFeatureError(error)
-        ? migrationRequiredMessage('ví xu')
+        ? userFriendlyFeatureMessage('ví xu')
         : error?.message || 'Lưu hồ sơ để khởi tạo ví xu.',
     });
   }
@@ -591,17 +983,20 @@ async function loadWallet() {
 
 async function loadCustomerLinks() {
   const panel = document.getElementById('user-kiosk-links');
-  if (!panel) return;
+  const needsAccountStatus = Boolean(document.getElementById('user-kiosk-facebook') || document.getElementById('user-account-summary'));
+  if (!panel && !needsAccountStatus) return;
   try {
     const { data } = await UserProfileService.listMyCustomerLinks();
     state.customerLinks = data || [];
     renderCustomerLinks();
+    renderAccountFacebookStatuses();
+    renderAccountSummaryIntoDom();
   } catch (error) {
     showMigrationNotice(error, 'liên kết khách hàng/Kiosk');
-    panel.innerHTML = EmptyState({
+    if (panel) panel.innerHTML = EmptyState({
       title: 'Không tải được Kiosk',
       message: isMissingDatabaseFeatureError(error)
-        ? migrationRequiredMessage('liên kết khách hàng/Kiosk')
+        ? userFriendlyFeatureMessage('liên kết khách hàng/Kiosk')
         : error?.message || 'Vui lòng thử lại sau.',
     });
   }
@@ -664,7 +1059,7 @@ async function loadMyPayments() {
     panel.innerHTML = EmptyState({
       title: 'Không tải được thanh toán',
       message: isMissingDatabaseFeatureError(error)
-        ? migrationRequiredMessage('thanh toán của tôi')
+        ? userFriendlyFeatureMessage('thanh toán của tôi')
         : error?.message || 'Vui lòng thử lại sau.',
     });
   }
@@ -711,7 +1106,7 @@ async function loadWalletLedger() {
     panel.innerHTML = EmptyState({
       title: 'Không tải được lịch sử ví',
       message: isMissingDatabaseFeatureError(error)
-        ? migrationRequiredMessage('lịch sử ví')
+        ? userFriendlyFeatureMessage('lịch sử ví')
         : error?.message || 'Vui lòng thử lại sau.',
     });
   }
@@ -735,19 +1130,59 @@ function renderWalletLedger() {
     });
     return;
   }
-  panel.innerHTML = entries.map((entry) => {
-    const amount = Number(entry.amount || 0);
-    const sign = amount > 0 ? '+' : '';
-    return `
-      <div class="recent-item">
-        <div>
-          <div class="expiring-name">${escapeHtml(entry.description || transactionLabel(entry.transaction_type))}</div>
-          <div class="expiring-date">${formatDateTime(entry.created_at)} · Số dư sau: ${escapeHtml(String(entry.balance_after ?? 0))}</div>
-        </div>
-        <span class="status-pill ${amount < 0 ? 'danger' : 'success'}">${sign}${escapeHtml(String(amount))}</span>
-      </div>
-    `;
-  }).join('');
+  panel.innerHTML = `
+    <div class="report-table-wrap wallet-ledger-table-wrap">
+      <table class="data-table wallet-ledger-table">
+        <thead>
+          <tr>
+            <th>Mã giao dịch</th>
+            <th>Loại giao dịch</th>
+            <th>Nội dung</th>
+            <th>Liên quan</th>
+            <th>Số xu</th>
+            <th>Số dư trước</th>
+            <th>Số dư sau</th>
+            <th>Thời gian</th>
+            <th>Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${entries.map(renderWalletLedgerRow).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderWalletLedgerRow(entry) {
+  const amount = Number(entry.amount || 0);
+  const sign = amount > 0 ? '+' : '';
+  const label = ledgerTransactionLabel(entry);
+  return `
+    <tr>
+      <td class="tabular-cell">#${escapeHtml(String(entry.id || '—'))}</td>
+      <td><span class="status-pill ${amount < 0 ? 'danger' : 'success'}">${escapeHtml(label)}</span></td>
+      <td>${escapeHtml(entry.description || label)}</td>
+      <td>${renderLedgerRelation(entry)}</td>
+      <td class="tabular-cell ${amount < 0 ? 'wallet-negative' : 'wallet-positive'}">${sign}${escapeHtml(formatNumber(amount))}</td>
+      <td class="tabular-cell">${escapeHtml(formatNumber(entry.balance_before ?? 0))}</td>
+      <td class="tabular-cell">${escapeHtml(formatNumber(entry.balance_after ?? 0))}</td>
+      <td>${formatDateTime(entry.created_at)}</td>
+      <td>${escapeHtml(entry.reason || entry.metadata?.note || '—')}</td>
+    </tr>
+  `;
+}
+
+function renderLedgerRelation(entry) {
+  const table = String(entry.related_table || '').trim();
+  const id = String(entry.related_id || '').trim();
+  if (!table || !id) return '—';
+  if (table === 'ttc_campaigns') {
+    return `<a class="link-button" href="#/ttc-campaigns?campaign=${escapeHtml(id)}">Xem chiến dịch #${escapeHtml(id)}</a>`;
+  }
+  if (table === 'ttc_tasks') return `Nhiệm vụ #${escapeHtml(id)}`;
+  if (table === 'payos_orders') return `PayOS #${escapeHtml(id)}`;
+  return `${escapeHtml(table)} #${escapeHtml(id)}`;
 }
 
 function bindFacebookForm() {
@@ -761,7 +1196,13 @@ function bindFacebookForm() {
     const resolverState = resolverRoot?.dataset.resolverState || 'idle';
     const urlError = validateFacebookUrl(values.facebookUrlOriginal);
     if (urlError) {
+      markFacebookFormError(resolverRoot, urlError);
       Toast.show(urlError);
+      return;
+    }
+    if (facebookId && !/^\d+$/.test(facebookId)) {
+      markFacebookFormError(resolverRoot, 'Facebook ID chỉ được chứa chữ số.');
+      Toast.show('Facebook ID chỉ được chứa chữ số.');
       return;
     }
     const status = facebookId && resolverState === 'success'
@@ -779,6 +1220,7 @@ function bindFacebookForm() {
         isPrimary: values.isPrimary === 'on',
         note: values.note,
         metadata: {
+          facebook_name: resolverRoot?.dataset.resolvedName || '',
           resolver_state: resolverState,
           source: 'user_portal',
         },
@@ -790,7 +1232,7 @@ function bindFacebookForm() {
       await loadFacebookAccounts();
     } catch (error) {
       Toast.show(isMissingDatabaseFeatureError(error)
-        ? migrationRequiredMessage('lưu Facebook user portal')
+        ? userFriendlyFeatureMessage('lưu Facebook user portal')
         : error?.message || 'Không thể lưu Facebook.');
     } finally {
       button.disabled = false;
@@ -799,12 +1241,34 @@ function bindFacebookForm() {
   });
 }
 
+function markFacebookFormError(resolverRoot, message) {
+  const error = resolverRoot?.querySelector('[data-facebook-id-error]');
+  const urlInput = resolverRoot?.querySelector('input[type="url"]');
+  if (error) {
+    error.textContent = message;
+    error.classList.remove('hidden');
+  }
+  urlInput?.focus();
+}
+
 function bindWalletTopupForm() {
-  document.getElementById('wallet-topup-form')?.addEventListener('submit', async (event) => {
+  const form = document.getElementById('wallet-topup-form');
+  if (!form) return;
+  bindCurrencyInput(form.elements.amount);
+
+  form.querySelectorAll('[data-topup-amount]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const input = form.elements.amount;
+      if (!input) return;
+      input.value = formatVndNumber(button.dataset.topupAmount);
+      input.focus();
+    });
+  });
+
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const form = event.currentTarget;
     const button = form.querySelector('button[type="submit"]');
-    const amount = Number(new FormData(form).get('amount'));
+    const amount = parseCurrencyInput(new FormData(form).get('amount'));
     if (!Number.isInteger(amount) || amount <= 0) {
       Toast.show('Số tiền nạp phải là số nguyên dương.');
       return;
@@ -826,11 +1290,11 @@ function bindWalletTopupForm() {
       form.reset();
     } catch (error) {
       Toast.show(isMissingDatabaseFeatureError(error)
-        ? migrationRequiredMessage('nạp xu PayOS')
-        : error?.message || 'Không tạo được link nạp xu PayOS.');
+        ? userFriendlyFeatureMessage('nạp xu')
+        : error?.message || 'Không tạo được link nạp tiền.');
     } finally {
       button.disabled = false;
-      button.textContent = 'Tạo PayOS';
+      button.textContent = 'Nạp tiền';
     }
   });
 }
@@ -848,45 +1312,71 @@ async function resolveCurrentUserId() {
 
 async function loadFacebookAccounts() {
   const panel = document.getElementById('user-facebook-panel');
-  if (!panel) return;
+  const needsAccountStatus = Boolean(document.getElementById('user-ttc-facebook') || document.getElementById('user-account-summary'));
+  if (!panel && !needsAccountStatus) return;
   try {
     const { data } = await UserProfileService.listMyFacebookAccounts();
     state.facebookAccounts = data || [];
     renderFacebookAccounts();
-    renderPrimaryFacebook();
+    renderAccountFacebookStatuses();
     renderAccountSummaryIntoDom();
+    enrichFacebookAccountNames(state.facebookAccounts);
   } catch (error) {
     showMigrationNotice(error, 'Facebook user portal');
-    panel.innerHTML = EmptyState({
+    if (panel) panel.innerHTML = EmptyState({
       title: 'Không tải được Facebook',
       message: isMissingDatabaseFeatureError(error)
-        ? migrationRequiredMessage('Facebook user portal')
+        ? userFriendlyFeatureMessage('Facebook user portal')
         : error?.message || 'Vui lòng thử lại sau.',
     });
   }
 }
 
-function renderPrimaryFacebook() {
-  const field = document.getElementById('user-primary-facebook');
-  if (!field) return;
-  const primary = state.facebookAccounts.find((account) => account.is_primary) || state.facebookAccounts[0];
-  field.value = primary
-    ? primary.facebook_id || primary.facebook_url_normalized || primary.facebook_url_original || 'Đang chờ xác minh'
-    : 'Chưa liên kết';
+async function enrichFacebookAccountNames(accounts = []) {
+  const targets = accounts
+    .filter((account) => !getFacebookAccountName(account) && (account.facebook_url_normalized || account.facebook_url_original))
+    .slice(0, 5);
+  if (!targets.length) return;
+
+  const results = await Promise.allSettled(targets.map(async (account) => {
+    const resolved = await FacebookIdService.resolve(account.facebook_url_normalized || account.facebook_url_original);
+    if (!resolved.facebookName) return false;
+    if (account.facebook_id && resolved.facebookId !== account.facebook_id) return false;
+    account.metadata = {
+      ...(account.metadata || {}),
+      facebook_name: resolved.facebookName,
+    };
+    if (!account.facebook_id) account.facebook_id = resolved.facebookId;
+    return true;
+  }));
+
+  if (results.some((result) => result.status === 'fulfilled' && result.value)) {
+    renderFacebookAccounts();
+    renderAccountFacebookStatuses();
+    renderAccountSummaryIntoDom();
+  }
+}
+
+function renderAccountFacebookStatuses() {
+  const ttcField = document.getElementById('user-ttc-facebook');
+  const kioskField = document.getElementById('user-kiosk-facebook');
+  if (ttcField) ttcField.value = facebookAccountStatusText(getPrimaryTtcFacebookAccount());
+  if (kioskField) kioskField.value = kioskFacebookStatusText(getPrimaryKioskLink());
 }
 
 function renderAccountSummaryIntoDom() {
   const summary = document.getElementById('user-account-summary');
   if (!summary) return;
   summary.innerHTML = renderAccountSummary();
-  renderPrimaryFacebook();
+  renderAccountFacebookStatuses();
 }
 
 function renderAccountSummary() {
   const profile = state.profile || {};
   const wallet = state.wallet || profile.wallet || {};
   const displayName = profile.display_name || profile.username || 'Người dùng';
-  const email = profile.email || profile.username || '—';
+  const usernameLine = getProfileUsername(profile);
+  const email = profile.email || '—';
   const avatarPath = getUserAvatarPath(profile);
   const status = profile.status === 'active' ? 'Hoạt động' : statusLabel(profile.status);
   return `
@@ -894,7 +1384,8 @@ function renderAccountSummary() {
       <img class="account-summary-avatar" src="${escapeHtml(avatarPath)}" alt="" loading="lazy">
       <span class="account-summary-check" aria-hidden="true">✓</span>
       <h3>${escapeHtml(displayName)}</h3>
-      <p>Khách hàng</p>
+      <p>${escapeHtml(usernameLine)}</p>
+      <p>Thành viên</p>
     </div>
     <div class="account-summary-metrics">
       ${accountMetric('Số dư hiện tại', `${formatNumber(wallet.balance)} xu`, 'wallet', 'wallet')}
@@ -904,10 +1395,50 @@ function renderAccountSummary() {
     <div class="account-summary-details">
       ${summaryRow('Email', email, 'mail')}
       ${summaryRow('Số điện thoại', profile.phone || '—', 'phone')}
+      ${summaryRow('FB TTC', facebookAccountStatusText(getPrimaryTtcFacebookAccount()), 'facebook')}
+      ${summaryRow('FB Kiosk', kioskFacebookStatusText(getPrimaryKioskLink()), 'link')}
       ${summaryRow('Ngày tham gia', formatDate(profile.created_at || profile.createdAt), 'calendar')}
       ${summaryRow('Trạng thái', status, 'badge')}
     </div>
   `;
+}
+
+function getPrimaryTtcFacebookAccount() {
+  return state.facebookAccounts.find((account) => account.is_primary) || state.facebookAccounts[0] || null;
+}
+
+function getProfileUsername(profile = {}) {
+  return profile.username
+    || profile.metadata?.username
+    || profile.metadata?.auth_username
+    || profile.metadata?.login_username
+    || 'Chưa cập nhật username';
+}
+
+function getPrimaryKioskLink() {
+  return state.customerLinks.find((link) => link.status === 'approved')
+    || state.customerLinks[0]
+    || null;
+}
+
+function facebookAccountStatusText(account) {
+  if (!account) return 'Chưa liên kết TTC';
+  const value = account.facebook_id || account.facebook_url_normalized || account.facebook_url_original || '';
+  const name = getFacebookAccountName(account);
+  const status = facebookIdStatusLabel(account.facebook_id_status);
+  if (!value) return 'Đang chờ xác minh TTC';
+  return name ? `${name} * ${value} · ${status}` : `${value} · ${status}`;
+}
+
+function kioskFacebookStatusText(link) {
+  if (!link) return 'Chưa liên kết Kiosk';
+  const value = link.kiosks?.facebook_id
+    || link.customers?.facebook_id
+    || link.kiosks?.facebook_link
+    || link.customers?.facebook_link
+    || '';
+  const name = link.kiosks?.facebook_name || link.customers?.facebook_name || 'Kiosk';
+  return value ? `${value} · ${name}` : `${name} · chưa có FB ID`;
 }
 
 function accountMetric(label, value, tone, icon) {
@@ -954,15 +1485,65 @@ function renderFacebookAccounts() {
     });
     return;
   }
-  panel.innerHTML = accounts.map((account) => `
+  panel.innerHTML = accounts.map((account) => {
+    const facebookName = getFacebookAccountName(account);
+    const facebookId = account.facebook_id || 'Chưa có ID';
+    const accountTitle = facebookName ? `${facebookName} * ${facebookId}` : facebookId;
+    return `
       <div class="recent-item">
         <div>
-          <div class="expiring-name">${escapeHtml(account.facebook_id || 'Chưa có ID')}</div>
+          <div class="expiring-name">${escapeHtml(accountTitle)}</div>
           <div class="expiring-date">${escapeHtml(account.facebook_url_normalized || account.facebook_url_original || '')}</div>
         </div>
-        <span class="status-pill">${escapeHtml(account.facebook_id_status || 'pending')}</span>
+        <span class="status-pill ${facebookIdStatusTone(account.facebook_id_status)}">${escapeHtml(facebookIdStatusLabel(account.facebook_id_status))}</span>
       </div>
-    `).join('');
+    `;
+  }).join('');
+}
+
+function getFacebookAccountName(account = {}) {
+  return account.facebook_name
+    || account.facebookName
+    || account.name
+    || account.metadata?.facebook_name
+    || account.metadata?.facebookName
+    || account.metadata?.name
+    || facebookHandleFromUrl(account.facebook_url_normalized || account.facebook_url_original)
+    || '';
+}
+
+function facebookHandleFromUrl(value) {
+  try {
+    const url = new URL(String(value || '').trim());
+    const path = url.pathname.replace(/^\/+|\/+$/g, '');
+    if (!path || path === 'profile.php') return '';
+    return decodeURIComponent(path.split('/')[0] || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+function facebookIdStatusLabel(status) {
+  return {
+    resolved: 'Đã lấy ID tự động',
+    manual: 'Nhập thủ công',
+    manual_verified: 'Đã xác minh',
+    pending: 'Đang kiểm tra',
+    failed: 'Cần kiểm tra lại',
+    invalid_url: 'Link không hợp lệ',
+    'invalid-url': 'Link không hợp lệ',
+    not_found: 'Không tìm thấy ID',
+    'not-found': 'Không tìm thấy ID',
+    timeout: 'Hết thời gian kiểm tra',
+    upstream_error: 'Chưa kiểm tra được',
+    'upstream-error': 'Chưa kiểm tra được',
+  }[status] || 'Đang kiểm tra';
+}
+
+function facebookIdStatusTone(status) {
+  if (['resolved', 'manual_verified'].includes(status)) return 'success';
+  if (['failed', 'invalid_url', 'invalid-url', 'not_found', 'not-found', 'upstream_error', 'upstream-error'].includes(status)) return 'danger';
+  return '';
 }
 
 function resolverFailureStatus(state) {
@@ -1001,9 +1582,14 @@ function transactionLabel(type) {
   }[type] || 'Giao dịch xu';
 }
 
+function ledgerTransactionLabel(entry = {}) {
+  if (String(entry.related_table || '') === 'payos_orders') return 'Nạp xu PayOS';
+  return transactionLabel(entry.transaction_type);
+}
+
 function paymentStatusLabel(status) {
   return {
-    pending: 'Chờ PayOS',
+    pending: 'Chờ thanh toán',
     completed: 'Hoàn thành',
     rejected: 'Từ chối',
     cancelled: 'Đã hủy',
@@ -1029,6 +1615,7 @@ function accountIcon(name) {
     coin: '<svg viewBox="0 0 24 24"><path d="M12 4c4.4 0 8 1.8 8 4s-3.6 4-8 4-8-1.8-8-4 3.6-4 8-4Zm-8 6.8c1.6 1.5 4.5 2.2 8 2.2s6.4-.8 8-2.2V14c0 2.2-3.6 4-8 4s-8-1.8-8-4v-3.2Zm0 5c1.6 1.5 4.5 2.2 8 2.2s6.4-.8 8-2.2V18c0 2.2-3.6 4-8 4s-8-1.8-8-4v-2.2Z"/></svg>',
     chart: '<svg viewBox="0 0 24 24"><path d="M5 19V5h2v14H5Zm6 0V9h2v10h-2Zm6 0v-7h2v7h-2Z"/></svg>',
     save: '<svg viewBox="0 0 24 24"><path d="M5 4h12l2 2v14H5V4Zm2 2v12h10V8.5L14.5 6H14v5H8V6H7Zm3 0v3h2V6h-2Zm-1 8h6v2H9v-2Z"/></svg>',
+    link: '<svg viewBox="0 0 24 24"><path d="M8.5 13.5 7.1 12l-1.4 1.4a3 3 0 0 0 4.2 4.2l2.8-2.8a3 3 0 0 0 0-4.2l-1.4-1.4 1.4-1.4 1.4 1.4a5 5 0 0 1 0 7.1l-2.8 2.8a5 5 0 0 1-7.1-7.1l1.4-1.4 2.9 2.9Zm7-3L16.9 12l1.4-1.4a3 3 0 0 0-4.2-4.2l-2.8 2.8a3 3 0 0 0 0 4.2l1.4 1.4-1.4 1.4-1.4-1.4a5 5 0 0 1 0-7.1l2.8-2.8a5 5 0 0 1 7.1 7.1l-1.4 1.4-2.9-2.9Z"/></svg>',
   };
   return icons[name] || '';
 }
@@ -1067,10 +1654,15 @@ function filterWalletLedger(entries) {
     entry.id,
     entry.transaction_type,
     transactionLabel(entry.transaction_type),
+    ledgerTransactionLabel(entry),
     entry.description,
     entry.reason,
+    entry.related_table,
+    entry.related_id,
     entry.amount,
+    entry.balance_before,
     entry.balance_after,
+    entry.metadata?.note,
     entry.created_at,
   ].map(normalizeSearch).join(' ').includes(query));
 }
@@ -1080,6 +1672,7 @@ function filterFacebookAccounts(accounts) {
   if (!query) return accounts;
   return accounts.filter((account) => [
     account.id,
+    getFacebookAccountName(account),
     account.facebook_id,
     account.facebook_url_normalized,
     account.facebook_url_original,
@@ -1098,16 +1691,22 @@ function buildPayosRouteUrl(route) {
 
 function showWalletPayosResult(amount, data = {}) {
   Modal.open({
-    title: 'Nạp xu qua PayOS',
+    title: 'Nạp tiền',
     body: `
       <div class="approval-message">
-        <p>Đã tạo yêu cầu nạp <strong>${formatCurrency(amount)}</strong>. Xu chỉ được cộng sau khi PayOS webhook xác nhận thanh toán.</p>
+        <p>Đã tạo yêu cầu nạp <strong>${formatCurrency(amount)}</strong>. Xu sẽ tự cộng vào ví sau khi ngân hàng xác nhận thanh toán.</p>
         ${PayosResultCard({
           amountLabel: formatCurrency(amount),
+          accountName: data.accountName,
+          accountNumber: data.accountNumber,
+          bankName: data.bankName,
+          bin: data.bin,
           checkoutUrl: data.checkoutUrl,
+          description: data.description,
           orderCode: data.orderCode,
           paymentLinkId: data.paymentLinkId,
           qrCode: data.qrCode,
+          note: 'Quét QR hoặc mở trang thanh toán. Sau khi thanh toán thành công, ví sẽ tự cập nhật trong vài giây.',
         })}
       </div>
       <div class="modal-actions">
@@ -1116,6 +1715,14 @@ function showWalletPayosResult(amount, data = {}) {
     `,
   });
   bindPayosCopyButtons(document);
+  watchPayosPaymentStatus(document, {
+    onPaid: () => {
+      Toast.show('Đã nhận thanh toán. Ví đang được cập nhật.');
+      Modal.close();
+      loadWalletAndLedger();
+      startWalletPolling('payos-paid');
+    },
+  });
   document.querySelector('[data-payos-close]')?.addEventListener('click', Modal.close);
 }
 
@@ -1126,14 +1733,40 @@ function readHashQueryParams() {
   return new URLSearchParams(hash.slice(queryIndex + 1));
 }
 
+function qrCodeImageSource(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('data:image')) return raw;
+  if (raw.startsWith('<svg')) return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(raw)}`;
+  return raw;
+}
+
+function formatDateTimeSafe(value) {
+  try {
+    return new Intl.DateTimeFormat('vi-VN', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(new Date(value));
+  } catch {
+    return String(value || '');
+  }
+}
+
 function showMigrationNotice(error, featureName) {
   if (!isMissingDatabaseFeatureError(error)) return;
   const notice = document.getElementById('user-portal-notice');
   if (!notice) return;
   notice.innerHTML = `
     <div class="notice warning">
-      <strong>Cần deploy migration</strong>
-      <span>${escapeHtml(migrationRequiredMessage(featureName))}</span>
+      <strong>Chức năng đang được cập nhật</strong>
+      <span>${escapeHtml(userFriendlyFeatureMessage(featureName))}</span>
     </div>
   `;
+}
+
+function userFriendlyFeatureMessage(featureName) {
+  if (/payos|nạp xu|ví/i.test(String(featureName || ''))) {
+    return 'Tính năng ví xu đang được đồng bộ. Vui lòng thử lại sau hoặc liên hệ admin để được hỗ trợ nạp xu.';
+  }
+  return 'Dữ liệu đang được đồng bộ. Vui lòng thử lại sau hoặc liên hệ admin nếu cần xử lý ngay.';
 }

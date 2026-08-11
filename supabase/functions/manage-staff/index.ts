@@ -1,7 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4';
 
 const allowedOrigins = new Set([
-  'https://adayroidc.com',
   'https://nguyenthanhhan888.github.io',
   'http://localhost:8080',
   'http://127.0.0.1:8080',
@@ -253,6 +252,16 @@ async function setStaffActive(admin: ReturnType<typeof createClient>, body: Reco
 }
 
 function serviceKey() {
+  const direct = Deno.env.get('SUPABASE_SECRET_KEY');
+  if (direct) return direct;
+  try {
+    const keys = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}');
+    const value = keys.default;
+    const configured = typeof value === 'string' ? value : value?.key || '';
+    if (configured) return configured;
+  } catch {
+    // Fall through to Supabase's built-in server-side key.
+  }
   return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 }
 

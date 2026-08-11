@@ -2,6 +2,7 @@ import { Modal } from './Modal.js';
 import { Toast } from './Toast.js';
 import { PaymentService } from '../services/PaymentService.js';
 import { escapeHtml } from '../utils/html.js';
+import { bindCurrencyInput, formatVndNumber, parseCurrencyInput } from '../utils/currency.js';
 
 let currentPayment = null;
 
@@ -38,6 +39,8 @@ export function openPaymentEditForm({ payment, onSaved }) {
     }
   });
 
+  bindCurrencyInput(document.getElementById('payment-edit-discount'));
+
   document.querySelector('[data-payment-edit-cancel]')?.addEventListener('click', Modal.close);
 }
 
@@ -56,7 +59,7 @@ function renderPaymentEditForm(isCompleted) {
           </label>
           <label class="form-group">
             <span>Giảm giá</span>
-            <input class="form-control" id="payment-edit-discount" type="number" min="0" value="${p.discount || 0}" />
+            <input class="form-control" id="payment-edit-discount" type="text" inputmode="numeric" placeholder="0 VNĐ" value="${p.discount ? formatVndNumber(p.discount) : ''}" />
           </label>
         </div>
         <label class="form-group">
@@ -92,7 +95,7 @@ function readPayload(isCompleted) {
 
   return {
     months: Number(document.getElementById('payment-edit-months')?.value || 0),
-    discount: Number(document.getElementById('payment-edit-discount')?.value || 0),
+    discount: parseCurrencyInput(document.getElementById('payment-edit-discount')?.value),
     discount_reason: document.getElementById('payment-edit-discount-reason')?.value.trim() || null,
     payment_method: document.getElementById('payment-edit-method')?.value.trim() || null,
     note: document.getElementById('payment-edit-note')?.value.trim() || null,

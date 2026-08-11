@@ -3,6 +3,7 @@ import { Toast } from './Toast.js';
 import { BusinessTypeService } from '../services/BusinessTypeService.js';
 import { CategoryService } from '../services/CategoryService.js';
 import { escapeHtml } from '../utils/html.js';
+import { bindCurrencyInput, formatVndNumber, parseCurrencyInput } from '../utils/currency.js';
 
 export async function openBusinessTypeForm({ businessType = null, businessTypeId = '', onSaved } = {}) {
   const id = businessTypeId || businessType?.id || '';
@@ -39,6 +40,7 @@ export async function openBusinessTypeForm({ businessType = null, businessTypeId
 
 function bindBusinessTypeForm({ id, isEdit, onSaved }) {
   const form = document.getElementById('business-type-form');
+  bindCurrencyInput(document.getElementById('business-type-monthly-price'));
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
     clearFormError();
@@ -108,7 +110,7 @@ function renderBusinessTypeForm(businessType, categories) {
       </label>
       <label class="form-group">
         <span>Giá theo tháng *</span>
-        <input class="form-control" id="business-type-monthly-price" type="number" min="0" step="1000" value="${pricePerMonth}" required />
+        <input class="form-control" id="business-type-monthly-price" type="text" inputmode="numeric" placeholder="0 VNĐ" value="${pricePerMonth ? formatVndNumber(pricePerMonth) : ''}" required />
       </label>
       <label class="form-group">
         <span>Độ ưu tiên *</span>
@@ -141,7 +143,7 @@ function readBusinessTypePayload() {
     category_id: readValue('business-type-category'),
     name: readValue('business-type-name'),
     description: optionalValue('business-type-description'),
-    price_per_month: Number(readValue('business-type-monthly-price')),
+    price_per_month: parseCurrencyInput(readValue('business-type-monthly-price')),
     sort_order: Number(readValue('business-type-priority')),
     is_active: Boolean(document.getElementById('business-type-is-active')?.checked),
   };
@@ -156,7 +158,7 @@ function validateBusinessTypeForm() {
     return { valid: false, message: 'Tên loại hình là bắt buộc.' };
   }
 
-  const price = Number(readValue('business-type-monthly-price'));
+  const price = parseCurrencyInput(readValue('business-type-monthly-price'));
   if (!Number.isFinite(price) || price < 0) {
     return { valid: false, message: 'Giá theo tháng phải là số không âm.' };
   }

@@ -1,6 +1,7 @@
 import { EmptyState } from '../components/EmptyState.js';
 import { openCustomerForm } from '../components/CustomerForm.js';
 import { PageHeader } from '../components/PageHeader.js';
+import { getExpiryWarningDays } from '../config/organization.js';
 import { CustomerService } from '../services/CustomerService.js';
 import { debounce } from '../utils/dom.js';
 import { escapeHtml } from '../utils/html.js';
@@ -52,8 +53,8 @@ export function CustomersPage() {
       </select>
       <select id="customer-kiosk-state-filter" class="filter-select" aria-label="Lọc tình trạng kiosk">
         <option value="">Tất cả tình trạng Kiosk</option>
-        <option value="warning">Có Kiosk sắp hết hạn</option>
-        <option value="expired">Có Kiosk hết hạn</option>
+        <option value="warning">Có Kiosk sắp hết hạn (&lt;${getExpiryWarningDays()} ngày)</option>
+        <option value="expired">Có Kiosk đã hết hạn</option>
       </select>
     </div>
     <div class="table-card">

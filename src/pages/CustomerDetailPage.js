@@ -10,6 +10,7 @@ import { PaymentService } from '../services/PaymentService.js';
 import { formatCurrency } from '../utils/currency.js';
 import { formatDate } from '../utils/date.js';
 import { escapeHtml } from '../utils/html.js';
+import { deriveKioskStatus } from '../utils/kioskStatus.js';
 
 const RELATED_KIOSK_COLUMNS = ['Kiosk', 'Trạng thái', 'Ngày hết hạn'];
 const PAYMENT_HISTORY_COLUMNS = ['Kiosk', 'Số tiền', 'Trạng thái', 'Ngày xác nhận'];
@@ -80,6 +81,7 @@ function renderCustomerDetail(customer, kiosks, payments) {
     description: 'Thông tin chi tiết khách hàng và các kiosk/thanh toán liên quan.',
     actions: `
       <button class="btn-primary" id="customer-add-kiosk" type="button">+ Thêm Kiosk</button>
+      <button class="btn-secondary" id="customer-edit-button" type="button">Sửa</button>
       ${customer.status === 'active'
         ? '<button class="btn-danger" id="customer-deactivate-button" type="button">Vô hiệu hóa</button>'
         : '<button class="btn-secondary" id="customer-activate-button" type="button">Kích hoạt lại</button>'
@@ -141,12 +143,15 @@ function renderCustomerDetail(customer, kiosks, payments) {
 }
 
 function bindEventListeners() {
-  document.querySelector('[data-customer-detail-edit]')?.addEventListener('click', () => {
+  const openEditCustomerForm = () => {
     openCustomerForm({
       customer: currentCustomer,
       onSaved: () => CustomerDetailPage.afterRender({ params: new URLSearchParams({ id: currentCustomer.id }) }),
     });
-  });
+  };
+
+  document.getElementById('customer-edit-button')?.addEventListener('click', openEditCustomerForm);
+  document.querySelector('[data-customer-detail-edit]')?.addEventListener('click', openEditCustomerForm);
 
   document.getElementById('customer-add-kiosk')?.addEventListener('click', () => {
     openKioskForm({
@@ -214,7 +219,7 @@ function renderRelatedKiosks(kiosks) {
           ${filteredKiosks.map((kiosk) => `
             <tr>
               <td><a class="table-link" href="#/kiosk-detail?id=${kiosk.id}">${escapeHtml(kiosk.facebook_name || '—')}</a></td>
-              <td>${renderStatusBadge(kiosk.status)}</td>
+              <td>${renderStatusBadge(deriveKioskStatus(kiosk))}</td>
               <td>${formatDate(kiosk.end_date)}</td>
             </tr>
           `).join('')}

@@ -29,33 +29,8 @@ function requireEnv(name) {
 function getSupabaseServiceConfig() {
   return {
     url: requireEnv('SUPABASE_URL').replace(/\/+$/, ''),
-    key: requireEnv('SUPABASE_SERVICE_ROLE_KEY'),
+    key: process.env.SUPABASE_SERVICE_ROLE_KEY || requireEnv('SUPABASE_SERVICE_KEY'),
   };
-}
-
-function requirePayosEnabled() {
-  if (String(process.env.PAYOS_ENABLED || '').trim().toLowerCase() !== 'true') {
-    const error = new Error('PayOS đang tạm ngừng để bảo trì.');
-    error.code = 'PAYOS_DISABLED';
-    error.status = 503;
-    throw error;
-  }
-}
-
-function normalizeAppRedirectUrl(value, label) {
-  const appBaseUrl = new URL(requireEnv('APP_BASE_URL'));
-  if (appBaseUrl.protocol !== 'https:') {
-    const error = new Error('APP_BASE_URL phải là URL HTTPS hợp lệ.');
-    error.code = 'INVALID_APP_BASE_URL';
-    throw error;
-  }
-  const requested = new URL(String(value || appBaseUrl).trim(), appBaseUrl);
-  if (requested.origin !== appBaseUrl.origin) {
-    const error = new Error(`${label} phải cùng origin với APP_BASE_URL.`);
-    error.code = 'INVALID_REDIRECT_ORIGIN';
-    throw error;
-  }
-  return requested.toString();
 }
 
 function getSupabaseUserConfig() {
@@ -214,13 +189,12 @@ module.exports = {
   callSupabaseRpc,
   createOrderCode,
   getSupabaseServiceConfig,
+  getSupabaseUserConfig,
   normalizePayosDescription,
-  normalizeAppRedirectUrl,
   normalizePositiveAmount,
   normalizePurpose,
   parseJsonBody,
   requireEnv,
-  requirePayosEnabled,
   safeCompareHex,
   sendError,
   signPaymentRequest,

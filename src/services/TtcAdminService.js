@@ -5,18 +5,12 @@ export const TtcAdminService = {
     searchTerm = '',
     pagination,
   } = {}) {
-    let query = requireSupabaseClient()
-      .from('user_profiles')
-      .select('*, wallets(balance, total_earned, total_spent), user_facebook_accounts(id, facebook_id, facebook_id_status)', { count: 'exact' })
-      .order('created_at', { ascending: false });
-
-    const normalizedSearch = String(searchTerm || '').trim();
-    if (normalizedSearch) {
-      const pattern = `%${normalizedSearch}%`;
-      query = query.or(`display_name.ilike.${pattern},phone.ilike.${pattern},email.ilike.${pattern}`);
+    try {
+      return await runQuery(applyPagination(buildUsersQuery(searchTerm, true), pagination));
+    } catch (error) {
+      if (!isMissingUsernameError(error)) throw error;
+      return runQuery(applyPagination(buildUsersQuery(searchTerm, false), pagination));
     }
-
-    return runQuery(applyPagination(query, pagination));
   },
 
   async listInteractionTypes() {
@@ -72,14 +66,12 @@ export const TtcAdminService = {
     sort = { column: 'created_at', ascending: false },
     pagination,
   } = {}) {
-    let query = requireSupabaseClient()
-      .from('ttc_campaigns')
-      .select('*, user_profiles(display_name, phone, email), ttc_interaction_types(label, config)', { count: 'exact' });
-
-    if (status) query = query.eq('status', status);
-    if (interactionType) query = query.eq('interaction_type_code', interactionType);
-
-    return runQuery(applyPagination(applySort(query, sort), pagination));
+    try {
+      return await runQuery(applyPagination(applySort(buildCampaignsQuery({ status, interactionType }, true), sort), pagination));
+    } catch (error) {
+      if (!isMissingUsernameError(error)) throw error;
+      return runQuery(applyPagination(applySort(buildCampaignsQuery({ status, interactionType }, false), sort), pagination));
+    }
   },
 
   async listTasks({
@@ -88,14 +80,12 @@ export const TtcAdminService = {
     sort = { column: 'updated_at', ascending: false },
     pagination,
   } = {}) {
-    let query = requireSupabaseClient()
-      .from('ttc_tasks')
-      .select('*, ttc_campaigns(id, interaction_type_code, target_url, owner_user_id), user_profiles(display_name, phone, email)', { count: 'exact' });
-
-    if (campaignId) query = query.eq('campaign_id', Number(campaignId));
-    if (status) query = query.eq('status', status);
-
-    return runQuery(applyPagination(applySort(query, sort), pagination));
+    try {
+      return await runQuery(applyPagination(applySort(buildTasksQuery({ campaignId, status }, true), sort), pagination));
+    } catch (error) {
+      if (!isMissingUsernameError(error)) throw error;
+      return runQuery(applyPagination(applySort(buildTasksQuery({ campaignId, status }, false), sort), pagination));
+    }
   },
 
   async listCheckLogs({
@@ -136,6 +126,93 @@ export const TtcAdminService = {
     return { data };
   },
 
+  async resetUserPassword(userId, password) {
+    const client = requireSupabaseClient();
+    const { data: sessionData } = await client.auth.getSession();
+    const accessToken = sessionData?.session?.access_token || '';
+    if (!accessToken) throw new Error('Bạn cần đăng nhập admin để đặt lại mật khẩu.');
+    const response = await fetch('/api/auth-account', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'admin_reset_user_password',
+        userId: normalizeRequired(userId, 'User'),
+        password: normalizeRequired(password, 'Mật khẩu mới'),
+      }),
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.ok) {
+      throw new Error(payload?.message || 'Không đặt lại được mật khẩu user.');
+    }
+    return payload;
+  },
+
+  async updateUserStatus(userId, status) {
+    const client = requireSupabaseClient();
+    const { data: sessionData } = await client.auth.getSession();
+    const accessToken = sessionData?.session?.access_token || '';
+    if (!accessToken) throw new Error('Bạn cần đăng nhập admin để cập nhật user.');
+    const normalizedStatus = normalizeRequired(status, 'Trạng thái');
+    if (!['active', 'locked', 'pending_profile'].includes(normalizedStatus)) {
+      throw new Error('Trạng thái user không hợp lệ.');
+    }
+    const response = await fetch('/api/auth-account', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'admin_update_user_status',
+        userId: normalizeRequired(userId, 'User'),
+        status: normalizedStatus,
+      }),
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.ok) {
+      throw new Error(payload?.message || 'Không cập nhật được trạng thái user.');
+    }
+    return payload;
+  },
+
+  async updateUserProfile(userId, payload = {}) {
+    const client = requireSupabaseClient();
+    const { data: sessionData } = await client.auth.getSession();
+    const accessToken = sessionData?.session?.access_token || '';
+    if (!accessToken) throw new Error('Bạn cần đăng nhập admin để cập nhật user.');
+    const response = await fetch('/api/auth-account', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'admin_update_user_profile',
+        userId: normalizeRequired(userId, 'User'),
+        ...payload,
+      }),
+    });
+    const responsePayload = await response.json().catch(() => null);
+    if (!response.ok || !responsePayload?.ok) {
+      throw new Error(responsePayload?.message || 'Không cập nhật được thông tin user.');
+    }
+    return responsePayload;
+  },
+
+  async confirmCurrentAdminPassword(password) {
+    const normalizedPassword = normalizeRequired(password, 'Mật khẩu xác nhận');
+    const client = requireSupabaseClient();
+    const { data: sessionData } = await client.auth.getSession();
+    const email = sessionData?.session?.user?.email || '';
+    if (!email) throw new Error('Không tìm thấy email phiên admin để xác nhận mật khẩu.');
+    const { error } = await client.auth.signInWithPassword({ email, password: normalizedPassword });
+    if (error) throw new Error('Mật khẩu xác nhận không đúng.');
+    return true;
+  },
+
   async createCampaignForUser({
     ownerUserId,
     interactionType,
@@ -163,6 +240,15 @@ export const TtcAdminService = {
     return { data };
   },
 
+  async cancelCampaign(campaignId, reason, idempotencyKey = createIdempotencyKey('admin-ttc-cancel')) {
+    const { data } = await runQuery(requireSupabaseClient().rpc('cancel_ttc_campaign', {
+      campaign_id_input: positiveInteger(campaignId, 'Tăng tương tác'),
+      reason_input: normalizeRequired(reason, 'Lý do hủy'),
+      idempotency_key_input: idempotencyKey,
+    }));
+    return { data };
+  },
+
   async verifyTask(taskId, action, reason = '', metadata = {}) {
     const { data } = await runQuery(requireSupabaseClient().rpc('verify_ttc_task', {
       task_id_input: positiveInteger(taskId, 'Nhiệm vụ'),
@@ -173,6 +259,59 @@ export const TtcAdminService = {
     return { data };
   },
 };
+
+function buildUsersQuery(searchTerm = '', includeUsername = true) {
+  let query = requireSupabaseClient()
+    .from('user_profiles')
+    .select('*, wallets(balance, total_earned, total_spent), user_facebook_accounts(id, facebook_id, facebook_id_status)', { count: 'exact' })
+    .order('created_at', { ascending: false });
+
+  const normalizedSearch = String(searchTerm || '').trim();
+  if (normalizedSearch) {
+    const pattern = `%${normalizedSearch}%`;
+    const fields = includeUsername
+      ? `display_name.ilike.${pattern},username.ilike.${pattern},phone.ilike.${pattern},email.ilike.${pattern}`
+      : `display_name.ilike.${pattern},phone.ilike.${pattern},email.ilike.${pattern}`;
+    query = query.or(fields);
+  }
+
+  return query;
+}
+
+function buildCampaignsQuery({ status = '', interactionType = '' } = {}, includeUsername = true) {
+  const profileColumns = includeUsername
+    ? 'display_name, username, phone, email'
+    : 'display_name, phone, email';
+  let query = requireSupabaseClient()
+    .from('ttc_campaigns')
+    .select(`*, user_profiles(${profileColumns}), ttc_interaction_types(label, config)`, { count: 'exact' });
+
+  if (status) query = query.eq('status', status);
+  if (interactionType) query = query.eq('interaction_type_code', interactionType);
+
+  return query;
+}
+
+function buildTasksQuery({ campaignId = '', status = '' } = {}, includeUsername = true) {
+  const profileColumns = includeUsername
+    ? 'display_name, username, phone, email'
+    : 'display_name, phone, email';
+  let query = requireSupabaseClient()
+    .from('ttc_tasks')
+    .select(`*, ttc_campaigns(id, interaction_type_code, target_url, owner_user_id), user_profiles(${profileColumns})`, { count: 'exact' });
+
+  if (campaignId) query = query.eq('campaign_id', Number(campaignId));
+  if (status) query = query.eq('status', status);
+
+  return query;
+}
+
+function isMissingUsernameError(error) {
+  const message = String(error?.message || error?.details || '').toLowerCase();
+  return String(error?.code || '') === '42703'
+    && message.includes('user_profiles')
+    && message.includes('username');
+}
 
 function normalizeOptional(value) {
   return String(value || '').trim() || null;

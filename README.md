@@ -164,6 +164,21 @@ The application is deployed via a GitHub Actions workflow defined in `.github/wo
 -   **Frontend:** Supabase URL and `anon_key` are configured in a `config.local.js` file (which is git-ignored) and loaded into the `window` object. For production, these are typically injected during the build/deployment process.
 -   **Backend:** Database connection strings, API keys, and other secrets for Supabase are managed in the Supabase project dashboard.
 
+### TTC Facebook verification
+
+The TTC reward endpoint (`api/ttc/verify-facebook-task.js`) is fail-closed in production. It only credits coins after a real verifier confirms the task.
+
+Production options:
+
+-   `FACEBOOK_VERIFY_WEBHOOK_URL`: recommended. The endpoint sends task/action/target/worker Facebook IDs to an external verifier. The verifier must return `{ "verified": true }` before coins are credited.
+-   `FACEBOOK_GRAPH_ACCESS_TOKEN` or `FACEBOOK_PAGE_ACCESS_TOKEN`: fallback direct Meta Graph API verifier for content the token is allowed to read. It can verify accessible reactions/comments by matching the worker Facebook ID. Arbitrary private profile, private group, follow, share, or join-group checks may be unsupported by Meta and will not credit coins.
+-   `FACEBOOK_GRAPH_API_VERSION`: optional, defaults to `v25.0`.
+
+Local-only testing:
+
+-   `FACEBOOK_VERIFY_DEV_BYPASS=true` can simulate a successful Facebook verification outside production.
+-   The bypass is ignored when `NODE_ENV=production` or `VERCEL_ENV=production`.
+
 ## 13. Future Roadmap
 
 The `BUSINESS_RULES.md` document contains a section on future considerations, including:

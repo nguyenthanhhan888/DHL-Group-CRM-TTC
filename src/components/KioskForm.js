@@ -6,7 +6,7 @@ import { CustomerService } from '../services/CustomerService.js';
 import { KioskService } from '../services/KioskService.js';
 import { RegistrationService } from '../services/RegistrationService.js';
 import { bindFacebookIdResolvers, FacebookIdResolverFields } from './FacebookIdResolver.js';
-import { formatCurrency } from '../utils/currency.js';
+import { bindCurrencyInput, formatCurrency, parseCurrencyInput } from '../utils/currency.js';
 import { debounce } from '../utils/dom.js';
 import { escapeHtml } from '../utils/html.js';
 
@@ -34,6 +34,7 @@ export function openKioskForm({ customer = null, onSaved } = {}) {
 
 function bindKioskForm(onSaved) {
   bindFacebookIdResolvers(document.getElementById('add-kiosk-form'));
+  bindCurrencyInput(document.getElementById('add-kiosk-discount'));
   document.querySelector('[data-kiosk-cancel]')?.addEventListener('click', Modal.close);
   document.getElementById('add-kiosk-customer-search')?.addEventListener('input', debounce((event) => {
     loadCustomerOptions(event.target.value.trim());
@@ -137,7 +138,7 @@ function renderKioskForm() {
       </label>
 
       <div class="form-row">
-        <label class="form-group"><span>Giảm giá (VNĐ)</span><input class="form-control" id="add-kiosk-discount" type="number" min="0" step="1000" value="0" /></label>
+        <label class="form-group"><span>Giảm giá</span><input class="form-control" id="add-kiosk-discount" type="text" inputmode="numeric" placeholder="0 VNĐ" /></label>
         <label class="form-group"><span>Lý do giảm giá</span><input class="form-control" id="add-kiosk-discount-reason" type="text" placeholder="Bắt buộc nếu có giảm giá" autocomplete="off" /></label>
       </div>
 
@@ -282,7 +283,7 @@ function updateKioskPreview() {
   try {
     const preview = RegistrationService.calculatePreview(businessType, {
       months: readNumber('add-kiosk-months'),
-      discount: readNumber('add-kiosk-discount'),
+      discount: parseCurrencyInput(readValue('add-kiosk-discount')),
     });
 
     previewElement.innerHTML = `
@@ -325,7 +326,7 @@ function readKioskPayload() {
     customerId: readValue('add-kiosk-customer'),
     businessTypeId: readValue('add-kiosk-business-type'),
     months: readNumber('add-kiosk-months'),
-    discount: readNumber('add-kiosk-discount'),
+    discount: parseCurrencyInput(readValue('add-kiosk-discount')),
     discountReason: readValue('add-kiosk-discount-reason'),
     kiosk: {
       facebook_name: readValue('add-kiosk-facebook-name'),
@@ -368,7 +369,7 @@ function validateKioskForm() {
     return { valid: false, message: 'Số tháng phải là số nguyên lớn hơn 0.' };
   }
 
-  const discount = readNumber('add-kiosk-discount');
+  const discount = parseCurrencyInput(readValue('add-kiosk-discount'));
   const businessType = selectedBusinessType();
   const subtotal = Number(businessType?.price_per_month || 0) * months;
   if (!Number.isFinite(discount) || discount < 0 || discount > subtotal) {

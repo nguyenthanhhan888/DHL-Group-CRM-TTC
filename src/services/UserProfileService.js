@@ -3,7 +3,19 @@ import { requireSupabaseClient, runQuery } from './BaseService.js';
 export const UserProfileService = {
   async getCurrentAppProfile() {
     const { data } = await runQuery(requireSupabaseClient().rpc('get_current_app_profile'));
-    return { data };
+    if (!data?.user_id || data.created_at || data.createdAt || data.profile_type === 'staff') return { data };
+    try {
+      const { data: profile } = await runQuery(
+        requireSupabaseClient()
+          .from('user_profiles')
+          .select('created_at, updated_at')
+          .eq('user_id', data.user_id)
+          .maybeSingle(),
+      );
+      return { data: profile ? { ...data, ...profile } : data };
+    } catch {
+      return { data };
+    }
   },
 
   async ensureMyProfile({
@@ -60,7 +72,7 @@ export const UserProfileService = {
     return runQuery(
       requireSupabaseClient()
         .from('customer_user_links')
-        .select('*, customers(id, facebook_name, phone), kiosks(id, facebook_name, facebook_id, status)')
+        .select('*, customers(id, facebook_name, facebook_id, facebook_link, phone), kiosks(id, facebook_name, facebook_id, facebook_link, status)')
         .order('created_at', { ascending: false }),
     );
   },

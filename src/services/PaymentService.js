@@ -24,7 +24,7 @@ export const PaymentService = {
     return { data };
   },
 
-  async adminManualRenewKiosk({
+  async manualRenewKiosk({
     kioskId,
     months,
     startDate,
@@ -40,10 +40,10 @@ export const PaymentService = {
         kiosk_id_input: positiveInteger(kioskId, 'Kiosk'),
         months_input: positiveInteger(months, 'Số tháng'),
         start_date_input: requiredText(startDate, 'Kỳ bắt đầu'),
-        base_amount_input: nonNegativeNumber(baseAmount, 'Giá gốc'),
+        base_amount_input: nonNegativeNumber(baseAmount, 'Tạm tính'),
         discount_input: nonNegativeNumber(discount, 'Giảm giá'),
         discount_reason_input: normalizeOptionalText(discountReason),
-        payment_method_input: requiredText(paymentMethod, 'Phương thức thanh toán'),
+        payment_method_input: paymentMethodValue(paymentMethod),
         note_input: normalizeOptionalText(note),
       }),
     );
@@ -293,6 +293,14 @@ export const PaymentService = {
 
 function normalizeOptionalText(value) {
   return String(value || '').trim() || null;
+}
+
+function paymentMethodValue(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!['transfer', 'cash', 'other'].includes(normalized)) {
+    throw new Error('Phương thức thanh toán không hợp lệ.');
+  }
+  return normalized;
 }
 
 async function buildSearchContext(supabase, searchTerm) {

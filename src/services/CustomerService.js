@@ -1,8 +1,7 @@
 import { applyPagination, applySort, requireSupabaseClient, runQuery } from './BaseService.js';
 import { AuditLogService } from './AuditLogService.js';
+import { getExpiryWarningDays } from '../config/organization.js';
 import { startOfToday, toDateOnly } from '../utils/date.js';
-
-const EXPIRING_WINDOW_DAYS = 30;
 
 const CUSTOMER_MUTABLE_FIELDS = [
   'facebook_name',
@@ -24,7 +23,8 @@ export const CustomerService = {
     pagination,
   } = {}) {
     const supabase = requireSupabaseClient();
-    const kioskCustomerIds = await findCustomerIdsByKioskState(supabase, kioskState);
+    const kioskCustomerMatches = await findCustomerMatchesByKioskState(supabase, kioskState);
+    const kioskCustomerIds = kioskCustomerMatches?.map((match) => match.customerId) || null;
     let query = supabase
       .from('customers')
       .select('*', { count: 'exact' });
@@ -41,6 +41,23 @@ export const CustomerService = {
       }
 
       query = query.in('id', kioskCustomerIds);
+    }
+
+    if (kioskCustomerMatches) {
+      const result = await runQuery(applySort(query, resolveCustomerSort(kioskState, sort)));
+      const customerOrder = new Map(kioskCustomerMatches.map((match, index) => [String(match.customerId), index]));
+      const data = (result.data || [])
+        .slice()
+        .sort((a, b) => {
+          const aOrder = customerOrder.get(String(a.id)) ?? Number.MAX_SAFE_INTEGER;
+          const bOrder = customerOrder.get(String(b.id)) ?? Number.MAX_SAFE_INTEGER;
+          if (aOrder !== bOrder) return aOrder - bOrder;
+          return String(a.facebook_name || '').localeCompare(String(b.facebook_name || ''), 'vi');
+        });
+      return {
+        data: paginateRows(data, pagination),
+        count: data.length,
+      };
     }
 
     return runQuery(applyPagination(applySort(query, sort), pagination));
@@ -149,34 +166,58 @@ export const CustomerService = {
   },
 };
 
-async function findCustomerIdsByKioskState(supabase, kioskState) {
+async function findCustomerMatchesByKioskState(supabase, kioskState) {
   if (!kioskState) return null;
 
   const today = startOfToday();
   const todayDate = toDateOnly(today);
   let query = supabase
     .from('kiosks')
-    .select('customer_id');
+    .select('customer_id,end_date');
 
   if (kioskState === 'expired') {
     query = query.or(`status.eq.expired,end_date.lt.${todayDate}`);
   } else if (kioskState === 'warning') {
     const warningEndDate = new Date(today);
-    warningEndDate.setDate(today.getDate() + EXPIRING_WINDOW_DAYS);
+    warningEndDate.setDate(today.getDate() + getExpiryWarningDays());
     query = query
       .in('status', ['active', 'warning'])
       .gte('end_date', todayDate)
-      .lte('end_date', toDateOnly(warningEndDate));
+      .lt('end_date', toDateOnly(warningEndDate));
   } else {
     return null;
   }
 
+  query = query.order('end_date', { ascending: kioskState !== 'expired' });
+
   const { data, error } = await query;
   if (error) throw error;
 
-  return [...new Set((data || [])
-    .map((kiosk) => kiosk.customer_id)
-    .filter(Boolean))];
+  const seen = new Set();
+  return (data || []).reduce((matches, kiosk) => {
+    if (!kiosk.customer_id) return matches;
+    const key = String(kiosk.customer_id);
+    if (seen.has(key)) return matches;
+    seen.add(key);
+    matches.push({ customerId: kiosk.customer_id, endDate: kiosk.end_date || null });
+    return matches;
+  }, []);
+}
+
+function resolveCustomerSort(kioskState, sort) {
+  if (kioskState === 'warning' || kioskState === 'expired') return {};
+  return sort;
+}
+
+function paginateRows(rows, pagination = {}) {
+  const page = Number(pagination.page || 1);
+  const pageSize = Number(pagination.pageSize || rows.length);
+  if (!Number.isFinite(page) || !Number.isFinite(pageSize) || page < 1 || pageSize < 1) {
+    return rows;
+  }
+
+  const start = (page - 1) * pageSize;
+  return rows.slice(start, start + pageSize);
 }
 
 async function findDuplicates(supabase, { phone, name, excludeId = null }) {

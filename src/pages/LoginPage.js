@@ -1,48 +1,31 @@
 import { AuthService } from '../services/AuthService.js';
 import { ROLES } from '../constants/roles.js';
 import { escapeHtml } from '../utils/html.js';
-import { PublicFooter, PublicHeader, bindPublicNavigation, publicIcon } from '../components/OfficialCommunityCard.js';
+import { PUBLIC_BRAND } from '../config/organization.js';
 
 export function LoginPage({ message = '' } = {}) {
   return `
-    <div class="auth-public-site public-site">
-    ${PublicHeader({ route: 'login' })}
     <main class="auth-shell">
       <section class="auth-landing auth-landing-expanded">
         <div class="auth-intro-panel">
-          <div class="auth-brand-row">
-            <div class="auth-logo dhl-logo-mark" aria-label="DHL Group">
-              <img src="logo/photo_2026-08-03_06-31-15.jpg" alt="DHL Group">
-            </div>
-            <div>
-              <h1>Diễn Châu - À Đây Rồi (DHL)</h1>
-              <p>Cổng quản lý Kiosk, ví xu và tương tác chéo Facebook.</p>
-            </div>
-          </div>
-          <div id="login-error" class="form-error ${message ? '' : 'hidden'}">${escapeHtml(message)}</div>
           <div class="auth-main-grid">
-            <aside class="auth-story-panel" aria-label="Giới thiệu ADAYROIDC.COM">
+            <aside class="auth-story-panel" aria-label="Giới thiệu cổng DHL">
               <div class="auth-story-media">
-                <img src="images/cover.PNG" alt="Cộng đồng ADAYROIDC.COM">
+                <img src="${PUBLIC_BRAND.assets.cover}" alt="Ảnh bìa cộng đồng ${PUBLIC_BRAND.communityName}" width="1942" height="809">
               </div>
               <div class="auth-story-content">
-                <h2>ADAYROIDC.COM</h2>
-                <p>Cổng tài khoản dành cho thành viên quản lý Kiosk, ví xu và hoạt động tương tác cộng đồng.</p>
-                <ul class="auth-feature-list">
-                  <li>${publicIcon('check')} Quản lý Kiosk tập trung</li>
-                  <li>${publicIcon('check')} Theo dõi ví xu và thanh toán</li>
-                  <li>${publicIcon('check')} Sử dụng các tính năng tương tác</li>
-                  <li>${publicIcon('check')} Xem lịch sử hoạt động</li>
-                </ul>
-                <p class="auth-story-tagline">Nhanh chóng - Minh bạch - An toàn - Hiệu quả.</p>
+                <span class="auth-panel-kicker">Cổng chính thức</span>
+                <h2>${PUBLIC_BRAND.name}</h2>
+                <p>Truy cập tài khoản để quản lý Kiosk và sử dụng các tiện ích dành cho thành viên cộng đồng.</p>
+                <p class="auth-story-tagline">Kết nối rõ ràng • Quản lý thuận tiện</p>
               </div>
             </aside>
             <div class="auth-panel auth-account-panel">
               <div class="auth-tab-list" role="tablist" aria-label="Tài khoản web">
-                <button class="auth-tab-button active" type="button" role="tab" aria-selected="true" data-auth-tab="login">Đăng nhập</button>
-                <button class="auth-tab-button" type="button" role="tab" aria-selected="false" data-auth-tab="register">Đăng ký tài khoản</button>
+                <button id="auth-tab-login" class="auth-tab-button active" type="button" role="tab" aria-selected="true" aria-controls="login-form" tabindex="0" data-auth-tab="login">Đăng nhập</button>
+                <button id="auth-tab-register" class="auth-tab-button" type="button" role="tab" aria-selected="false" aria-controls="account-register-form" tabindex="-1" data-auth-tab="register">Đăng ký tài khoản</button>
               </div>
-              <form id="login-form" class="auth-form-panel" data-auth-panel="login" novalidate>
+              <form id="login-form" class="auth-form-panel" role="tabpanel" aria-labelledby="auth-tab-login" data-auth-panel="login" novalidate>
                 <div class="auth-panel-heading">
                   <span class="auth-panel-kicker">Đăng nhập</span>
                   <h2>Đăng nhập tài khoản</h2>
@@ -52,13 +35,28 @@ export function LoginPage({ message = '' } = {}) {
                   <span>Email, username hoặc SĐT</span>
                   <input id="login-email" class="form-control" autocomplete="username" required />
                 </label>
+                <div id="login-error" class="form-error auth-panel-message ${message ? '' : 'hidden'}" role="alert" aria-live="polite">${escapeHtml(message)}</div>
                 <label class="form-group">
                   <span>Mật khẩu</span>
-                  <span class="auth-password-control"><input id="login-password" class="form-control" type="password" autocomplete="current-password" required /><button type="button" aria-label="Hiện mật khẩu" data-password-toggle="login-password">${publicIcon('eye')}</button></span>
+                  <input id="login-password" class="form-control" type="password" autocomplete="current-password" required />
                 </label>
                 <button id="login-submit" class="btn-primary auth-submit" type="submit">Đăng nhập</button>
               </form>
-              <form id="account-register-form" class="auth-form-panel hidden" data-auth-panel="register" novalidate>
+              <form id="login-mfa-form" class="auth-form-panel hidden" data-auth-panel="mfa" novalidate>
+                <div class="auth-panel-heading">
+                  <span class="auth-panel-kicker">Bảo mật 2 lớp</span>
+                  <h2>Xác minh Authenticator</h2>
+                  <p>Nhập mã 6 số từ Google Authenticator hoặc ứng dụng tương tự.</p>
+                </div>
+                <label class="form-group">
+                  <span>Mã Authenticator</span>
+                  <input id="login-mfa-code" class="form-control" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required />
+                </label>
+                <span data-auth-message-anchor="mfa"></span>
+                <button id="login-mfa-submit" class="btn-primary auth-submit" type="submit">Xác minh</button>
+                <button id="login-mfa-back" class="btn-secondary auth-submit" type="button">Đăng nhập lại</button>
+              </form>
+              <form id="account-register-form" class="auth-form-panel hidden" role="tabpanel" aria-labelledby="auth-tab-register" data-auth-panel="register" hidden novalidate>
                 <div class="auth-panel-heading">
                   <span class="auth-panel-kicker">Tài khoản web</span>
                   <h2>Đăng ký tài khoản</h2>
@@ -74,9 +72,10 @@ export function LoginPage({ message = '' } = {}) {
                     <input id="register-account-username" class="form-control" autocomplete="username" minlength="3" maxlength="40" pattern="[a-z0-9._-]+" required />
                   </label>
                 </div>
+                <span data-auth-message-anchor="register"></span>
                 <label class="form-group">
-                  <span>Số điện thoại</span>
-                  <input id="register-account-phone" class="form-control" type="tel" autocomplete="tel" required />
+                  <span>Số điện thoại (không bắt buộc)</span>
+                  <input id="register-account-phone" class="form-control" type="tel" autocomplete="tel" />
                 </label>
                 <label class="form-group">
                   <span>Email liên hệ (không bắt buộc)</span>
@@ -85,53 +84,33 @@ export function LoginPage({ message = '' } = {}) {
                 <div class="form-row">
                   <label class="form-group">
                     <span>Mật khẩu</span>
-                    <span class="auth-password-control"><input id="register-account-password" class="form-control" type="password" autocomplete="new-password" required /><button type="button" aria-label="Hiện mật khẩu" data-password-toggle="register-account-password">${publicIcon('eye')}</button></span>
+                    <input id="register-account-password" class="form-control" type="password" autocomplete="new-password" required />
                   </label>
                   <label class="form-group">
                     <span>Xác nhận mật khẩu</span>
-                    <span class="auth-password-control"><input id="register-account-confirm" class="form-control" type="password" autocomplete="new-password" required /><button type="button" aria-label="Hiện mật khẩu" data-password-toggle="register-account-confirm">${publicIcon('eye')}</button></span>
+                    <input id="register-account-confirm" class="form-control" type="password" autocomplete="new-password" required />
                   </label>
                 </div>
                 <button id="account-register-submit" class="btn-primary auth-submit" type="submit">Tạo tài khoản</button>
               </form>
-              <div class="auth-assurance-panel" aria-label="Lợi ích tài khoản">
-                <div>
-                  <strong>Đăng nhập linh hoạt</strong>
-                  <span>Dùng username, số điện thoại hoặc email.</span>
-                </div>
-                <div>
-                  <strong>Tạo tài khoản nhanh</strong>
-                  <span>Hoàn tất thông tin và đăng nhập ngay sau khi tạo.</span>
-                </div>
-                <div>
-                  <strong>Ví xu và Kiosk</strong>
-                  <span>Nạp xu PayOS, mua tương tác và theo dõi Kiosk trong cùng một nơi.</span>
-                </div>
-              </div>
             </div>
           </div>
         </div>
       </section>
-    </main>${PublicFooter()}</div>
+    </main>
   `;
 }
 
 LoginPage.afterRender = function afterRenderLogin() {
-  bindPublicNavigation(document.querySelector('.auth-public-site'));
   setLoading(document.getElementById('login-submit'), false);
+  setLoading(document.getElementById('login-mfa-submit'), false, 'Đang xác minh...', 'Xác minh');
   setLoading(document.getElementById('account-register-submit'), false, 'Đang tạo tài khoản...', 'Tạo tài khoản');
+  let pendingMfaFactorId = '';
+  placeAuthMessage('login');
 
   document.querySelectorAll('[data-auth-tab]').forEach((button) => {
     button.addEventListener('click', () => switchAuthTab(button.dataset.authTab || 'login'));
-  });
-  document.querySelectorAll('[data-password-toggle]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const input = document.getElementById(button.dataset.passwordToggle);
-      if (!input) return;
-      const show = input.type === 'password';
-      input.type = show ? 'text' : 'password';
-      button.setAttribute('aria-label', show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu');
-    });
+    button.addEventListener('keydown', handleAuthTabKeydown);
   });
 
   document.getElementById('login-form')?.addEventListener('submit', async (event) => {
@@ -155,8 +134,15 @@ LoginPage.afterRender = function afterRenderLogin() {
         15_000,
         'Đăng nhập phản hồi quá chậm. Vui lòng thử lại.'
       );
+      if (authData?.mfaRequired) {
+        pendingMfaFactorId = authData.mfaFactorId || '';
+        switchAuthTab('mfa');
+        document.getElementById('login-mfa-code')?.focus();
+        return;
+      }
       const profile = await AuthService.getCurrentProfile(authData?.user?.id);
       window.location.hash = profile?.role === ROLES.ADMIN ? '#/dashboard' : '#/user';
+      window.location.reload();
     } catch (error) {
       const message = error?.code === 'AUTH_TIMEOUT'
         ? error.message
@@ -167,6 +153,41 @@ LoginPage.afterRender = function afterRenderLogin() {
     } finally {
       setLoading(button, false);
     }
+  });
+
+  document.getElementById('login-mfa-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const code = document.getElementById('login-mfa-code')?.value.trim();
+    const button = document.getElementById('login-mfa-submit');
+    const errorElement = document.getElementById('login-error');
+    if (!/^\d{6}$/.test(code || '')) {
+      showError(errorElement, 'Vui lòng nhập mã Authenticator gồm 6 chữ số.');
+      return;
+    }
+    setLoading(button, true, 'Đang xác minh...', 'Xác minh');
+    errorElement?.classList.add('hidden');
+    try {
+      const authData = await withTimeout(
+        AuthService.completeTotpMfa(pendingMfaFactorId, code),
+        15_000,
+        'Xác minh phản hồi quá chậm. Vui lòng thử lại.'
+      );
+      const profile = await AuthService.getCurrentProfile(authData?.session?.user?.id);
+      window.location.hash = profile?.role === ROLES.ADMIN ? '#/dashboard' : '#/user';
+      window.location.reload();
+    } catch (error) {
+      showError(errorElement, error?.message || 'Mã Authenticator chưa đúng.');
+    } finally {
+      setLoading(button, false, 'Đang xác minh...', 'Xác minh');
+    }
+  });
+
+  document.getElementById('login-mfa-back')?.addEventListener('click', async () => {
+    await AuthService.signOut().catch(() => null);
+    pendingMfaFactorId = '';
+    document.getElementById('login-password').value = '';
+    document.getElementById('login-mfa-code').value = '';
+    switchAuthTab('login');
   });
 
   document.getElementById('account-register-form')?.addEventListener('submit', async (event) => {
@@ -181,8 +202,8 @@ LoginPage.afterRender = function afterRenderLogin() {
     const button = document.getElementById('account-register-submit');
     const errorElement = document.getElementById('login-error');
 
-    if (!displayName || !username || !phone || !password) {
-      showError(errorElement, 'Vui lòng nhập đầy đủ thông tin đăng ký.');
+    if (!displayName || !username || !password) {
+      showError(errorElement, 'Vui lòng nhập họ tên, username và mật khẩu.');
       return;
     }
     if (!/^[a-z0-9._-]{3,40}$/.test(username)) {
@@ -202,7 +223,10 @@ LoginPage.afterRender = function afterRenderLogin() {
     errorElement?.classList.add('hidden');
     try {
       await AuthService.signUp({ username, email, password, displayName, phone });
-      showError(errorElement, 'Đã tạo tài khoản và ví xu. Bạn có thể đăng nhập bằng username hoặc SĐT.');
+      showError(errorElement, phone
+        ? 'Đã tạo tài khoản và ví xu. Bạn có thể đăng nhập bằng username hoặc SĐT.'
+        : 'Đã tạo tài khoản và ví xu. Bạn có thể đăng nhập bằng username.'
+      );
       errorElement?.classList.remove('form-error');
       errorElement?.classList.add('notice', 'success');
       form?.reset?.();
@@ -222,10 +246,14 @@ function switchAuthTab(tab, { preserveMessage = false } = {}) {
     const active = button.dataset.authTab === tab;
     button.classList.toggle('active', active);
     button.setAttribute('aria-selected', String(active));
+    button.tabIndex = active ? 0 : -1;
   });
   document.querySelectorAll('[data-auth-panel]').forEach((panel) => {
-    panel.classList.toggle('hidden', panel.dataset.authPanel !== tab);
+    const active = panel.dataset.authPanel === tab;
+    panel.classList.toggle('hidden', !active);
+    panel.hidden = !active;
   });
+  placeAuthMessage(tab);
   const errorElement = document.getElementById('login-error');
   if (preserveMessage) {
     errorElement?.classList.toggle('hidden', !errorElement.textContent.trim());
@@ -236,10 +264,32 @@ function switchAuthTab(tab, { preserveMessage = false } = {}) {
   errorElement?.classList.remove('notice', 'success');
 }
 
+function handleAuthTabKeydown(event) {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+  const tabs = [...document.querySelectorAll('[data-auth-tab]')];
+  if (!tabs.length) return;
+  event.preventDefault();
+  const current = Math.max(0, tabs.indexOf(event.currentTarget));
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+  switchAuthTab(tabs[next].dataset.authTab);
+  tabs[next].focus();
+}
+
 function showError(element, message) {
   if (!element) return;
   element.textContent = message;
   element.classList.remove('hidden');
+}
+
+function placeAuthMessage(tab) {
+  const errorElement = document.getElementById('login-error');
+  if (!errorElement) return;
+  if (tab === 'login') {
+    document.querySelector('#login-email')?.closest('.form-group')?.after(errorElement);
+    return;
+  }
+  const anchor = document.querySelector(`[data-auth-message-anchor="${tab}"]`);
+  anchor?.after(errorElement);
 }
 
 function accountRegisterErrorMessage(error) {

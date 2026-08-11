@@ -64,11 +64,14 @@ module.exports = async function facebookIdHandler(req, res) {
       );
     }
 
-    return res.status(200).json({
+    const payload = {
       success: true,
       facebook_id: facebookId,
       facebook_url: validation.url,
-    });
+    };
+    const facebookName = normalizeFacebookName(upstreamData?.name || upstreamData?.title || upstreamData?.fullname);
+    if (facebookName) payload.facebook_name = facebookName;
+    return res.status(200).json(payload);
   } catch (error) {
     if (error?.name === 'AbortError') {
       return sendError(
@@ -152,12 +155,17 @@ function normalizeFacebookId(value) {
   return /^\d+$/.test(id) ? id : '';
 }
 
+function normalizeFacebookName(value) {
+  return String(value ?? '').trim();
+}
+
 function sendError(res, status, code, message) {
   return res.status(status).json({ success: false, code, message });
 }
 
 module.exports._test = {
   normalizeFacebookId,
+  normalizeFacebookName,
   parseRequestBody,
   validateFacebookUrl,
   REQUEST_TIMEOUT_MS,

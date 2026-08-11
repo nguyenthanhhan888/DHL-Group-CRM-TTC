@@ -3,20 +3,24 @@ import { openKioskEditForm } from '../components/KioskEditForm.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { openRenewKioskForm } from '../components/RenewKioskForm.js';
 import { Toolbar } from '../components/Toolbar.js';
+import { getExpiryWarningDays } from '../config/organization.js';
 import { BusinessTypeService } from '../services/BusinessTypeService.js';
 import { KioskService } from '../services/KioskService.js';
 import { formatCurrency } from '../utils/currency.js';
 import { formatDate } from '../utils/date.js';
 import { debounce } from '../utils/dom.js';
 import { escapeHtml } from '../utils/html.js';
+import { deriveKioskStatus } from '../utils/kioskStatus.js';
 
 const PAGE_SIZE_OPTIONS = [12, 24, 48];
-const KIOSK_STATUSES = [
-  { value: 'active', label: 'Hoạt động' },
-  { value: 'expired', label: 'Hết hạn' },
-  { value: 'warning', label: 'Sắp hết hạn' },
-  { value: 'pending', label: 'Chờ duyệt' },
-];
+function kioskStatusOptions() {
+  return [
+    { value: 'active', label: 'Hoạt động' },
+    { value: 'warning', label: `Sắp hết hạn (<${getExpiryWarningDays()} ngày)` },
+    { value: 'expired', label: 'Đã hết hạn' },
+    { value: 'pending', label: 'Chờ duyệt' },
+  ];
+}
 
 const state = {
   searchTerm: '',
@@ -51,7 +55,7 @@ export function KiosksPage() {
         </select>
         <select id="kiosk-status-filter" class="filter-select" aria-label="Lọc trạng thái">
           <option value="">Tất cả trạng thái</option>
-          ${KIOSK_STATUSES.map((status) => `<option value="${status.value}">${status.label}</option>`).join('')}
+          ${kioskStatusOptions().map((status) => `<option value="${status.value}">${status.label}</option>`).join('')}
         </select>
       `,
     })}
@@ -238,7 +242,7 @@ function renderKioskCard(kiosk) {
           <div class="kiosk-name">${escapeHtml(kiosk.facebook_name || '—')}</div>
           <div class="kiosk-category">${escapeHtml(category)}</div>
         </div>
-        ${renderStatusBadge(kiosk.status)}
+        ${renderStatusBadge(deriveKioskStatus(kiosk))}
       </div>
       <div class="kiosk-details">
         ${kioskDetail('Facebook ID', kiosk.facebook_id)}
@@ -314,7 +318,7 @@ function renderStatusBadge(status) {
   const labels = {
     active: 'Hoạt động',
     inactive: 'Không hoạt động',
-    expired: 'Hết hạn',
+    expired: 'Đã hết hạn',
     warning: 'Sắp hết hạn',
     pending: 'Chờ duyệt',
     suspended: 'Tạm ngưng',

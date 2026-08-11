@@ -1,16 +1,16 @@
 import { applyPagination, applySort, requireSupabaseClient, runQuery } from './BaseService.js';
 import { AuditLogService } from './AuditLogService.js';
+import { getExpiryWarningDays } from '../config/organization.js';
 import { startOfToday, toDateOnly } from '../utils/date.js';
 
 const KIOSK_SELECT = '*, customers(id, facebook_name, facebook_id, phone, address, status, total_paid, total_kiosks, note), categories(name), business_types(name, price_per_month)';
-const EXPIRING_WINDOW_DAYS = 30;
 
 export const KioskService = {
   async list({
     searchTerm = '',
     status = '',
     businessTypeId = '',
-    sort = { column: 'created_at', ascending: false },
+    sort = null,
     pagination,
   } = {}) {
     const supabase = requireSupabaseClient();
@@ -27,7 +27,7 @@ export const KioskService = {
     query = applyStatusFilter(query, status);
     if (businessTypeId) query = query.eq('business_type_id', businessTypeId);
 
-    return runQuery(applyPagination(applySort(query, sort), pagination));
+    return runQuery(applyPagination(applySort(query, resolveKioskSort(status, sort)), pagination));
   },
 
   async getById(id) {
@@ -186,12 +186,18 @@ function applyStatusFilter(query, status) {
   if (status !== 'warning') return query.eq('status', status);
 
   const warningEndDate = new Date(today);
-  warningEndDate.setDate(today.getDate() + EXPIRING_WINDOW_DAYS);
+  warningEndDate.setDate(today.getDate() + getExpiryWarningDays());
 
   return query
     .in('status', ['active', 'warning'])
     .gte('end_date', todayDate)
-    .lte('end_date', toDateOnly(warningEndDate));
+    .lt('end_date', toDateOnly(warningEndDate));
+}
+
+function resolveKioskSort(status, sort) {
+  if (sort?.column) return sort;
+  if (status === 'warning') return { column: 'end_date', ascending: true };
+  return { column: 'created_at', ascending: false };
 }
 
 async function findBusinessTypeIds(supabase, searchTerm) {

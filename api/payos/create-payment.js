@@ -4,12 +4,10 @@ const {
   callSupabaseRpc,
   createOrderCode,
   normalizePayosDescription,
-  normalizeAppRedirectUrl,
   normalizePositiveAmount,
   normalizePurpose,
   parseJsonBody,
   requireEnv,
-  requirePayosEnabled,
   sendError,
   signPaymentRequest,
 } = require('./_utils');
@@ -28,7 +26,6 @@ module.exports = async function createPayosPaymentHandler(req, res) {
   }
 
   try {
-    requirePayosEnabled();
     const clientId = requireEnv('PAYOS_CLIENT_ID');
     const apiKey = requireEnv('PAYOS_API_KEY');
     const checksumKey = requireEnv('PAYOS_CHECKSUM_KEY');
@@ -71,9 +68,10 @@ module.exports = async function createPayosPaymentHandler(req, res) {
       checkoutUrl: payosData?.data?.checkoutUrl || null,
       qrCode: payosData?.data?.qrCode || null,
       paymentLinkId: payosData?.data?.paymentLinkId || null,
+      ...formatPayosTransferInfo(payosData?.data, payload),
     });
   } catch (error) {
-    const status = error?.status || (error?.code === 'MISSING_ENV' ? 500 : 400);
+    const status = error?.code === 'MISSING_ENV' ? 500 : 400;
     return sendError(
       res,
       status,
@@ -100,6 +98,18 @@ async function recordPayosOrder(payload, accessToken, providerPayload, overrides
     });
 }
 
+function formatPayosTransferInfo(data = {}, payload = {}) {
+  return {
+    accountName: data.accountName || data.account_name || null,
+    accountNumber: data.accountNumber || data.account_number || null,
+    bankName: data.bankName || data.bank_name || null,
+    bin: data.bin || null,
+    description: data.description || payload.description || null,
+    amount: Number(data.amount || payload.amount || 0),
+    currency: data.currency || 'VND',
+  };
+}
+
 function buildPaymentPayload(body, checksumKey) {
   const purpose = normalizePurpose(body?.purpose);
   const amount = normalizePositiveAmount(body?.amount);
@@ -108,8 +118,8 @@ function buildPaymentPayload(body, checksumKey) {
     throw new Error('Mã đơn PayOS không hợp lệ.');
   }
 
-  const returnUrl = normalizeAppRedirectUrl(body?.returnUrl || body?.return_url, 'returnUrl');
-  const cancelUrl = normalizeAppRedirectUrl(body?.cancelUrl || body?.cancel_url, 'cancelUrl');
+  const returnUrl = normalizeUrl(body?.returnUrl || body?.return_url, 'returnUrl');
+  const cancelUrl = normalizeUrl(body?.cancelUrl || body?.cancel_url, 'cancelUrl');
   const description = normalizePayosDescription(body?.description, orderCode);
 
   const paymentId = purpose === 'crm_payment' ? normalizePositiveInteger(body?.paymentId || body?.payment_id, 'paymentId') : null;
@@ -149,6 +159,18 @@ function normalizeUuid(value, label) {
     throw new Error(`${label} không hợp lệ.`);
   }
   return normalized;
+}
+
+function normalizeUrl(value, label) {
+  try {
+    const url = new URL(String(value || '').trim());
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      throw new Error();
+    }
+    return url.toString();
+  } catch {
+    throw new Error(`${label} phải là URL hợp lệ.`);
+  }
 }
 
 async function safeJson(response) {

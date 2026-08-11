@@ -1,4 +1,5 @@
 let client = null;
+let publicClient = null;
 
 export function getSupabaseStatus() {
   const config = readSupabaseConfig();
@@ -26,7 +27,29 @@ export function getSupabaseClient() {
   return client;
 }
 
+export function getPublicSupabaseClient() {
+  const status = getSupabaseStatus();
+  if (!status.configured) return null;
+
+  if (!publicClient) {
+    const config = readSupabaseConfig();
+    publicClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        persistSession: false,
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${config.supabaseAnonKey}`,
+        },
+      },
+    });
+  }
+
+  return publicClient;
+}
+
 function readSupabaseConfig() {
   return window.DHL_CONFIG || {};
 }
-

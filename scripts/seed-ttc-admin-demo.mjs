@@ -1,5 +1,5 @@
 const SUPABASE_URL = process.env.SUPABASE_URL?.replace(/\/+$/, '');
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 const SEED_KEY = 'admin_ttc_demo_v1';
 
 main().catch((error) => {
@@ -9,11 +9,12 @@ main().catch((error) => {
 
 async function main() {
   if (!SUPABASE_URL) throw new Error('Missing SUPABASE_URL.');
-  if (!SERVICE_KEY) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY.');
+  if (!SERVICE_KEY) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_KEY.');
 
   const users = await rest('user_profiles', {
     select: 'user_id,display_name,email,user_facebook_accounts(id,facebook_id,facebook_id_status)',
     status: 'eq.active',
+    'metadata->>qa_seed': 'eq.dhl_qa_seed_v1',
     order: 'created_at.desc',
     limit: '20',
   });
@@ -21,21 +22,26 @@ async function main() {
   if (demoWorkers.length < 2) throw new Error('Need at least 2 active users with Facebook accounts for TTC demo tasks.');
 
   const campaigns = await rest('ttc_campaigns', {
-    select: 'id,owner_user_id,interaction_type_code,target_url,status',
+    select: 'id,owner_user_id,interaction_type_code,target_url,status,idempotency_key,metadata',
+    idempotency_key: 'eq.qa-owner-like-v1',
+    'metadata->>qa_seed': 'eq.dhl_qa_seed_v1',
     order: 'created_at.desc',
     limit: '6',
   });
-  if (!campaigns.length) throw new Error('Need at least 1 TTC campaign before seeding admin demo tasks.');
+  if (!campaigns.length) throw new Error('Need the QA TTC campaign before seeding admin demo tasks. Run seed-qa-live first.');
 
   const tasks = await rest('ttc_tasks', {
     select: 'id,campaign_id,sequence_no,status',
     campaign_id: `in.(${campaigns.map((campaign) => campaign.id).join(',')})`,
+    'metadata->>qa_seed': 'eq.dhl_qa_seed_v1',
     order: 'campaign_id.asc,sequence_no.asc',
     limit: '30',
   });
   if (!tasks.length) throw new Error('No TTC tasks found for existing campaigns.');
 
-  const demoTasks = tasks.slice(0, 5);
+  await resetQaTasks(campaigns[0].id);
+
+  const demoTasks = tasks.slice(0, demoWorkers.length);
   for (let index = 0; index < demoTasks.length; index += 1) {
     const task = demoTasks[index];
     const worker = demoWorkers[index % demoWorkers.length];
@@ -84,6 +90,25 @@ async function main() {
   }
 
   console.log(`Seeded TTC admin demo: ${demoTasks.length} review tasks, check logs ready.`);
+}
+
+async function resetQaTasks(campaignId) {
+  await restUpdate('ttc_tasks', {
+    campaign_id: `eq.${campaignId}`,
+  }, {
+    assignee_user_id: null,
+    worker_facebook_account_id: null,
+    worker_facebook_id: null,
+    status: 'available',
+    claimed_at: null,
+    submitted_at: null,
+    expires_at: null,
+    evidence: {},
+    metadata: {
+      qa_seed: 'dhl_qa_seed_v1',
+      note: 'Available task for QA worker account.',
+    },
+  });
 }
 
 async function rest(table, params = {}) {

@@ -1,13 +1,17 @@
 import { EmptyState } from '../components/EmptyState.js';
 import { bindFacebookIdResolvers, FacebookIdResolverFields } from '../components/FacebookIdResolver.js';
+import { Modal } from '../components/Modal.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { Toast } from '../components/Toast.js';
 import { TtcService } from '../services/TtcService.js';
 import { UserProfileService } from '../services/UserProfileService.js';
 import { WalletService } from '../services/WalletService.js';
-import { isMissingDatabaseFeatureError, migrationRequiredMessage } from '../utils/databaseFeature.js';
+import { isMissingDatabaseFeatureError } from '../utils/databaseFeature.js';
 import { formatDateTime } from '../utils/date.js';
 import { escapeHtml } from '../utils/html.js';
+
+const FACEBOOK_ACTIONS = ['like', 'follow', 'comment', 'reaction', 'share', 'join_group'];
+const OPENED_TASKS_STORAGE_KEY = 'dhlOpenedTtcTasks';
 
 const state = {
   facebookAccounts: [],
@@ -22,13 +26,17 @@ const state = {
   taskInteractionType: '',
   requestedAction: '',
   campaignSearchTerm: '',
+  campaignStatusFilter: '',
+  campaignServiceFilter: '',
+  campaignDateFrom: '',
+  campaignDateTo: '',
   availableTaskSearchTerm: '',
   myTaskSearchTerm: '',
   walletHistorySearchTerm: '',
   walletLedger: [],
+  campaignWorkflowTab: 'create',
+  openedTaskKeys: loadOpenedTaskKeys(),
 };
-
-const FACEBOOK_ACTIONS = ['like', 'follow', 'comment', 'reaction', 'share', 'join_group'];
 
 const TTC_ROUTE_CONFIG = {
   ttc: {
@@ -43,14 +51,14 @@ const TTC_ROUTE_CONFIG = {
   },
   'ttc-campaign-create': {
     tab: 'boost',
-    title: 'Tạo tăng tương tác',
+    title: 'Tăng Tương Tác',
     description: 'Chọn loại tương tác Facebook, nhập link mục tiêu và số lượng; hệ thống tự trừ xu theo đơn giá cấu hình.',
     mode: 'create-campaign',
   },
   'ttc-campaigns': {
     tab: 'boost',
     title: 'Tăng tương tác của tôi',
-    description: 'Theo dõi tiến độ các lượt tăng tương tác Facebook đã tạo.',
+    description: 'Quản lý các chiến dịch/đơn tăng tương tác đã tạo, không trộn với lịch sử ví.',
     mode: 'my-campaigns',
   },
   'ttc-wallet': {
@@ -73,7 +81,11 @@ export function TtcPage({ route = 'ttc' } = {}) {
   const view = TTC_ROUTE_CONFIG[route] || TTC_ROUTE_CONFIG.ttc;
   const showWorkflowTabs = route === 'ttc';
   const showInlineCampaignActions = route === 'ttc';
-  const showInlineTaskActions = route === 'ttc';
+  const showCampaignServiceTabs = route === 'ttc-campaign-create';
+  const showInlineTaskActions = route === 'ttc' || route === 'ttc-earn';
+  const showCampaignWorkflowTabs = route === 'ttc-campaign-create';
+  state.campaignWorkflowTab = showCampaignWorkflowTabs ? 'create' : 'history';
+  if (view.mode === 'my-campaigns') state.campaignServiceFilter = '';
   state.activeTab = view.tab;
   return `
     ${PageHeader({
@@ -108,8 +120,15 @@ export function TtcPage({ route = 'ttc' } = {}) {
       </section>
 
       <section class="ttc-tab-panel" data-ttc-panel="boost" ${state.activeTab === 'boost' ? '' : 'hidden'}>
+        ${showCampaignServiceTabs ? `<div class="ttc-action-tabs ttc-service-tabs" data-ttc-campaign-actions aria-label="Chọn dịch vụ tăng tương tác Facebook">
+          ${FACEBOOK_ACTIONS.map((action) => renderActionTab(action, 'campaign')).join('')}
+        </div>` : ''}
+        ${showCampaignWorkflowTabs ? `<nav class="ttc-subtabs" aria-label="Quản lý tăng tương tác">
+          ${renderCampaignWorkflowTab('create', 'Tạo chiến dịch')}
+          ${renderCampaignWorkflowTab('history', 'Lịch sử mua')}
+        </nav>` : ''}
         <div class="dashboard-grid ttc-work-grid ${view.mode ? 'single-panel-grid' : ''}">
-          ${view.mode === 'my-campaigns' ? '' : `<section class="dash-card">
+          ${view.mode === 'my-campaigns' ? '' : `<section class="dash-card" data-campaign-workflow-panel="create" ${showCampaignWorkflowTabs && state.campaignWorkflowTab !== 'create' ? 'hidden' : ''}>
             <div class="dash-card-header"><h3>Tạo tăng tương tác</h3></div>
             ${showInlineCampaignActions ? `<div class="ttc-action-tabs" data-ttc-campaign-actions aria-label="Chọn loại tương tác Facebook">
               ${FACEBOOK_ACTIONS.map((action) => renderActionTab(action, 'campaign')).join('')}
@@ -161,15 +180,29 @@ export function TtcPage({ route = 'ttc' } = {}) {
               </div>
             </form>
           </section>`}
-          ${view.mode === 'create-campaign' ? '' : `<section class="dash-card">
-            <div class="dash-card-header"><h3>Lịch sử tăng tương tác</h3></div>
-            <div class="list-search-bar">
-              <input id="ttc-my-campaign-search" class="form-control" type="search" placeholder="Tìm theo loại, link, nhãn hoặc trạng thái" aria-label="Tìm tăng tương tác của tôi" autocomplete="off">
+          <section class="dash-card" data-campaign-workflow-panel="history" ${showCampaignWorkflowTabs && state.campaignWorkflowTab !== 'history' ? 'hidden' : ''}>
+            <div class="dash-card-header"><h3>${view.mode === 'create-campaign' ? 'Lịch sử mua' : 'Tăng tương tác của tôi'}</h3></div>
+            <div class="ttc-campaign-filter-grid">
+              <input id="ttc-my-campaign-search" class="form-control" type="search" placeholder="Tìm theo mã đơn, UID/URL, dịch vụ hoặc ghi chú" aria-label="Tìm chiến dịch của tôi" autocomplete="off">
+              <select id="ttc-my-campaign-service" class="form-control" aria-label="Lọc dịch vụ">
+                <option value="">Tất cả dịch vụ</option>
+              </select>
+              <select id="ttc-my-campaign-status" class="form-control" aria-label="Lọc trạng thái">
+                <option value="">Tất cả trạng thái</option>
+                <option value="queued">Chờ chạy</option>
+                <option value="running">Đang chạy</option>
+                <option value="completed">Hoàn thành</option>
+                <option value="cancelled">Đã hủy/hoàn tiền</option>
+                <option value="failed">Lỗi</option>
+              </select>
+              <input id="ttc-my-campaign-date-from" class="form-control compact-date" type="date" aria-label="Từ ngày">
+              <input id="ttc-my-campaign-date-to" class="form-control compact-date" type="date" aria-label="Đến ngày">
+              <button class="btn-secondary compact-button" type="button" data-refresh-campaigns>Refresh</button>
             </div>
             <div id="ttc-my-campaign-list">
               ${EmptyState({ title: 'Đang tải tăng tương tác', message: 'Đang đọc danh sách TTC của bạn.' })}
             </div>
-          </section>`}
+          </section>
         </div>
       </section>
 
@@ -237,6 +270,7 @@ TtcPage.afterRender = async function afterRenderTtcPage() {
   ttcLifecycle = new AbortController();
   state.requestedAction = getRequestedAction();
   if (state.requestedAction) state.taskInteractionType = state.requestedAction;
+  const requestedCampaignId = getRequestedCampaignId();
   bindFacebookIdResolvers(document);
   syncTtcTabs();
   bindTtcEvents();
@@ -244,6 +278,7 @@ TtcPage.afterRender = async function afterRenderTtcPage() {
   await Promise.allSettled([loadInteractionTypes(), loadWallet(), loadFacebookAccounts()]);
   syncCampaignCost();
   await Promise.allSettled([loadMyCampaigns(), loadAvailableTasks(), loadMyTasks()]);
+  openRequestedCampaign(requestedCampaignId);
 };
 
 function bindTtcWalletAutoRefresh(signal) {
@@ -266,6 +301,10 @@ function renderTtcTab(tab, label) {
   return `<button class="ttc-tab-button" type="button" data-ttc-tab="${tab}" aria-selected="${state.activeTab === tab ? 'true' : 'false'}">${label}</button>`;
 }
 
+function renderCampaignWorkflowTab(tab, label) {
+  return `<button class="ttc-subtab-button" type="button" data-campaign-workflow-tab="${tab}" aria-selected="${state.campaignWorkflowTab === tab ? 'true' : 'false'}">${label}</button>`;
+}
+
 function renderActionTab(action, scope) {
   return `<button class="ttc-action-tab" type="button" data-ttc-action="${escapeHtml(action)}" data-ttc-action-scope="${escapeHtml(scope)}">${escapeHtml(actionLabel(action))}</button>`;
 }
@@ -275,6 +314,13 @@ function bindTtcEvents() {
     button.addEventListener('click', () => {
       state.activeTab = button.dataset.ttcTab || 'profile';
       syncTtcTabs();
+    });
+  });
+
+  document.querySelectorAll('[data-campaign-workflow-tab]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.campaignWorkflowTab = button.dataset.campaignWorkflowTab || 'create';
+      syncCampaignWorkflowTabs();
     });
   });
 
@@ -293,6 +339,30 @@ function bindTtcEvents() {
   document.getElementById('ttc-my-campaign-search')?.addEventListener('input', (event) => {
     state.campaignSearchTerm = event.currentTarget.value || '';
     renderMyCampaigns();
+  });
+  document.getElementById('ttc-my-campaign-service')?.addEventListener('change', (event) => {
+    state.campaignServiceFilter = event.currentTarget.value || '';
+    if (hasCreateCampaignForm() && state.campaignServiceFilter) {
+      const type = state.interactionTypes.find((item) => item.code === state.campaignServiceFilter);
+      if (type) selectCampaignAction(interactionAction(type), { silent: true });
+    }
+    syncActionTabs();
+    renderMyCampaigns();
+  });
+  document.getElementById('ttc-my-campaign-status')?.addEventListener('change', (event) => {
+    state.campaignStatusFilter = event.currentTarget.value || '';
+    renderMyCampaigns();
+  });
+  document.getElementById('ttc-my-campaign-date-from')?.addEventListener('change', (event) => {
+    state.campaignDateFrom = event.currentTarget.value || '';
+    renderMyCampaigns();
+  });
+  document.getElementById('ttc-my-campaign-date-to')?.addEventListener('change', (event) => {
+    state.campaignDateTo = event.currentTarget.value || '';
+    renderMyCampaigns();
+  });
+  document.querySelector('[data-refresh-campaigns]')?.addEventListener('click', () => {
+    loadMyCampaigns();
   });
 
   document.getElementById('ttc-task-search')?.addEventListener('input', (event) => {
@@ -333,14 +403,40 @@ function bindTtcEvents() {
     const button = event.target.closest('[data-ttc-action]');
     if (!button) return;
     selectCampaignAction(button.dataset.ttcAction || '');
+    renderMyCampaigns();
+  });
+
+  document.getElementById('ttc-my-campaign-list')?.addEventListener('click', async (event) => {
+    const detailButton = event.target.closest('[data-campaign-detail]');
+    if (detailButton) {
+      const campaign = state.myCampaigns.find((item) => String(item.id) === detailButton.dataset.campaignDetail);
+      if (campaign) openCampaignDetail(campaign);
+      return;
+    }
+    const cancelButton = event.target.closest('[data-campaign-cancel]');
+    if (!cancelButton) return;
+    await cancelMyCampaign(cancelButton.dataset.campaignCancel);
   });
 
   document.getElementById('ttc-task-list')?.addEventListener('click', async (event) => {
-    const button = event.target.closest('[data-claim-task]');
-    if (!button || state.processingTaskId) return;
-    const task = state.availableTasks.find((item) => String(item.task_id) === button.dataset.claimTask);
+    const openButton = event.target.closest('[data-open-task]');
+    if (openButton) {
+      const task = state.availableTasks.find((item) => taskStorageKey(item) === openButton.dataset.openTask);
+      if (!task) return;
+      if (!task.target_url) {
+        Toast.show('Nhiệm vụ này chưa có link mục tiêu.');
+        return;
+      }
+      markTaskOpened(task);
+      renderAvailableTasks();
+      window.open(task.target_url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    const claimButton = event.target.closest('[data-claim-task]');
+    if (!claimButton || state.processingTaskId) return;
+    const task = state.availableTasks.find((item) => taskStorageKey(item) === claimButton.dataset.claimTask);
     if (!task) return;
-    await claimTask(task, button);
+    await claimTaskReward(task, claimButton);
   });
 
   document.getElementById('ttc-my-task-list')?.addEventListener('submit', async (event) => {
@@ -351,6 +447,13 @@ function bindTtcEvents() {
     const button = form.querySelector('button[type="submit"]');
     const values = Object.fromEntries(new FormData(form));
     await submitTask(taskId, values, button);
+  });
+  document.getElementById('ttc-my-task-list')?.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-submit-owned-task]');
+    if (!button || state.processingTaskId) return;
+    await submitTask(button.dataset.submitOwnedTask, {
+      evidenceText: 'User yêu cầu hệ thống kiểm tra tự động',
+    }, button);
   });
 }
 
@@ -365,6 +468,17 @@ function syncTtcTabs() {
   });
 }
 
+function syncCampaignWorkflowTabs() {
+  document.querySelectorAll('[data-campaign-workflow-tab]').forEach((button) => {
+    const active = button.dataset.campaignWorkflowTab === state.campaignWorkflowTab;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-selected', String(active));
+  });
+  document.querySelectorAll('[data-campaign-workflow-panel]').forEach((panel) => {
+    panel.hidden = panel.dataset.campaignWorkflowPanel !== state.campaignWorkflowTab;
+  });
+}
+
 async function loadInteractionTypes() {
   const select = document.getElementById('ttc-campaign-type');
   const taskTypeSelect = document.getElementById('ttc-task-type');
@@ -373,15 +487,29 @@ async function loadInteractionTypes() {
     const { data } = await TtcService.listInteractionTypes();
     state.interactionTypes = (data || []).filter(isFacebookInteractionType);
     if (select) renderCampaignTypeOptions();
+    renderCampaignServiceFilterOptions();
     if (taskTypeSelect) renderTaskTypeOptions();
     applyRequestedAction();
+    applyDefaultCampaignAction();
+    if (select) syncCampaignCost();
     syncActionTabs();
   } catch (error) {
     showMigrationNotice(error, 'TTC');
-    const message = isMissingDatabaseFeatureError(error) ? 'Cần deploy migration TTC' : error?.message || 'Không tải được cấu hình';
+    const message = isMissingDatabaseFeatureError(error) ? userFriendlyTtcFeatureMessage('cấu hình TTC') : error?.message || 'Không tải được cấu hình';
     if (select) select.innerHTML = `<option value="">${escapeHtml(message)}</option>`;
     if (taskTypeSelect) taskTypeSelect.innerHTML = `<option value="">${escapeHtml(message)}</option>`;
   }
+}
+
+function renderCampaignServiceFilterOptions() {
+  const select = document.getElementById('ttc-my-campaign-service');
+  if (!select) return;
+  const options = state.interactionTypes
+    .filter((type) => type.is_active && isFacebookInteractionType(type))
+    .map((type) => `<option value="${escapeHtml(type.code)}">${escapeHtml(actionLabel(interactionAction(type), type.label || type.code))}</option>`)
+    .join('');
+  select.innerHTML = `<option value="">Tất cả dịch vụ</option>${options}`;
+  select.value = state.campaignServiceFilter;
 }
 
 function renderCampaignTypeOptions() {
@@ -422,6 +550,13 @@ function applyRequestedAction() {
   selectCampaignAction(state.requestedAction, { silent: true });
 }
 
+function applyDefaultCampaignAction() {
+  if (!document.querySelector('.ttc-service-tabs[data-ttc-campaign-actions]')) return;
+  if (getSelectedInteractionType()) return;
+  const firstType = state.interactionTypes.find((type) => type.is_active && isFacebookInteractionType(type));
+  if (firstType) selectCampaignAction(interactionAction(firstType), { silent: true });
+}
+
 function selectCampaignAction(action, { silent = false } = {}) {
   const select = document.getElementById('ttc-campaign-type');
   if (!select || !action) return;
@@ -433,6 +568,9 @@ function selectCampaignAction(action, { silent = false } = {}) {
     return;
   }
   select.value = matched.code;
+  state.campaignServiceFilter = matched.code;
+  const serviceFilter = document.getElementById('ttc-my-campaign-service');
+  if (serviceFilter) serviceFilter.value = matched.code;
   syncCampaignCost();
 }
 
@@ -454,12 +592,25 @@ function getRequestedAction() {
   return FACEBOOK_ACTIONS.includes(action) ? action : '';
 }
 
+function getRequestedCampaignId() {
+  return new URLSearchParams(window.location.hash.split('?')[1] || '').get('campaign') || '';
+}
+
+function openRequestedCampaign(campaignId) {
+  if (!campaignId) return;
+  const campaign = state.myCampaigns.find((item) => String(item.id) === String(campaignId));
+  if (campaign) openCampaignDetail(campaign);
+}
+
 async function loadWallet() {
   const panel = document.getElementById('ttc-wallet-panel');
   const history = document.getElementById('ttc-wallet-history');
   try {
     const { data } = await WalletService.getMyWallet();
     state.wallet = data || null;
+    window.dispatchEvent(new CustomEvent('dhl-wallet-updated', {
+      detail: { wallet: state.wallet },
+    }));
     if (panel) {
       panel.innerHTML = `
         <div class="stats-grid">
@@ -477,7 +628,7 @@ async function loadWallet() {
       panel.innerHTML = EmptyState({
         title: 'Chưa có ví xu',
         message: isMissingDatabaseFeatureError(error)
-          ? migrationRequiredMessage('ví TTC')
+          ? userFriendlyTtcFeatureMessage('ví TTC')
           : error?.message || 'Không đọc được ví.',
       });
     }
@@ -547,7 +698,7 @@ async function loadFacebookAccounts() {
     `).join('');
   } catch (error) {
     showMigrationNotice(error, 'Facebook TTC');
-    select.innerHTML = `<option value="">${escapeHtml(isMissingDatabaseFeatureError(error) ? 'Cần deploy migration TTC' : error?.message || 'Không tải được Facebook')}</option>`;
+    select.innerHTML = `<option value="">${escapeHtml(isMissingDatabaseFeatureError(error) ? userFriendlyTtcFeatureMessage('Facebook TTC') : error?.message || 'Không tải được Facebook')}</option>`;
   }
 }
 
@@ -568,6 +719,11 @@ async function createCampaign(form) {
   }
   if (state.wallet && totalCost > Number(state.wallet.balance || 0)) {
     Toast.show('Số dư xu không đủ để tạo tăng tương tác.');
+    return;
+  }
+  const targetValidation = validateCampaignTargetUrl(interactionType, values.targetUrl);
+  if (!targetValidation.valid) {
+    Toast.show(targetValidation.message);
     return;
   }
 
@@ -592,10 +748,11 @@ async function createCampaign(form) {
     Toast.show('Đã tạo tăng tương tác và trừ xu.');
     form.reset();
     await Promise.allSettled([loadWallet(), loadMyCampaigns(), loadAvailableTasks()]);
+    applyRequestedAction();
     syncCampaignCost();
   } catch (error) {
     Toast.show(isMissingDatabaseFeatureError(error)
-      ? migrationRequiredMessage('tạo tăng tương tác TTC')
+      ? userFriendlyTtcFeatureMessage('tạo tăng tương tác TTC')
       : error?.message || 'Không thể tạo tăng tương tác.');
   } finally {
     button.disabled = false;
@@ -665,11 +822,50 @@ function actionLabel(action, fallback = '') {
   }[action] || fallback || action || 'Tương tác';
 }
 
+function validateCampaignTargetUrl(interactionType, targetUrl) {
+  const action = interactionAction(interactionType);
+  const url = String(targetUrl || '').trim();
+  if (!url) return { valid: false, message: 'Vui lòng nhập link mục tiêu.' };
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { valid: false, message: 'Link mục tiêu không hợp lệ.' };
+  }
+  if (!/(^|\.)facebook\.com$/i.test(parsed.hostname)) {
+    return { valid: false, message: 'Link mục tiêu phải là link Facebook.' };
+  }
+  if (['like', 'reaction', 'comment', 'share'].includes(action) && !isFacebookContentUrl(parsed)) {
+    return {
+      valid: false,
+      message: 'Nhiệm vụ like/cảm xúc/comment/share phải dùng link bài viết, ảnh, video, reel hoặc story cụ thể.',
+    };
+  }
+  return { valid: true };
+}
+
+function isFacebookContentUrl(parsed) {
+  const path = parsed.pathname.toLowerCase();
+  if (path === '/story.php' && parsed.searchParams.get('story_fbid')) return true;
+  return [
+    '/posts/',
+    '/videos/',
+    '/reel/',
+    '/photo/',
+    '/photos/',
+    '/permalink.php',
+    '/watch/',
+    '/share/p/',
+    '/share/v/',
+    '/share/r/',
+  ].some((part) => path.includes(part));
+}
+
 async function loadMyCampaigns() {
   const list = document.getElementById('ttc-my-campaign-list');
   if (!list) return;
   try {
-    const { data } = await TtcService.listMyCampaigns({ page: 1, pageSize: 10 });
+    const { data } = await TtcService.listMyCampaigns({ page: 1, pageSize: 50 });
     state.myCampaigns = data || [];
     renderMyCampaigns();
   } catch (error) {
@@ -677,7 +873,7 @@ async function loadMyCampaigns() {
     list.innerHTML = EmptyState({
       title: 'Không tải được tăng tương tác',
       message: isMissingDatabaseFeatureError(error)
-        ? migrationRequiredMessage('tăng tương tác TTC')
+        ? userFriendlyTtcFeatureMessage('tăng tương tác TTC')
         : error?.message || 'Vui lòng thử lại sau.',
     });
   }
@@ -701,16 +897,129 @@ function renderMyCampaigns() {
     });
     return;
   }
-  list.innerHTML = campaigns.map((campaign) => `
-      <div class="recent-item">
-        <div>
-          <div class="expiring-name">${escapeHtml(campaignTypeLabel(campaign))}</div>
-          <div class="expiring-date">${escapeHtml(campaign.target_label || campaign.target_url || '')}</div>
-          <div class="expiring-date">${campaign.completed_count || 0}/${campaign.target_quantity || 0} hoàn thành · ${formatDateTime(campaign.created_at)}</div>
+  list.innerHTML = `
+    <div class="report-table-wrap ttc-campaign-table-wrap">
+      <table class="data-table ttc-campaign-table">
+        <thead>
+          <tr>
+            <th>Mã đơn</th>
+            <th>UID / URL mục tiêu</th>
+            <th>Dịch vụ</th>
+            <th>Trạng thái</th>
+            <th>Số lượng</th>
+            <th>Tiến độ</th>
+            <th>Đơn giá</th>
+            <th>Tổng chi phí</th>
+            <th>Thời gian</th>
+            <th>Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${campaigns.map(renderCampaignRow).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderCampaignRow(campaign) {
+  const targetQuantity = Number(campaign.target_quantity || 0);
+  const completedCount = Number(campaign.completed_count || 0);
+  const remainingCount = Math.max(0, targetQuantity - completedCount);
+  const totalCost = Number(campaign.reserved_amount || (Number(campaign.unit_cost || 0) * targetQuantity));
+  const canCancel = ['draft', 'queued', 'running', 'paused'].includes(campaign.status) && remainingCount > 0;
+  return `
+    <tr>
+      <td class="tabular-cell">#${escapeHtml(String(campaign.id || '—'))}</td>
+      <td class="ttc-campaign-target-cell">
+        <strong>${escapeHtml(campaign.target_facebook_id || 'Chưa có UID')}</strong>
+        <span>${escapeHtml(campaign.target_url || campaign.target_label || '—')}</span>
+      </td>
+      <td>${escapeHtml(campaignTypeLabel(campaign))}</td>
+      <td><span class="status-pill ${campaignStatusTone(campaign.status)}">${escapeHtml(campaignStatusLabel(campaign.status))}</span></td>
+      <td class="tabular-cell">${formatNumber(targetQuantity)}</td>
+      <td class="tabular-cell">${formatNumber(completedCount)} / ${formatNumber(remainingCount)}</td>
+      <td class="tabular-cell">${formatNumber(campaign.unit_cost || 0)} xu</td>
+      <td class="tabular-cell">${formatNumber(totalCost)} xu</td>
+      <td>
+        <div class="compact-date">${formatDateTime(campaign.created_at)}</div>
+        <div class="muted-text">${formatDateTime(campaign.updated_at)}</div>
+      </td>
+      <td>
+        <div class="table-action-stack">
+          <button class="btn-secondary compact-button" type="button" data-campaign-detail="${escapeHtml(String(campaign.id || ''))}">Chi tiết</button>
+          ${canCancel ? `<button class="table-cancel-button" type="button" data-campaign-cancel="${escapeHtml(String(campaign.id || ''))}">Hủy</button>` : ''}
         </div>
-        <span class="status-pill ${campaign.status === 'completed' ? 'success' : ''}">${escapeHtml(campaignStatusLabel(campaign.status))}</span>
+      </td>
+    </tr>
+  `;
+}
+
+function openCampaignDetail(campaign) {
+  const targetQuantity = Number(campaign.target_quantity || 0);
+  const completedCount = Number(campaign.completed_count || 0);
+  const remainingCount = Math.max(0, targetQuantity - completedCount);
+  const relatedTasks = state.myTasks.filter((task) => Number(task.campaign_id) === Number(campaign.id));
+  Modal.open({
+    title: `Chi tiết chiến dịch #${campaign.id || '—'}`,
+    className: 'modal-wide',
+    body: `
+      <div class="admin-user-modal-grid compact">
+        ${renderCampaignModalStat('Dịch vụ', campaignTypeLabel(campaign))}
+        ${renderCampaignModalStat('Trạng thái', campaignStatusLabel(campaign.status))}
+        ${renderCampaignModalStat('Tiến độ', `${formatNumber(completedCount)} hoàn thành / ${formatNumber(remainingCount)} còn lại`)}
+        ${renderCampaignModalStat('Đơn giá', `${formatNumber(campaign.unit_cost || 0)} xu`)}
+        ${renderCampaignModalStat('Tổng chi phí', `${formatNumber(campaign.reserved_amount || 0)} xu`)}
+        ${renderCampaignModalStat('Đã hoàn', `${formatNumber(campaign.refunded_amount || 0)} xu`)}
       </div>
-    `).join('');
+      <div class="settings-list ttc-campaign-detail-list">
+        <div class="settings-row"><span>UID mục tiêu</span><strong>${escapeHtml(campaign.target_facebook_id || 'Chưa có')}</strong></div>
+        <div class="settings-row"><span>URL mục tiêu</span><strong>${escapeHtml(campaign.target_url || '—')}</strong></div>
+        <div class="settings-row"><span>Nhãn/Ghi chú</span><strong>${escapeHtml(campaign.target_label || campaign.admin_reason || campaign.metadata?.note || '—')}</strong></div>
+        <div class="settings-row"><span>Thời gian tạo</span><strong>${formatDateTime(campaign.created_at)}</strong></div>
+        <div class="settings-row"><span>Cập nhật</span><strong>${formatDateTime(campaign.updated_at)}</strong></div>
+      </div>
+      <div class="dash-card-header compact-card-header"><h3>Nhiệm vụ phát sinh</h3></div>
+      ${relatedTasks.length ? `
+        <div class="quick-ledger-list">
+          ${relatedTasks.map((task) => `
+            <div class="quick-ledger-row">
+              <strong>#${escapeHtml(String(task.task_id || task.id || '—'))}</strong>
+              <span>${escapeHtml(statusLabel(task.status))} · ${formatDateTime(task.updated_at)}</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : '<p class="muted-text">Chưa có nhiệm vụ phát sinh trong dữ liệu hiện tại.</p>'}
+    `,
+  });
+}
+
+function renderCampaignModalStat(label, value) {
+  return `
+    <div class="admin-user-modal-stat">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(String(value ?? '—'))}</strong>
+    </div>
+  `;
+}
+
+async function cancelMyCampaign(campaignId) {
+  const campaign = state.myCampaigns.find((item) => String(item.id) === String(campaignId));
+  if (!campaign) {
+    Toast.show('Không tìm thấy chiến dịch.');
+    return;
+  }
+  const reason = window.prompt(`Nhập lý do hủy chiến dịch #${campaign.id}:`);
+  if (!reason?.trim()) return;
+  try {
+    await TtcService.cancelCampaign(campaign.id, reason.trim());
+    Toast.show('Đã gửi yêu cầu hủy/hoàn xu phần còn lại.');
+    await Promise.allSettled([loadMyCampaigns(), loadWallet()]);
+  } catch (error) {
+    Toast.show(isMissingDatabaseFeatureError(error)
+      ? userFriendlyTtcFeatureMessage('hủy chiến dịch TTC')
+      : error?.message || 'Không hủy được chiến dịch.');
+  }
 }
 
 async function loadAvailableTasks() {
@@ -734,7 +1043,7 @@ async function loadAvailableTasks() {
     list.innerHTML = EmptyState({
       title: 'Chưa thể tải nhiệm vụ',
       message: isMissingDatabaseFeatureError(error)
-        ? migrationRequiredMessage('danh sách nhiệm vụ TTC')
+        ? userFriendlyTtcFeatureMessage('danh sách nhiệm vụ TTC')
         : error?.message || 'Vui lòng hoàn thiện hồ sơ và Facebook ID trước.',
     });
   }
@@ -771,18 +1080,32 @@ function renderAvailableTasks() {
     });
     return;
   }
-  list.innerHTML = filteredData.map((task) => `
-    <div class="recent-item">
-      <div>
-        <div class="expiring-name">${escapeHtml(taskInteractionLabel(task))}</div>
-        <div class="expiring-date">${escapeHtml(task.target_label || task.target_url || '')}</div>
+  list.innerHTML = filteredData.map(renderAvailableTask).join('');
+}
+
+function renderAvailableTask(task) {
+  const opened = hasOpenedTask(task);
+  const reward = `${escapeHtml(String(task.worker_reward || 0))} xu`;
+  const action = taskAction(task);
+  return `
+    <div class="ttc-task-action-card">
+      <button class="ttc-task-action-icon" type="button" data-open-task="${escapeHtml(taskStorageKey(task))}" aria-label="Mở nhiệm vụ ${escapeHtml(actionLabel(action))}">
+        ${taskActionIcon(action)}
+      </button>
+      <div class="ttc-task-action-copy">
+        <div class="expiring-name">${escapeHtml(actionLabel(action, taskInteractionLabel(task)))}</div>
+        <div class="expiring-date">${escapeHtml(compactTaskTarget(task))}</div>
       </div>
-      <div class="item-actions">
-        <span class="status-pill success">+${escapeHtml(String(task.worker_reward || 0))} xu</span>
-        <button class="btn-secondary compact-button" type="button" data-claim-task="${task.task_id}">Nhận</button>
+      <div class="ttc-task-action-controls">
+        ${opened
+          ? `<button class="btn-primary compact-button" type="button" data-claim-task="${escapeHtml(taskStorageKey(task))}">Gửi kiểm tra</button>`
+          : `
+            <button class="btn-secondary compact-button" type="button" data-open-task="${escapeHtml(taskStorageKey(task))}">Mở bài viết</button>
+            <span class="status-pill success">+${reward}</span>
+          `}
       </div>
     </div>
-  `).join('');
+  `;
 }
 
 function filterTasksByPlatform(tasks) {
@@ -813,21 +1136,110 @@ function taskInteractionLabel(task) {
   return String(task?.interaction_label || fallback).replace(/^Facebook\s*[-·]\s*/i, '');
 }
 
+function compactTaskTarget(task) {
+  if (task.target_label) return task.target_label;
+  const url = String(task.target_url || '');
+  if (!url) return 'Mở link để thực hiện nhiệm vụ';
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname.replace(/^www\./, '');
+  } catch {
+    return 'Mở link để thực hiện nhiệm vụ';
+  }
+}
+
+function taskActionIcon(action) {
+  const icons = {
+    like: '<svg viewBox="0 0 24 24"><path d="M8 21H4V9h4v12Zm2-11 4-7c.8.1 1.5.5 1.9 1.1.4.6.5 1.3.3 2.1L15.6 9H20c.7 0 1.3.3 1.7.8.4.5.5 1.1.3 1.8l-1.5 6.1c-.5 2-1.8 3.3-3.8 3.3H10V10Z"/></svg>',
+    follow: '<svg viewBox="0 0 24 24"><path d="M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 9c.6-4.3 3-6.5 7-6.5 1.2 0 2.3.2 3.2.6A6 6 0 0 0 12 20H3Zm14-8v3h-3v3h3v3h3v-3h3v-3h-3v-3h-3Z"/></svg>',
+    comment: '<svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4V5Zm4 4v2h8V9H8Zm0 4v2h6v-2H8Z"/></svg>',
+    reaction: '<svg viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM8 10h2v2H8v-2Zm6 0h2v2h-2v-2Zm-6 5h8c-.8 1.6-2.1 2.4-4 2.4S8.8 16.6 8 15Z"/></svg>',
+    share: '<svg viewBox="0 0 24 24"><path d="M18 16.1c-1 0-1.8.4-2.4 1.1L8.9 13.8a3.2 3.2 0 0 0 0-1.6l6.7-3.4A3 3 0 1 0 15 7c0 .2 0 .4.1.6L8.4 11A3 3 0 1 0 8.4 15l6.7 3.4A3 3 0 1 0 18 16.1Z"/></svg>',
+    join_group: '<svg viewBox="0 0 24 24"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM2 20c.5-4 2.5-6 6-6s5.5 2 6 6H2Zm10.8-5.5c.9-.4 2-.5 3.2-.5 3.5 0 5.5 2 6 6h-5.5a7.5 7.5 0 0 0-3.7-5.5Z"/></svg>',
+  };
+  return icons[action] || icons.like;
+}
+
+function taskStorageKey(task) {
+  const id = String(task?.task_id || task?.campaign_id || '');
+  const target = String(task?.target_url || '');
+  return id && target ? `${id}:${target}` : id;
+}
+
+function hasOpenedTask(task) {
+  return state.openedTaskKeys.has(taskStorageKey(task));
+}
+
+function markTaskOpened(task) {
+  const key = taskStorageKey(task);
+  if (!key) return;
+  state.openedTaskKeys.add(key);
+  saveOpenedTaskKeys();
+}
+
+function clearOpenedTask(task) {
+  const key = taskStorageKey(task);
+  if (!key) return;
+  state.openedTaskKeys.delete(key);
+  saveOpenedTaskKeys();
+}
+
+function loadOpenedTaskKeys() {
+  try {
+    const raw = localStorage.getItem(OPENED_TASKS_STORAGE_KEY);
+    const values = JSON.parse(raw || '[]');
+    return new Set(Array.isArray(values) ? values.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveOpenedTaskKeys() {
+  try {
+    localStorage.setItem(OPENED_TASKS_STORAGE_KEY, JSON.stringify(Array.from(state.openedTaskKeys)));
+  } catch {
+    // Ignore storage errors; task claiming still works in the current session.
+  }
+}
+
 function filterMyCampaigns(campaigns) {
+  const serviceFilter = isPurchaseHistoryMode()
+    ? getSelectedInteractionType()?.code || state.campaignServiceFilter
+    : state.campaignServiceFilter;
+  const statusFilter = state.campaignStatusFilter;
+  const dateFrom = state.campaignDateFrom ? new Date(`${state.campaignDateFrom}T00:00:00`) : null;
+  const dateTo = state.campaignDateTo ? new Date(`${state.campaignDateTo}T23:59:59`) : null;
   const query = normalizeSearch(state.campaignSearchTerm);
-  if (!query) return campaigns;
-  return campaigns.filter((campaign) => [
+  return campaigns.filter((campaign) => {
+    if (serviceFilter && campaign.interaction_type_code !== serviceFilter) return false;
+    if (statusFilter && campaign.status !== statusFilter) return false;
+    const createdAt = campaign.created_at ? new Date(campaign.created_at) : null;
+    if (dateFrom && createdAt && createdAt < dateFrom) return false;
+    if (dateTo && createdAt && createdAt > dateTo) return false;
+    if (!query) return true;
+    return [
     campaign.id,
     campaignTypeLabel(campaign),
     campaign.interaction_type_code,
+    campaign.target_facebook_id,
     campaign.target_label,
     campaign.target_url,
     campaign.completed_count,
     campaign.target_quantity,
+    campaign.unit_cost,
+    campaign.reserved_amount,
+    campaign.admin_reason,
+    campaign.metadata?.note,
     campaign.status,
     campaignStatusLabel(campaign.status),
     campaign.created_at,
-  ].map(normalizeSearch).join(' ').includes(query));
+    campaign.updated_at,
+    ].map(normalizeSearch).join(' ').includes(query);
+  });
+}
+
+function isPurchaseHistoryMode() {
+  return Boolean(document.getElementById('ttc-create-campaign-form'));
 }
 
 function filterAvailableTasks(tasks) {
@@ -910,7 +1322,7 @@ async function loadMyTasks() {
     list.innerHTML = EmptyState({
       title: 'Không tải được nhiệm vụ của tôi',
       message: isMissingDatabaseFeatureError(error)
-        ? migrationRequiredMessage('nhiệm vụ của tôi')
+        ? userFriendlyTtcFeatureMessage('nhiệm vụ của tôi')
         : error?.message || 'Vui lòng thử lại sau.',
     });
   }
@@ -943,24 +1355,19 @@ function renderMyTasks() {
 function renderMyTask(task) {
   const canSubmit = ['assigned', 'submitted'].includes(task.status);
   return `
-    <div class="ttc-task-card">
-      <div class="recent-item">
-        <div>
-          <div class="expiring-name">${escapeHtml(task.interaction_label || interactionDisplayName(task.interaction_type_code) || 'TTC')}</div>
-          <div class="expiring-date">${escapeHtml(task.target_label || task.target_url || '')}</div>
-          <div class="expiring-date">Cập nhật: ${formatDateTime(task.updated_at)}</div>
-        </div>
+    <div class="ttc-task-action-card ttc-task-owned-card">
+      <span class="ttc-task-action-icon static-icon" aria-hidden="true">${taskActionIcon(taskAction(task))}</span>
+      <div class="ttc-task-action-copy">
+        <div class="expiring-name">${escapeHtml(actionLabel(taskAction(task), task.interaction_label || interactionDisplayName(task.interaction_type_code) || 'TTC'))}</div>
+        <div class="expiring-date">${escapeHtml(compactTaskTarget(task))} · ${formatDateTime(task.updated_at)}</div>
+      </div>
+      <div class="ttc-task-action-controls">
         <span class="status-pill ${statusTone(task.status)}">${escapeHtml(statusLabel(task.status))}</span>
+        ${canSubmit ? `<button class="btn-secondary compact-button" type="button" data-submit-owned-task="${escapeHtml(String(task.task_id || task.id || ''))}">Auto check</button>` : ''}
       </div>
       ${canSubmit ? `
-        <form class="ttc-evidence-form" data-submit-task-form="${task.task_id}">
-          <label class="form-group">
-            <span>Bằng chứng/link ghi chú</span>
-            <textarea class="form-control" name="evidenceText" rows="2" placeholder="Dán link, mô tả thao tác hoặc thông tin ảnh chụp"></textarea>
-          </label>
-          <div class="form-actions">
-            <button class="btn-primary compact-button" type="submit">Gửi bằng chứng</button>
-          </div>
+        <form class="ttc-evidence-form hidden" data-submit-task-form="${task.task_id}">
+          <input type="hidden" name="evidenceText" value="User yêu cầu hệ thống kiểm tra tự động">
         </form>
       ` : ''}
       ${task.rejection_reason ? `<div class="field-helper">${escapeHtml(task.rejection_reason)}</div>` : ''}
@@ -982,12 +1389,46 @@ async function claimTask(task, button) {
     document.querySelector('.ttc-my-task-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
     Toast.show(isMissingDatabaseFeatureError(error)
-      ? migrationRequiredMessage('nhận nhiệm vụ TTC')
+      ? userFriendlyTtcFeatureMessage('nhận nhiệm vụ TTC')
       : error?.message || 'Không thể nhận nhiệm vụ.');
   } finally {
     state.processingTaskId = null;
     button.disabled = false;
     button.textContent = 'Nhận';
+  }
+}
+
+async function claimTaskReward(task, button) {
+  state.processingTaskId = taskStorageKey(task);
+  button.disabled = true;
+  button.textContent = 'Đang kiểm tra Facebook...';
+  try {
+    const { data } = await TtcService.claimTask({
+      campaignId: task.campaign_id,
+      facebookAccountId: state.selectedFacebookAccountId,
+    });
+    const claimedTaskId = data?.task?.id || data?.task?.task_id || task.task_id;
+    await TtcService.submitTask(claimedTaskId, {
+      target_url: task.target_url,
+      target_label: task.target_label,
+      action: taskAction(task),
+      opened_target: true,
+      submitted_from: 'user_portal_quick_claim',
+    });
+    const verification = await TtcService.autoVerifyFacebookTask(claimedTaskId);
+    Toast.show(verification.verified && verification.credited
+      ? `Facebook đã xác minh. Đã cộng +${task.worker_reward || 0} xu.`
+      : verification.message || 'Facebook chưa xác minh nhiệm vụ, vui lòng thử lại sau.');
+    clearOpenedTask(task);
+    await Promise.allSettled([loadAvailableTasks(), loadMyTasks(), loadWallet()]);
+  } catch (error) {
+    Toast.show(isMissingDatabaseFeatureError(error)
+      ? userFriendlyTtcFeatureMessage('nhận xu nhiệm vụ TTC')
+      : error?.message || 'Không thể nhận xu nhiệm vụ.');
+  } finally {
+    state.processingTaskId = null;
+    button.disabled = false;
+    button.textContent = 'Gửi kiểm tra';
   }
 }
 
@@ -999,22 +1440,25 @@ async function submitTask(taskId, values, button) {
   }
   state.processingTaskId = taskId;
   button.disabled = true;
-  button.textContent = 'Đang gửi...';
+  button.textContent = 'Đang auto check...';
   try {
     await TtcService.submitTask(taskId, {
       text: evidenceText,
       submitted_from: 'user_portal',
     });
-    Toast.show('Đã gửi bằng chứng, chờ xác minh.');
-    await loadMyTasks();
+    const verification = await TtcService.autoVerifyFacebookTask(taskId);
+    Toast.show(verification.verified && verification.credited
+      ? 'Facebook đã xác minh. Xu đã được cộng.'
+      : verification.message || 'Facebook chưa xác minh nhiệm vụ, vui lòng thử lại sau.');
+    await Promise.allSettled([loadMyTasks(), loadWallet()]);
   } catch (error) {
     Toast.show(isMissingDatabaseFeatureError(error)
-      ? migrationRequiredMessage('gửi bằng chứng TTC')
+      ? userFriendlyTtcFeatureMessage('gửi bằng chứng TTC')
       : error?.message || 'Không thể gửi bằng chứng.');
   } finally {
     state.processingTaskId = null;
     button.disabled = false;
-    button.textContent = 'Gửi bằng chứng';
+    button.textContent = 'Auto check';
   }
 }
 
@@ -1042,6 +1486,12 @@ function statusTone(status) {
   return '';
 }
 
+function campaignStatusTone(status) {
+  if (status === 'completed') return 'success';
+  if (['cancelled', 'failed'].includes(status)) return 'danger';
+  return '';
+}
+
 function campaignStatusLabel(status) {
   return {
     draft: 'Nháp',
@@ -1054,14 +1504,29 @@ function campaignStatusLabel(status) {
   }[status] || status || '—';
 }
 
+function formatNumber(value) {
+  return new Intl.NumberFormat('vi-VN').format(Number(value || 0));
+}
+
 function showMigrationNotice(error, featureName) {
   if (!isMissingDatabaseFeatureError(error)) return;
   const notice = document.getElementById('ttc-migration-notice');
   if (!notice) return;
   notice.innerHTML = `
     <div class="notice warning">
-      <strong>Cần deploy migration</strong>
-      <span>${escapeHtml(migrationRequiredMessage(featureName))}</span>
+      <strong>Chức năng đang được cập nhật</strong>
+      <span>${escapeHtml(userFriendlyTtcFeatureMessage(featureName))}</span>
     </div>
   `;
+}
+
+function userFriendlyTtcFeatureMessage(featureName) {
+  const name = String(featureName || '');
+  if (/ví|payos|nạp|xu/i.test(name)) {
+    return 'Ví xu đang được đồng bộ. Vui lòng thử lại sau hoặc liên hệ admin để được hỗ trợ nạp xu.';
+  }
+  if (/facebook/i.test(name)) {
+    return 'Dữ liệu Facebook đang được đồng bộ. Vui lòng thử lại sau hoặc liên hệ admin nếu cần xử lý ngay.';
+  }
+  return 'Chức năng tương tác đang được cập nhật. Vui lòng thử lại sau hoặc liên hệ admin nếu cần xử lý ngay.';
 }

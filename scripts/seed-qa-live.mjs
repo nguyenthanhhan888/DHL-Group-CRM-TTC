@@ -1,8 +1,10 @@
 const SUPABASE_URL = process.env.SUPABASE_URL?.replace(/\/+$/, '');
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 const YES_LIVE = process.argv.includes('--yes-live');
 
 const PASSWORD = process.env.QA_PASSWORD || 'DHLTest@2026';
+const QA_LIKE_TARGET_URL = 'https://www.facebook.com/share/p/1Lrfe5TSbj/';
+const QA_LIKE_TARGET_LABEL = 'Bài test trong nhóm Macbook Người Dùng';
 
 const QA_USERS = [
   {
@@ -77,7 +79,7 @@ async function main() {
 
 function assertEnv() {
   if (!SUPABASE_URL) throw new Error('Missing SUPABASE_URL in environment.');
-  if (!SERVICE_KEY) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY in environment.');
+  if (!SERVICE_KEY) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SERVICE_KEY in environment.');
 }
 
 async function ensureAuthUser(qaUser, authByEmail) {
@@ -189,6 +191,20 @@ async function seedOwnerCampaign(owner) {
   );
   if (Array.isArray(existing) && existing.length) {
     console.log(`skip existing QA campaign -> ${existing[0].id}`);
+    await restFetch(`/rest/v1/ttc_campaigns?id=eq.${existing[0].id}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: {
+        target_url: QA_LIKE_TARGET_URL,
+        target_facebook_id: null,
+        target_label: QA_LIKE_TARGET_LABEL,
+        metadata: {
+          qa_seed: 'dhl_qa_seed_v1',
+          note: 'Campaign test de worker thay nhiem vu like bai viet.',
+        },
+      },
+      dryRunLabel: `update QA owner like campaign ${existing[0].id}`,
+    });
     await seedCampaignTasks(existing[0].id);
     return;
   }
@@ -199,9 +215,9 @@ async function seedOwnerCampaign(owner) {
     body: [{
       owner_user_id: owner.id,
       interaction_type_code: 'facebook_like',
-      target_url: 'https://www.facebook.com/profile.php?id=100000000310101',
-      target_facebook_id: '100000000310101',
-      target_label: 'QA Facebook Like Target',
+      target_url: QA_LIKE_TARGET_URL,
+      target_facebook_id: null,
+      target_label: QA_LIKE_TARGET_LABEL,
       target_quantity: 10,
       unit_cost: 200,
       worker_reward: 100,
@@ -210,7 +226,7 @@ async function seedOwnerCampaign(owner) {
       idempotency_key: 'qa-owner-like-v1',
       metadata: {
         qa_seed: 'dhl_qa_seed_v1',
-        note: 'Campaign test de worker thay nhiem vu like.',
+        note: 'Campaign test de worker thay nhiem vu like bai viet.',
       },
     }],
     dryRunLabel: 'insert QA owner like campaign',

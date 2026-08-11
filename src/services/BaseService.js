@@ -1,7 +1,15 @@
-import { getSupabaseClient } from '../supabase/client.js';
+import { getPublicSupabaseClient, getSupabaseClient } from '../supabase/client.js';
 
 export function requireSupabaseClient() {
   const client = getSupabaseClient();
+  if (!client) {
+    throw new Error('Supabase chưa được cấu hình. Kiểm tra config.local.js.');
+  }
+  return client;
+}
+
+export function requirePublicSupabaseClient() {
+  const client = getPublicSupabaseClient();
   if (!client) {
     throw new Error('Supabase chưa được cấu hình. Kiểm tra config.local.js.');
   }

@@ -662,7 +662,6 @@ function paymentMethodLabel(value) {
     transfer: 'Chuyển khoản',
     bank_transfer: 'Chuyển khoản NH',
     cash: 'Tiền mặt',
-    other: 'Khác',
     momo: 'Momo',
     import_excel: 'Dữ liệu nhập từ Excel',
     unknown: 'Không rõ',

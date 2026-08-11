@@ -11,5 +11,5 @@ export function isMissingDatabaseFeatureError(error) {
 }
 
 export function migrationRequiredMessage(featureName = 'chức năng này') {
-  return `Cần deploy migration TTC/PayOS để dùng ${featureName}.`;
+  return `${featureName} đang được cập nhật dữ liệu. Vui lòng thử lại sau hoặc liên hệ admin nếu cần xử lý ngay.`;
 }

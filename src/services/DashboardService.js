@@ -1,4 +1,5 @@
 import { requireSupabaseClient, runQuery } from './BaseService.js';
+import { KioskService } from './KioskService.js';
 import { RevenueService } from './RevenueService.js';
 
 export const DashboardService = {
@@ -16,6 +17,7 @@ export const DashboardService = {
     const summary = dashboard.summary || {};
     const charts = dashboard.charts || {};
     const lists = dashboard.lists || {};
+    const expiringKiosks = await getExpiringKiosks();
 
     return {
       summary: {
@@ -24,7 +26,7 @@ export const DashboardService = {
         activeKiosks: toCount(summary.activeKiosks),
         pendingKiosks: toCount(summary.pendingKiosks),
         expiredKiosks: toCount(summary.expiredKiosks),
-        expiringSoon: toCount(summary.expiringSoon),
+        expiringSoon: expiringKiosks.count,
         revenueThisMonth: RevenueService.toAmount(summary.revenueThisMonth),
         revenueThisYear: RevenueService.toAmount(summary.revenueThisYear),
       },
@@ -38,7 +40,7 @@ export const DashboardService = {
           : [],
       },
       lists: {
-        expiringKiosks: Array.isArray(lists.expiringKiosks) ? lists.expiringKiosks : [],
+        expiringKiosks: expiringKiosks.data,
         recentCustomers: Array.isArray(lists.recentCustomers) ? lists.recentCustomers : [],
       },
       year: toCount(dashboard.year) || year,
@@ -47,6 +49,17 @@ export const DashboardService = {
     };
   },
 };
+
+async function getExpiringKiosks() {
+  const { data, count } = await KioskService.list({
+    status: 'warning',
+    pagination: { page: 1, pageSize: 24 },
+  });
+  return {
+    data: Array.isArray(data) ? data : [],
+    count: Number.isFinite(Number(count)) ? Number(count) : (data || []).length,
+  };
+}
 
 function toCount(value) {
   const count = Number(value);

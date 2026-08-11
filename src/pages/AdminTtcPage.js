@@ -1,11 +1,13 @@
 import { EmptyState } from '../components/EmptyState.js';
 import { bindFacebookIdResolvers, FacebookIdResolverFields } from '../components/FacebookIdResolver.js';
+import { Modal } from '../components/Modal.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { Toast } from '../components/Toast.js';
+import { PAGE_TITLES } from '../constants/navigation.js';
 import { AnnouncementService } from '../services/AnnouncementService.js';
 import { TtcAdminService } from '../services/TtcAdminService.js';
 import { getUserAvatarPath } from '../utils/avatar.js';
-import { isMissingDatabaseFeatureError, migrationRequiredMessage } from '../utils/databaseFeature.js';
+import { isMissingDatabaseFeatureError } from '../utils/databaseFeature.js';
 import { formatDateTime } from '../utils/date.js';
 import { escapeHtml } from '../utils/html.js';
 
@@ -21,6 +23,7 @@ const state = {
   walletUserSearchTerm: '',
   campaignSearchTerm: '',
   campaignTab: 'all',
+  createCampaignTab: 'owner',
   reviewTaskTab: 'pending',
   userTab: 'list',
   reviewTaskSearchTerm: '',
@@ -74,6 +77,28 @@ const ADMIN_TTC_ROUTE_CONFIG = {
   },
 };
 
+const USER_PERMISSION_ROUTES = [
+  'dashboard',
+  'reports',
+  'customers',
+  'kiosks',
+  'legacy-registration',
+  'payments',
+  'categories',
+  'business-types',
+  'registration-requests',
+  'admin-ttc',
+  'admin-ttc-campaigns',
+  'admin-ttc-announcements',
+  'admin-ttc-tasks',
+  'admin-ttc-users',
+  'admin-ttc-wallets',
+  'admin-ttc-settings',
+  'admin-ttc-logs',
+  'logs',
+  'settings',
+];
+
 export function AdminTtcPage({ route = 'admin' } = {}) {
   const view = ADMIN_TTC_ROUTE_CONFIG[route] || ADMIN_TTC_ROUTE_CONFIG.admin;
   const hasPanel = (panel) => view.panels.includes(panel);
@@ -97,52 +122,59 @@ export function AdminTtcPage({ route = 'admin' } = {}) {
       </section>` : ''}
       ${hasPanel('campaignCreate') ? `<section class="dash-card admin-ttc-create-card">
         <div class="dash-card-header"><h3>Tạo tăng tương tác</h3></div>
-        <form id="admin-ttc-create-campaign-form" class="stacked-form">
-          <label class="form-group">
-            <span>Tạo cho user</span>
-            <select id="admin-ttc-campaign-owner" class="form-control" name="ownerUserId" required>
-              <option value="">Đang tải user...</option>
-            </select>
-          </label>
-          <div class="form-row">
+        ${renderCreateCampaignTabs()}
+        <form id="admin-ttc-create-campaign-form" class="stacked-form admin-create-campaign-form" novalidate>
+          <div class="admin-create-tab-panel" data-admin-create-panel="owner" ${adminCreatePanelHiddenAttribute('owner')}>
             <label class="form-group">
-              <span>Loại tương tác</span>
-              <select id="admin-ttc-campaign-type" class="form-control" name="interactionType" required>
-                <option value="">Đang tải cấu hình...</option>
+              <span>Tạo cho user</span>
+              <select id="admin-ttc-campaign-owner" class="form-control" name="ownerUserId" required>
+                <option value="">Đang tải user...</option>
               </select>
             </label>
+            <div class="form-row">
+              <label class="form-group">
+                <span>Loại tương tác</span>
+                <select id="admin-ttc-campaign-type" class="form-control" name="interactionType" required>
+                  <option value="">Đang tải cấu hình...</option>
+                </select>
+              </label>
+              <label class="form-group">
+                <span>Số lượng</span>
+                <input id="admin-ttc-campaign-quantity" class="form-control" name="targetQuantity" type="number" min="1" step="1" value="10" inputmode="numeric" required>
+              </label>
+            </div>
+            <div id="admin-ttc-campaign-cost" class="ttc-cost-summary">Chọn loại tương tác để xem đơn giá.</div>
+          </div>
+          <div class="admin-create-tab-panel" data-admin-create-panel="target" ${adminCreatePanelHiddenAttribute('target')}>
+            ${FacebookIdResolverFields({
+              urlId: 'admin-ttc-target-url',
+              idId: 'admin-ttc-target-facebook-id',
+              requiredUrl: true,
+              requiredId: false,
+              manualFallback: 'always',
+              prefix: 'admin-ttc-target',
+              urlAttributes: 'name="targetUrl"',
+              idAttributes: 'name="targetFacebookId"',
+              urlLabel: 'Link mục tiêu',
+              idLabel: 'ID mục tiêu',
+              buttonLabel: 'Lấy ID',
+              helperText: 'Dán link Facebook mục tiêu rồi bấm Lấy ID nếu cần hệ thống tự nhận diện.',
+            })}
             <label class="form-group">
-              <span>Số lượng</span>
-              <input id="admin-ttc-campaign-quantity" class="form-control" name="targetQuantity" type="number" min="1" step="1" value="10" required>
+              <span>Nhãn mục tiêu</span>
+              <input class="form-control" name="targetLabel" placeholder="Tên bài viết, page hoặc group">
             </label>
           </div>
-          ${FacebookIdResolverFields({
-            urlId: 'admin-ttc-target-url',
-            idId: 'admin-ttc-target-facebook-id',
-            requiredUrl: true,
-            requiredId: false,
-            manualFallback: 'always',
-            prefix: 'admin-ttc-target',
-            urlAttributes: 'name="targetUrl"',
-            idAttributes: 'name="targetFacebookId"',
-            urlLabel: 'Link mục tiêu',
-            idLabel: 'ID mục tiêu',
-            buttonLabel: 'Lấy ID',
-            helperText: 'Dán link Facebook mục tiêu rồi bấm Lấy ID nếu cần hệ thống tự nhận diện.',
-          })}
-          <label class="form-group">
-            <span>Nhãn mục tiêu</span>
-            <input class="form-control" name="targetLabel" placeholder="Tên bài viết, page hoặc group">
-          </label>
-          <label class="form-group" data-admin-comment-options-field hidden>
-            <span>Nội dung comment gợi ý</span>
-            <textarea class="form-control" name="commentOptions" rows="2" placeholder="Mỗi dòng là một nội dung comment"></textarea>
-          </label>
-          <label class="form-group">
-            <span>Lý do admin tạo</span>
-            <input class="form-control" name="reason" placeholder="Ví dụ: tạo giúp user theo yêu cầu">
-          </label>
-          <div id="admin-ttc-campaign-cost" class="ttc-cost-summary">Chọn loại tương tác để xem đơn giá.</div>
+          <div class="admin-create-tab-panel" data-admin-create-panel="notes" ${adminCreatePanelHiddenAttribute('notes')}>
+            <label class="form-group" data-admin-comment-options-field hidden>
+              <span>Nội dung comment gợi ý</span>
+              <textarea class="form-control" name="commentOptions" rows="2" placeholder="Mỗi dòng là một nội dung comment"></textarea>
+            </label>
+            <label class="form-group">
+              <span>Lý do admin tạo</span>
+              <input class="form-control" name="reason" placeholder="Ví dụ: tạo giúp user theo yêu cầu">
+            </label>
+          </div>
           <div class="form-actions"><button class="btn-primary" type="submit">Tạo tăng tương tác</button></div>
         </form>
       </section>` : ''}
@@ -204,7 +236,7 @@ export function AdminTtcPage({ route = 'admin' } = {}) {
           <div class="dash-card-header compact-card-header"><h3>Điều chỉnh ví</h3></div>
           <label class="form-group">
             <span>Tìm user</span>
-            <input id="admin-wallet-user-search" class="form-control" type="search" placeholder="Gõ tên, email, SĐT hoặc Facebook ID để lọc nhanh">
+            <input id="admin-wallet-user-search" class="form-control" type="search" placeholder="Gõ tên, username, email, SĐT hoặc Facebook ID để lọc nhanh">
           </label>
           <label class="form-group">
             <span>User</span>
@@ -214,7 +246,18 @@ export function AdminTtcPage({ route = 'admin' } = {}) {
           </label>
           <div class="form-row">
             <label class="form-group"><span>Số xu</span><input class="form-control" name="amount" type="number" step="1" required></label>
-            <label class="form-group"><span>Mô tả</span><input class="form-control" name="description" placeholder="Cộng thưởng, trừ sai phạm..."></label>
+            <label class="form-group">
+              <span>Loại điều chỉnh</span>
+              <select class="form-control" name="description" required>
+                <option value="">Chọn loại điều chỉnh</option>
+                <option value="Cộng tiền">Cộng tiền</option>
+                <option value="Trừ tiền">Trừ tiền</option>
+                <option value="Thưởng">Thưởng</option>
+                <option value="Hoàn tiền">Hoàn tiền</option>
+                <option value="Trừ sai phạm">Trừ sai phạm</option>
+                <option value="Điều chỉnh khác">Điều chỉnh khác</option>
+              </select>
+            </label>
           </div>
           <label class="form-group"><span>Lý do bắt buộc</span><textarea class="form-control" name="reason" rows="2" required></textarea></label>
           <div class="form-actions"><button class="btn-primary" type="submit">Ghi giao dịch ví</button></div>
@@ -226,7 +269,7 @@ export function AdminTtcPage({ route = 'admin' } = {}) {
           <span class="muted-text">Theo dõi giao dịch ví để đối soát nhanh</span>
         </div>
         <div class="list-search-bar">
-          <input id="admin-wallet-ledger-search" class="form-control" type="search" placeholder="Tìm theo user, loại giao dịch, số xu hoặc lý do" aria-label="Tìm sổ ví" autocomplete="off">
+          <input id="admin-wallet-ledger-search" class="form-control" type="search" placeholder="Tìm theo user, username, loại giao dịch, số xu hoặc lý do" aria-label="Tìm sổ ví" autocomplete="off">
         </div>
         <div id="admin-wallet-ledger-list">
           ${EmptyState({ title: 'Đang tải sổ ví', message: 'Đang đọc lịch sử giao dịch ví chung.' })}
@@ -257,6 +300,7 @@ export function AdminTtcPage({ route = 'admin' } = {}) {
 
 AdminTtcPage.afterRender = function afterRenderAdminTtcPage() {
   bindAdminTtcEvents();
+  syncAdminCreateTabs();
   loadAdminTtcData();
 };
 
@@ -268,6 +312,12 @@ function bindAdminTtcEvents() {
   document.getElementById('admin-ttc-create-campaign-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     await createAdminCampaign(event.currentTarget);
+  });
+  document.querySelector('.admin-ttc-create-card')?.addEventListener('click', (event) => {
+    const tab = event.target.closest('[data-admin-create-tab]');
+    if (!tab) return;
+    state.createCampaignTab = tab.dataset.adminCreateTab || 'owner';
+    syncAdminCreateTabs();
   });
 
   document.getElementById('admin-ttc-price-settings')?.addEventListener('submit', async (event) => {
@@ -309,9 +359,35 @@ function bindAdminTtcEvents() {
 
   document.getElementById('admin-ttc-users-list')?.addEventListener('click', (event) => {
     const tab = event.target.closest('[data-admin-user-tab]');
-    if (!tab) return;
-    state.userTab = tab.dataset.adminUserTab || 'list';
-    renderAdminUsers();
+    if (tab) {
+      state.userTab = tab.dataset.adminUserTab || 'list';
+      renderAdminUsers();
+      return;
+    }
+    const action = event.target.closest('[data-admin-user-action]');
+    if (!action) return;
+    event.preventDefault();
+    renderAdminUserQuickAction(action.dataset.adminUserAction, action.dataset.userId, action.closest('.row-action-menu-panel'));
+  });
+
+  document.getElementById('admin-ttc-users-list')?.addEventListener('submit', async (event) => {
+    const walletForm = event.target.closest('[data-admin-user-wallet-form]');
+    if (walletForm) {
+      event.preventDefault();
+      await submitAdminUserQuickWallet(walletForm);
+      return;
+    }
+    const passwordForm = event.target.closest('[data-admin-user-password-form]');
+    if (passwordForm) {
+      event.preventDefault();
+      await submitAdminUserQuickPassword(passwordForm);
+      return;
+    }
+    const statusForm = event.target.closest('[data-admin-user-status-form]');
+    if (statusForm) {
+      event.preventDefault();
+      await submitAdminUserQuickStatus(statusForm);
+    }
   });
 
   document.getElementById('admin-wallet-user-search')?.addEventListener('input', (event) => {
@@ -326,9 +402,15 @@ function bindAdminTtcEvents() {
 
   document.getElementById('admin-ttc-campaigns')?.addEventListener('click', (event) => {
     const tab = event.target.closest('[data-admin-campaign-tab]');
-    if (!tab) return;
-    state.campaignTab = tab.dataset.adminCampaignTab || 'all';
-    renderAdminCampaigns();
+    if (tab) {
+      state.campaignTab = tab.dataset.adminCampaignTab || 'all';
+      renderAdminCampaigns();
+      return;
+    }
+    const action = event.target.closest('[data-admin-campaign-action]');
+    if (!action) return;
+    event.preventDefault();
+    openCancelCampaignModal(action.dataset.campaignId);
   });
 
   document.getElementById('admin-ttc-task-search')?.addEventListener('input', (event) => {
@@ -409,7 +491,7 @@ async function loadCampaigns() {
     panel.innerHTML = EmptyState({
       title: 'Không tải được tăng tương tác',
       message: isMissingDatabaseFeatureError(error)
-        ? migrationRequiredMessage('quản trị tăng tương tác TTC')
+        ? adminFriendlyFeatureMessage('quản trị tăng tương tác TTC')
         : error?.message || 'Vui lòng thử lại.',
     });
   }
@@ -453,7 +535,7 @@ async function loadReviewTasks() {
     panel.innerHTML = EmptyState({
       title: 'Không tải được task',
       message: isMissingDatabaseFeatureError(error)
-        ? migrationRequiredMessage('duyệt nhiệm vụ TTC')
+        ? adminFriendlyFeatureMessage('duyệt nhiệm vụ TTC')
         : error?.message || 'Vui lòng thử lại.',
     });
   }
@@ -487,7 +569,7 @@ async function loadCheckLogs() {
     panel.innerHTML = EmptyState({
       title: 'Không tải được check logs',
       message: isMissingDatabaseFeatureError(error)
-        ? migrationRequiredMessage('check logs TTC')
+        ? adminFriendlyFeatureMessage('check logs TTC')
         : error?.message || 'Vui lòng thử lại.',
     });
   }
@@ -540,7 +622,7 @@ async function loadUsers() {
           const wallet = Array.isArray(user.wallets) ? user.wallets[0] : user.wallets;
           return `
             <option value="${user.user_id}">
-              ${escapeHtml(user.display_name || user.email || user.phone || user.user_id)} · ${escapeHtml(String(wallet?.balance ?? 0))} xu
+              ${escapeHtml(formatUserOptionLabel(user))} · ${escapeHtml(String(wallet?.balance ?? 0))} xu
             </option>
           `;
         }),
@@ -549,7 +631,7 @@ async function loadUsers() {
     renderAdminUsers();
   } catch (error) {
     showMigrationNotice(error, 'danh sách user ví TTC');
-    const message = isMissingDatabaseFeatureError(error) ? 'Cần deploy migration TTC' : error?.message || 'Không tải được user';
+    const message = isMissingDatabaseFeatureError(error) ? adminFriendlyFeatureMessage('danh sách user ví TTC') : error?.message || 'Không tải được user';
     if (select) select.innerHTML = `<option value="">${escapeHtml(message)}</option>`;
     if (ownerSelect) ownerSelect.innerHTML = `<option value="">${escapeHtml(message)}</option>`;
     if (list) list.innerHTML = EmptyState({ title: 'Không tải được user TTC', message });
@@ -558,19 +640,22 @@ async function loadUsers() {
 
 async function loadWalletLedger() {
   const panel = document.getElementById('admin-wallet-ledger-list');
-  if (!panel) return;
+  const needsUserMetrics = Boolean(document.getElementById('admin-ttc-users-list'));
+  if (!panel && !needsUserMetrics) return;
   try {
     const { data } = await TtcAdminService.listWalletLedger({
-      pagination: { page: 1, pageSize: 12 },
+      pagination: { page: 1, pageSize: needsUserMetrics ? 100 : 12 },
     });
     state.walletLedger = data || [];
-    renderWalletLedgerPanel();
+    if (panel) renderWalletLedgerPanel();
+    if (needsUserMetrics && state.users.length) renderAdminUsers();
   } catch (error) {
     showMigrationNotice(error, 'sổ ví TTC');
+    if (!panel) return;
     panel.innerHTML = EmptyState({
       title: 'Không tải được sổ ví',
       message: isMissingDatabaseFeatureError(error)
-        ? migrationRequiredMessage('sổ ví TTC')
+        ? adminFriendlyFeatureMessage('sổ ví TTC')
         : error?.message || 'Vui lòng thử lại.',
     });
   }
@@ -590,7 +675,7 @@ function renderWalletUserSelect() {
       const wallet = Array.isArray(user.wallets) ? user.wallets[0] : user.wallets;
       return `
         <option value="${user.user_id}">
-          ${escapeHtml(user.display_name || user.email || user.phone || user.user_id)} · ${escapeHtml(String(wallet?.balance ?? 0))} xu
+          ${escapeHtml(formatUserOptionLabel(user))} · ${escapeHtml(String(wallet?.balance ?? 0))} xu
         </option>
       `;
     }),
@@ -665,10 +750,10 @@ function renderWalletLedger(rows) {
               <tr>
                 <td>${escapeHtml(formatDateTime(row.created_at))}</td>
                 <td>
-                  <strong>${escapeHtml(user?.display_name || user?.email || shortUserId(row.wallet_user_id))}</strong>
-                  <div class="muted-text">${escapeHtml(user?.email || row.wallet_user_id || '—')}</div>
+                  <strong>${escapeHtml(getUserDisplayName(user, row.wallet_user_id))}</strong>
+                  <div class="muted-text">${escapeHtml(getUserUsernameLine(user, row.wallet_user_id))}</div>
                 </td>
-                <td>${escapeHtml(walletTransactionLabel(row.transaction_type))}</td>
+                <td>${escapeHtml(walletLedgerLabel(row))}</td>
                 <td class="tabular-cell ${amount >= 0 ? 'wallet-positive' : 'wallet-negative'}">${amount > 0 ? '+' : ''}${formatNumber(amount)}</td>
                 <td class="tabular-cell">${formatNumber(row.balance_after)} xu</td>
                 <td>
@@ -735,6 +820,7 @@ function renderCampaignDetailTable(campaigns) {
             const targetQuantity = Number(campaign.target_quantity || 0);
             const completedCount = Number(campaign.completed_count || 0);
             const remainingCount = Math.max(0, targetQuantity - completedCount);
+            const canCancel = canCancelCampaign(campaign);
             return `
               <tr>
                 <td class="tabular-cell">${escapeHtml(String(campaign.id || '—'))}</td>
@@ -744,12 +830,13 @@ function renderCampaignDetailTable(campaigns) {
                     <div class="row-action-menu-panel">
                       <a class="table-action-button" href="#/admin-ttc-wallets" data-wallet-user-link="${escapeHtml(campaign.owner_user_id || '')}">Chỉnh ví</a>
                       <a class="table-action-button" href="#/admin-ttc-logs">Xem logs</a>
+                      ${canCancel ? `<button class="table-action-button danger-action" type="button" data-admin-campaign-action="cancel" data-campaign-id="${escapeHtml(String(campaign.id || ''))}">Hủy/hoàn tiền</button>` : ''}
                     </div>
                   </details>
                 </td>
                 <td class="admin-campaign-account-cell">
-                  <strong>${escapeHtml(owner?.display_name || campaign.user_profiles?.display_name || shortUserId(campaign.owner_user_id))}</strong>
-                  <div class="muted-text">${escapeHtml(owner?.email || campaign.user_profiles?.email || campaign.owner_user_id || '—')}</div>
+                  <strong>${escapeHtml(getUserDisplayName(owner || campaign.user_profiles, campaign.owner_user_id))}</strong>
+                  <div class="muted-text">${escapeHtml(getUserUsernameLine(owner || campaign.user_profiles, campaign.owner_user_id))}</div>
                 </td>
                 <td class="admin-campaign-target-cell">
                   <strong>${escapeHtml(campaign.target_facebook_id || 'Chưa có UID')}</strong>
@@ -769,6 +856,10 @@ function renderCampaignDetailTable(campaigns) {
       </table>
     </div>
   `;
+}
+
+function canCancelCampaign(campaign) {
+  return !['completed', 'failed', 'cancelled'].includes(String(campaign?.status || ''));
 }
 
 function getCampaignGroupRows(campaigns, groupBy) {
@@ -883,8 +974,8 @@ function renderReviewTasksTable(tasks, allTasks = tasks) {
                   ` : '<span class="muted-text">Đã xử lý</span>'}
                 </td>
                 <td>
-                  <strong>${escapeHtml(task.user_profiles?.display_name || shortUserId(task.assignee_user_id))}</strong>
-                  <div class="muted-text">${escapeHtml(task.user_profiles?.email || task.assignee_user_id || '—')}</div>
+                  <strong>${escapeHtml(getUserDisplayName(task.user_profiles, task.assignee_user_id))}</strong>
+                  <div class="muted-text">${escapeHtml(getUserUsernameLine(task.user_profiles, task.assignee_user_id))}</div>
                 </td>
                 <td class="admin-campaign-target-cell">${escapeHtml(task.ttc_campaigns?.target_url || '—')}</td>
                 <td>${escapeHtml(campaignTypeLabel(task.ttc_campaigns || { interaction_type_code: task.ttc_campaigns?.interaction_type_code }))}</td>
@@ -959,6 +1050,18 @@ function renderCheckLogsTable(logs, allLogs = logs) {
   `;
 }
 
+function renderCreateCampaignTabs() {
+  return renderAdminDataTabs([
+    { label: 'Tạo cho user', value: 'owner', active: state.createCampaignTab === 'owner', attribute: 'data-admin-create-tab' },
+    { label: 'Mục tiêu', value: 'target', active: state.createCampaignTab === 'target', attribute: 'data-admin-create-tab' },
+    { label: 'Ghi chú & kiểm tra', value: 'notes', active: state.createCampaignTab === 'notes', attribute: 'data-admin-create-tab' },
+  ], 'Nhóm thông tin tạo tăng tương tác');
+}
+
+function adminCreatePanelHiddenAttribute(panel) {
+  return state.createCampaignTab === panel ? '' : 'hidden';
+}
+
 function renderAdminDataTabs(tabs, label) {
   return `
     <div class="admin-data-tabs" role="tablist" aria-label="${escapeHtml(label)}">
@@ -973,6 +1076,17 @@ function renderAdminDataTabs(tabs, label) {
       }).join('')}
     </div>
   `;
+}
+
+function syncAdminCreateTabs() {
+  document.querySelectorAll('[data-admin-create-tab]').forEach((tab) => {
+    const active = tab.dataset.adminCreateTab === state.createCampaignTab;
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  document.querySelectorAll('[data-admin-create-panel]').forEach((panel) => {
+    panel.hidden = panel.dataset.adminCreatePanel !== state.createCampaignTab;
+  });
 }
 
 function filterAdminCampaigns(campaigns) {
@@ -993,6 +1107,7 @@ function filterAdminCampaigns(campaigns) {
       campaign.status,
       campaignStatusLabel(campaign.status),
       owner?.display_name,
+      owner?.username,
       owner?.email,
       owner?.phone,
       campaign.owner_user_id,
@@ -1012,6 +1127,7 @@ function filterReviewTasks(tasks) {
     task.ttc_campaigns?.interaction_type_code,
     task.ttc_campaigns?.target_url,
     task.user_profiles?.display_name,
+    task.user_profiles?.username,
     task.user_profiles?.email,
     task.assignee_user_id,
     task.submitted_at,
@@ -1072,8 +1188,10 @@ function filterWalletLedger(rows) {
       row.id,
       row.wallet_user_id,
       user?.display_name,
+      user?.username,
       user?.email,
       user?.phone,
+      walletLedgerLabel(row),
       walletTransactionLabel(row.transaction_type),
       row.transaction_type,
       row.amount,
@@ -1109,7 +1227,7 @@ async function loadInteractionTypes() {
     syncAdminCampaignCost();
   } catch (error) {
     showMigrationNotice(error, 'cấu hình giá TTC');
-    const message = isMissingDatabaseFeatureError(error) ? migrationRequiredMessage('cấu hình giá TTC') : error?.message || 'Không tải được cấu hình giá.';
+    const message = isMissingDatabaseFeatureError(error) ? adminFriendlyFeatureMessage('cấu hình giá TTC') : error?.message || 'Không tải được cấu hình giá.';
     if (select) select.innerHTML = `<option value="">${escapeHtml(message)}</option>`;
     if (settings) settings.innerHTML = EmptyState({ title: 'Không tải được bảng giá', message });
   }
@@ -1163,13 +1281,12 @@ function renderUserDetailTable(users) {
       <table class="data-table admin-ttc-user-table">
         <thead>
           <tr>
-            <th>ID</th>
             <th>Thao tác</th>
             <th>Tài khoản</th>
             <th>Cấp bậc</th>
             <th>Số dư hiện tại</th>
-            <th>Tổng kiếm</th>
-            <th>Tổng đã dùng</th>
+            <th>Tổng nạp tháng</th>
+            <th>Tổng đã nạp</th>
             <th>Trạng thái</th>
             <th>Ngày tạo</th>
           </tr>
@@ -1177,33 +1294,28 @@ function renderUserDetailTable(users) {
         <tbody>
           ${users.map((user) => {
             const wallet = getUserWallet(user);
-            const facebookAccounts = Array.isArray(user.user_facebook_accounts) ? user.user_facebook_accounts : [];
-            const verifiedAccounts = facebookAccounts.filter((account) => ['resolved', 'manual_verified'].includes(account.facebook_id_status));
-            const primaryFacebook = verifiedAccounts[0] || facebookAccounts[0];
+            const topupStats = getUserTopupStats(user);
             return `
               <tr>
-                <td class="tabular-cell">${escapeHtml(shortUserId(user.user_id))}</td>
                 <td>
                   <details class="row-action-menu">
                     <summary>Thao tác</summary>
                     <div class="row-action-menu-panel">
-                      <a class="table-action-button" href="#/admin-ttc-wallets" data-wallet-user-link="${escapeHtml(user.user_id)}">Chỉnh ví</a>
-                      <a class="table-action-button" href="#/admin-ttc-logs">Lịch sử kiểm tra</a>
+                      <button class="table-action-button" type="button" data-admin-user-action="detail" data-user-id="${escapeHtml(user.user_id)}">Chi tiết</button>
+                      <button class="table-action-button" type="button" data-admin-user-action="wallet" data-user-id="${escapeHtml(user.user_id)}">Sửa số dư</button>
+                      <button class="table-action-button" type="button" data-admin-user-action="ledger" data-user-id="${escapeHtml(user.user_id)}">Nhật ký giao dịch</button>
+                      <button class="table-action-button" type="button" data-admin-user-action="reset-password" data-user-id="${escapeHtml(user.user_id)}">Khôi phục mật khẩu</button>
+                      <button class="table-action-button" type="button" data-admin-user-action="permissions" data-user-id="${escapeHtml(user.user_id)}">Cấp quyền</button>
                     </div>
                   </details>
                 </td>
                 <td class="admin-user-account-cell">
-                  <img class="admin-user-avatar" src="${escapeHtml(getUserAvatarPath(user))}" alt="" loading="lazy">
-                  <div>
-                    <strong>${escapeHtml(user.display_name || user.email || 'Chưa cập nhật')}</strong>
-                    <div class="muted-text">${escapeHtml(user.email || user.phone || '—')}</div>
-                    <div class="muted-text">${escapeHtml(primaryFacebook?.facebook_id ? `FB ID: ${primaryFacebook.facebook_id}` : 'Chưa có Facebook ID')}</div>
-                  </div>
+                  <strong>${escapeHtml(getUserAccountName(user))}</strong>
                 </td>
                 <td>${escapeHtml(userTierLabel(user))}</td>
                 <td class="tabular-cell">${formatNumber(wallet?.balance ?? 0)}</td>
-                <td class="tabular-cell">${formatNumber(wallet?.total_earned ?? 0)}</td>
-                <td class="tabular-cell">${formatNumber(wallet?.total_spent ?? 0)}</td>
+                <td class="tabular-cell">${formatNumber(topupStats.monthly)}</td>
+                <td class="tabular-cell">${formatNumber(topupStats.total)}</td>
                 <td><span class="status-pill ${user.status === 'active' ? 'success' : user.status === 'locked' ? 'danger' : ''}">${escapeHtml(userStatusLabel(user.status))}</span></td>
                 <td>${escapeHtml(formatDateTime(user.created_at))}</td>
               </tr>
@@ -1211,6 +1323,417 @@ function renderUserDetailTable(users) {
           }).join('')}
         </tbody>
       </table>
+    </div>
+  `;
+}
+
+function renderAdminUserQuickAction(action, userId, panel) {
+  const user = state.users.find((item) => item.user_id === userId);
+  if (!user) {
+    Toast.show('Không tìm thấy người dùng.');
+    return;
+  }
+  if (action === 'detail') {
+    panel?.closest('details')?.removeAttribute('open');
+    openAdminUserDetail(user);
+    return;
+  }
+  if (action === 'permissions') {
+    panel?.closest('details')?.removeAttribute('open');
+    openAdminUserPermissions(user);
+    return;
+  }
+  if (!panel) return;
+  panel.querySelector('.row-action-side-panel')?.remove();
+  const quickPanel = document.createElement('div');
+  quickPanel.className = 'row-action-side-panel';
+  quickPanel.innerHTML = renderAdminUserQuickPanel(action, user);
+  panel.appendChild(quickPanel);
+}
+
+function renderAdminUserQuickPanel(action, user) {
+  if (action === 'wallet') return renderAdminUserQuickWallet(user);
+  if (action === 'ledger') return renderAdminUserQuickLedger(user);
+  if (action === 'reset-password') return renderAdminUserQuickPassword(user);
+  return '';
+}
+
+function renderAdminUserQuickWallet(user) {
+  return `
+    <form class="quick-action-form" data-admin-user-wallet-form data-user-id="${escapeHtml(user.user_id)}">
+      <div class="quick-action-head">Sửa nhanh số dư</div>
+      <label class="form-group compact">
+        <span>Số xu cộng/trừ</span>
+        <input class="form-control" name="amount" type="number" step="1" placeholder="VD: 50000 hoặc -10000" required>
+      </label>
+      <label class="form-group compact">
+        <span>Lý do</span>
+        <select class="form-control" name="reason" required>
+          <option value="">Chọn lý do</option>
+          <option value="Cộng tiền thủ công">Cộng tiền thủ công</option>
+          <option value="Trừ tiền">Trừ tiền</option>
+          <option value="Trừ tiền vi phạm">Trừ tiền vi phạm</option>
+          <option value="Khác">Khác</option>
+        </select>
+      </label>
+      <button class="btn-primary quick-confirm-button" type="submit">Xác nhận</button>
+    </form>
+  `;
+}
+
+function renderAdminUserQuickLedger(user) {
+  const rows = getUserLedgerRows(user.user_id).slice(0, 4);
+  return `
+    <div class="quick-action-head">Nhật ký gần đây</div>
+    <div class="quick-ledger-list">
+      ${rows.length ? rows.map((row) => {
+        const amount = Number(row.amount || 0);
+        return `
+          <div class="quick-ledger-row">
+            <strong class="${amount >= 0 ? 'wallet-positive' : 'wallet-negative'}">${amount > 0 ? '+' : ''}${escapeHtml(formatNumber(amount))}</strong>
+            <span>${escapeHtml(walletLedgerLabel(row))}</span>
+          </div>
+        `;
+      }).join('') : '<span class="quick-muted">Chưa có giao dịch gần đây.</span>'}
+    </div>
+    <a class="btn-secondary quick-confirm-button" href="#/admin-ttc-wallets" data-wallet-user-link="${escapeHtml(user.user_id)}">Xem đầy đủ</a>
+  `;
+}
+
+function renderAdminUserQuickPassword(user) {
+  return `
+    <form class="quick-action-form" data-admin-user-password-form data-user-id="${escapeHtml(user.user_id)}">
+      <div class="quick-action-head">Khôi phục mật khẩu</div>
+      <label class="form-group compact">
+        <span>Mật khẩu mới</span>
+        <input class="form-control" name="password" type="password" minlength="6" autocomplete="new-password" required>
+      </label>
+      <label class="form-group compact">
+        <span>Xác nhận</span>
+        <input class="form-control" name="confirmPassword" type="password" minlength="6" autocomplete="new-password" required>
+      </label>
+      <button class="btn-primary quick-confirm-button" type="submit">Xác nhận</button>
+    </form>
+  `;
+}
+
+function renderAdminUserQuickStatus(user) {
+  return `
+    <form class="quick-action-form" data-admin-user-status-form data-user-id="${escapeHtml(user.user_id)}">
+      <div class="quick-action-head">Cấp quyền nhanh</div>
+      <label class="form-group compact">
+        <span>Trạng thái user</span>
+        <select class="form-control" name="status" required>
+          <option value="active" ${user.status === 'active' ? 'selected' : ''}>Hoạt động</option>
+          <option value="locked" ${user.status === 'locked' ? 'selected' : ''}>Khóa tài khoản</option>
+          <option value="pending_profile" ${user.status === 'pending_profile' ? 'selected' : ''}>Chờ hồ sơ</option>
+        </select>
+      </label>
+      <p class="quick-muted">User khách hàng không được nâng thành admin tại đây.</p>
+      <button class="btn-primary quick-confirm-button" type="submit">Xác nhận</button>
+    </form>
+  `;
+}
+
+async function submitAdminUserQuickWallet(form) {
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  button.textContent = 'Đang lưu...';
+  try {
+    await TtcAdminService.adjustWallet({
+      userId: form.dataset.userId,
+      amount: form.elements.amount.value,
+      reason: form.elements.reason.value,
+      description: 'Sửa nhanh số dư từ bảng người dùng',
+    });
+    Toast.show('Đã cập nhật số dư.');
+    await Promise.allSettled([loadWalletLedger(), loadUsers()]);
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = 'Xác nhận';
+    Toast.show(error?.message || 'Không cập nhật được số dư.');
+  }
+}
+
+async function submitAdminUserQuickPassword(form) {
+  const password = form.elements.password.value;
+  const confirmPassword = form.elements.confirmPassword.value;
+  if (password.length < 6) {
+    Toast.show('Mật khẩu cần ít nhất 6 ký tự.');
+    return;
+  }
+  if (password !== confirmPassword) {
+    Toast.show('Xác nhận mật khẩu chưa khớp.');
+    return;
+  }
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  button.textContent = 'Đang lưu...';
+  try {
+    await TtcAdminService.resetUserPassword(form.dataset.userId, password);
+    Toast.show('Đã đặt lại mật khẩu.');
+    form.reset();
+  } catch (error) {
+    Toast.show(error?.message || 'Không đặt lại được mật khẩu.');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Xác nhận';
+  }
+}
+
+async function submitAdminUserQuickStatus(form) {
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  button.textContent = 'Đang lưu...';
+  try {
+    await TtcAdminService.updateUserStatus(form.dataset.userId, form.elements.status.value);
+    Toast.show('Đã cập nhật trạng thái user.');
+    await loadUsers();
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = 'Xác nhận';
+    Toast.show(error?.message || 'Không cập nhật được trạng thái.');
+  }
+}
+
+function openAdminUserDetail(user) {
+  const wallet = getUserWallet(user);
+  const facebookAccounts = Array.isArray(user.user_facebook_accounts) ? user.user_facebook_accounts : [];
+  const username = getUserAccountName(user);
+  const creditLimit = getUserCreditLimit(user);
+  Modal.open({
+    title: `Thông tin người dùng: ${username}`,
+    className: 'modal-wide',
+    body: `
+      <div class="admin-user-modal-profile">
+        <img class="admin-user-modal-avatar" src="${escapeHtml(getUserAvatarPath(user))}" alt="" loading="lazy">
+        <div class="admin-user-modal-status-line">
+          <span class="status-pill ${user.status === 'active' ? 'success' : user.status === 'locked' ? 'danger' : ''}">${escapeHtml(userStatusLabel(user.status))}</span>
+          <span>${escapeHtml(formatDateTime(user.created_at))}</span>
+        </div>
+      </div>
+      <form id="admin-user-detail-form" class="modal-form admin-user-detail-form" data-user-id="${escapeHtml(user.user_id)}">
+        <label class="form-group"><span>Username</span><input class="form-control" value="${escapeHtml(username)}" readonly></label>
+        <div class="form-row">
+          <label class="form-group"><span>Họ tên</span><input class="form-control" name="displayName" value="${escapeHtml(user.display_name || 'NoName')}"></label>
+          <label class="form-group"><span>Email</span><input class="form-control" name="email" type="email" value="${escapeHtml(user.email || '')}"></label>
+        </div>
+        <div class="form-row">
+          <label class="form-group"><span>Số điện thoại</span><input class="form-control" name="phone" value="${escapeHtml(user.phone || '')}"></label>
+          <label class="form-group"><span>Số dư</span><input class="form-control" name="balance" type="number" step="1" value="${escapeHtml(String(Number(wallet?.balance ?? 0)))}"></label>
+        </div>
+        <div class="form-row">
+          <label class="form-group">
+            <span>Tình trạng</span>
+            <select class="form-control" name="status">
+              <option value="active" ${user.status === 'active' ? 'selected' : ''}>Đang hoạt động</option>
+              <option value="locked" ${user.status === 'locked' ? 'selected' : ''}>Đã khóa</option>
+              <option value="pending_profile" ${user.status === 'pending_profile' ? 'selected' : ''}>Chờ hồ sơ</option>
+            </select>
+          </label>
+          <label class="form-group"><span>Hạn mức</span><input class="form-control" name="creditLimit" type="number" step="1" min="0" value="${escapeHtml(String(creditLimit))}"></label>
+        </div>
+        <div class="form-row">
+          <label class="form-group">
+            <span>Cấp bậc</span>
+            <select class="form-control" name="tier">
+              ${renderUserTierOptions(user)}
+            </select>
+          </label>
+          <label class="form-group"><span>Facebook ID</span><input class="form-control" value="${escapeHtml(facebookAccounts.map((account) => account.facebook_id).filter(Boolean).join(', ') || '')}" readonly></label>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" type="button" data-admin-user-detail-close>Đóng</button>
+          <button class="btn-primary" type="submit">Cập nhật</button>
+        </div>
+      </form>
+    `,
+  });
+  document.querySelector('[data-admin-user-detail-close]')?.addEventListener('click', Modal.close);
+  document.getElementById('admin-user-detail-form')?.addEventListener('submit', submitAdminUserDetail);
+}
+
+async function submitAdminUserDetail(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const user = state.users.find((item) => item.user_id === form.dataset.userId);
+  if (!user) {
+    Toast.show('Không tìm thấy người dùng.');
+    return;
+  }
+  const wallet = getUserWallet(user);
+  const values = Object.fromEntries(new FormData(form));
+  const nextBalance = Number(values.balance || 0);
+  const currentBalance = Number(wallet?.balance || 0);
+  const creditLimit = Number(values.creditLimit || 0);
+  if (!Number.isFinite(nextBalance) || nextBalance < 0) {
+    Toast.show('Số dư không hợp lệ.');
+    form.elements.balance?.focus();
+    return;
+  }
+  if (!Number.isFinite(creditLimit) || creditLimit < 0) {
+    Toast.show('Hạn mức không hợp lệ.');
+    form.elements.creditLimit?.focus();
+    return;
+  }
+
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  button.textContent = 'Đang cập nhật...';
+  try {
+    await TtcAdminService.updateUserProfile(user.user_id, {
+      displayName: values.displayName,
+      email: values.email,
+      phone: values.phone,
+      status: values.status,
+      metadataPatch: {
+        tier: values.tier || 'customer',
+        credit_limit: creditLimit,
+      },
+    });
+
+    const balanceDelta = nextBalance - currentBalance;
+    if (balanceDelta !== 0) {
+      await TtcAdminService.adjustWallet({
+        userId: user.user_id,
+        amount: balanceDelta,
+        reason: 'Admin cập nhật số dư trong chi tiết user',
+        description: 'Cập nhật số dư từ modal chi tiết',
+      });
+    }
+
+    Modal.close();
+    Toast.show('Đã cập nhật thông tin người dùng.');
+    await Promise.allSettled([loadUsers(), loadWalletLedger()]);
+  } catch (error) {
+    Toast.show(error?.message || 'Không cập nhật được thông tin người dùng.');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Cập nhật';
+  }
+}
+
+function openAdminUserPasswordReset(user) {
+  const username = getUserAccountName(user);
+  Modal.open({
+    title: 'Khôi phục mật khẩu',
+    body: `
+      <form id="admin-user-reset-password-form" class="modal-form">
+        <p class="modal-note">Đặt lại mật khẩu đăng nhập cho ${escapeHtml(username)}. User sẽ dùng mật khẩu mới để đăng nhập bằng username, SĐT hoặc email.</p>
+        <label class="form-group">
+          <span>Mật khẩu mới</span>
+          <input class="form-control" name="password" type="password" minlength="6" autocomplete="new-password" required>
+        </label>
+        <label class="form-group">
+          <span>Xác nhận mật khẩu</span>
+          <input class="form-control" name="confirmPassword" type="password" minlength="6" autocomplete="new-password" required>
+        </label>
+        <div class="modal-actions">
+          <button class="btn-secondary" type="button" data-modal-close>Hủy</button>
+          <button class="btn-primary" type="submit">Đặt lại mật khẩu</button>
+        </div>
+      </form>
+    `,
+  });
+  document.getElementById('admin-user-reset-password-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const password = form.elements.password.value;
+    const confirmPassword = form.elements.confirmPassword.value;
+    if (password.length < 6) {
+      Toast.show('Mật khẩu cần ít nhất 6 ký tự.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      Toast.show('Xác nhận mật khẩu chưa khớp.');
+      return;
+    }
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Đang xử lý...';
+    try {
+      await TtcAdminService.resetUserPassword(user.user_id, password);
+      Modal.close();
+      Toast.show('Đã đặt lại mật khẩu người dùng.');
+    } catch (error) {
+      Toast.show(error?.message || 'Không đặt lại được mật khẩu.');
+      submitButton.disabled = false;
+      submitButton.textContent = 'Đặt lại mật khẩu';
+    }
+  });
+  document.querySelector('#admin-user-reset-password-form [data-modal-close]')?.addEventListener('click', Modal.close);
+}
+
+function openAdminUserPermissions(user) {
+  const selectedPermissions = getUserAdminPermissions(user);
+  const username = getUserAccountName(user);
+  Modal.open({
+    title: 'Cấp quyền',
+    className: 'modal-wide',
+    body: `
+      <form id="admin-user-permissions-form" class="modal-form admin-user-permissions-form" data-user-id="${escapeHtml(user.user_id)}">
+        <div class="admin-user-permission-account">Tài khoản: <strong>${escapeHtml(username)}</strong></div>
+        <div class="admin-user-permission-grid">
+          ${USER_PERMISSION_ROUTES.map((route) => `
+            <label class="admin-user-permission-check">
+              <input type="checkbox" name="permissions" value="${escapeHtml(route)}" ${selectedPermissions.includes(route) ? 'checked' : ''}>
+              <span>${escapeHtml(permissionLabel(route))}</span>
+            </label>
+          `).join('')}
+        </div>
+        <label class="form-group admin-user-password-confirm">
+          <span>Xác nhận mật khẩu</span>
+          <input class="form-control" name="password" type="password" placeholder="Nhập mật khẩu để xác nhận cấp quyền" autocomplete="current-password" required>
+          <small>Vui lòng nhập mật khẩu tài khoản của bạn để xác nhận thay đổi quyền.</small>
+        </label>
+        <div class="modal-actions">
+          <button class="btn-secondary" type="button" data-admin-user-permissions-close>Đóng</button>
+          <button class="btn-primary" type="submit">Lưu</button>
+        </div>
+      </form>
+    `,
+  });
+  document.querySelector('[data-admin-user-permissions-close]')?.addEventListener('click', Modal.close);
+  document.getElementById('admin-user-permissions-form')?.addEventListener('submit', submitAdminUserPermissions);
+}
+
+async function submitAdminUserPermissions(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const user = state.users.find((item) => item.user_id === form.dataset.userId);
+  if (!user) {
+    Toast.show('Không tìm thấy người dùng.');
+    return;
+  }
+  const password = form.elements.password.value;
+  const permissions = Array.from(form.querySelectorAll('input[name="permissions"]:checked')).map((input) => input.value);
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  button.textContent = 'Đang lưu...';
+  try {
+    await TtcAdminService.confirmCurrentAdminPassword(password);
+    await TtcAdminService.updateUserProfile(user.user_id, {
+      metadataPatch: {
+        admin_permissions: permissions,
+        admin_permissions_updated_at: new Date().toISOString(),
+      },
+    });
+    Modal.close();
+    Toast.show('Đã lưu quyền người dùng.');
+    await loadUsers();
+  } catch (error) {
+    Toast.show(error?.message || 'Không lưu được quyền người dùng.');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Lưu';
+  }
+}
+
+function renderAdminUserModalStat(label, value) {
+  return `
+    <div class="admin-user-modal-stat">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(String(value ?? '—'))}</strong>
     </div>
   `;
 }
@@ -1281,6 +1804,7 @@ function filterUsers(users, searchTerm) {
     const facebookAccounts = Array.isArray(user.user_facebook_accounts) ? user.user_facebook_accounts : [];
     const haystack = [
       user.display_name,
+      user.username,
       user.email,
       user.phone,
       user.status,
@@ -1292,8 +1816,72 @@ function filterUsers(users, searchTerm) {
   });
 }
 
+function getUserDisplayName(user, fallbackId = '') {
+  return user?.display_name || user?.username || user?.email || user?.phone || shortUserId(fallbackId || user?.user_id);
+}
+
+function getUserAccountName(user) {
+  return (
+    user?.username
+    || user?.metadata?.username
+    || user?.metadata?.auth_username
+    || user?.metadata?.login_username
+    || user?.email?.split('@')[0]
+    || user?.phone
+    || user?.display_name
+    || 'Chưa có username'
+  );
+}
+
+function getUserUsernameLine(user, fallbackId = '') {
+  const username = getUserAccountName(user);
+  if (username && username !== 'Chưa có username') return `username - ${username}`;
+  return user?.email || user?.phone || fallbackId || user?.user_id || 'Chưa có username';
+}
+
+function formatUserOptionLabel(user) {
+  const name = getUserDisplayName(user);
+  const username = getUserUsernameLine(user);
+  return `${name} - ${username}`;
+}
+
 function getUserWallet(user) {
   return Array.isArray(user?.wallets) ? user.wallets[0] : user?.wallets;
+}
+
+function getUserLedgerRows(userId) {
+  return state.walletLedger.filter((row) => row.wallet_user_id === userId);
+}
+
+function getUserTopupStats(user) {
+  const wallet = getUserWallet(user);
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const rows = getUserLedgerRows(user.user_id).filter(isUserTopupLedgerRow);
+  const totalFromLedger = rows.reduce((sum, row) => sum + Math.max(Number(row.amount || 0), 0), 0);
+  const monthly = rows.reduce((sum, row) => {
+    const createdAt = new Date(row.created_at);
+    if (createdAt.getMonth() !== currentMonth || createdAt.getFullYear() !== currentYear) return sum;
+    return sum + Math.max(Number(row.amount || 0), 0);
+  }, 0);
+  return {
+    monthly,
+    total: totalFromLedger || Number(wallet?.total_earned || 0),
+  };
+}
+
+function isUserTopupLedgerRow(row) {
+  const amount = Number(row?.amount || 0);
+  if (!Number.isFinite(amount) || amount <= 0) return false;
+  const type = String(row?.transaction_type || '').toLowerCase();
+  return (
+    type.includes('topup')
+    || type.includes('deposit')
+    || type.includes('payos')
+    || type === 'admin_adjustment'
+    || type === 'bonus_signup'
+  );
 }
 
 function getCampaignOwner(campaign) {
@@ -1312,7 +1900,57 @@ function shortUserId(userId) {
 
 function userTierLabel(user) {
   if (user?.status === 'locked') return 'Bị khóa';
-  return 'Khách hàng';
+  return {
+    customer: 'Khách hàng',
+    silver: 'Bạc',
+    gold: 'Vàng',
+    diamond: 'Kim cương',
+  }[user?.metadata?.tier] || 'Khách hàng';
+}
+
+function renderUserTierOptions(user) {
+  const selectedTier = user?.metadata?.tier || 'customer';
+  return [
+    ['customer', 'Khách hàng'],
+    ['silver', 'Bạc'],
+    ['gold', 'Vàng'],
+    ['diamond', 'Kim cương'],
+  ].map(([value, label]) => `<option value="${value}" ${selectedTier === value ? 'selected' : ''}>${label}</option>`).join('');
+}
+
+function getUserCreditLimit(user) {
+  const value = Number(user?.metadata?.credit_limit ?? 5000000);
+  return Number.isFinite(value) && value >= 0 ? value : 5000000;
+}
+
+function getUserAdminPermissions(user) {
+  const permissions = user?.metadata?.admin_permissions;
+  return Array.isArray(permissions) ? permissions.filter((permission) => USER_PERMISSION_ROUTES.includes(permission)) : [];
+}
+
+function permissionLabel(route) {
+  const labels = {
+    dashboard: 'Quản lý thống kê',
+    reports: 'Quản lý báo cáo',
+    customers: 'Quản lý khách hàng',
+    kiosks: 'Quản lý Kiosk',
+    'legacy-registration': 'Quản lý dữ liệu cũ',
+    payments: 'Quản lý giao dịch',
+    categories: 'Quản lý nguồn',
+    'business-types': 'Quản lý ngành',
+    'registration-requests': 'Quản lý đơn hàng',
+    'admin-ttc': 'Quản lý TTC',
+    'admin-ttc-campaigns': 'Quản lý dịch vụ',
+    'admin-ttc-announcements': 'Quản lý thông báo',
+    'admin-ttc-tasks': 'Quản lý nhiệm vụ',
+    'admin-ttc-users': 'Quản lý người dùng',
+    'admin-ttc-wallets': 'Quản lý ví xu',
+    'admin-ttc-settings': 'Quản lý bảng giá',
+    'admin-ttc-logs': 'Quản lý vi phạm',
+    logs: 'Quản lý nhật ký',
+    settings: 'Cài đặt hệ thống',
+  };
+  return labels[route] || PAGE_TITLES[route] || route;
 }
 
 function formatNumber(value) {
@@ -1403,7 +2041,7 @@ async function verifyTask(taskId, action, button) {
     await Promise.allSettled([loadReviewTasks(), loadCheckLogs(), loadCampaigns()]);
   } catch (error) {
     Toast.show(isMissingDatabaseFeatureError(error)
-      ? migrationRequiredMessage('duyệt nhiệm vụ TTC')
+      ? adminFriendlyFeatureMessage('duyệt nhiệm vụ TTC')
       : error?.message || 'Không xử lý được nhiệm vụ.');
   } finally {
     state.processingTaskId = null;
@@ -1430,7 +2068,7 @@ async function adjustWallet(form) {
     await Promise.allSettled([loadUsers(), loadWalletLedger()]);
   } catch (error) {
     Toast.show(isMissingDatabaseFeatureError(error)
-      ? migrationRequiredMessage('điều chỉnh ví TTC')
+      ? adminFriendlyFeatureMessage('điều chỉnh ví TTC')
       : error?.message || 'Không thể điều chỉnh ví.');
   } finally {
     button.disabled = false;
@@ -1444,15 +2082,24 @@ async function createAdminCampaign(form) {
   const quantity = Number(values.targetQuantity || 0);
   const ownerUserId = String(values.ownerUserId || '').trim();
   if (!ownerUserId) {
+    switchAdminCreateTabForField('ownerUserId');
     Toast.show('Vui lòng chọn user owner để tạo tăng tương tác.');
     return;
   }
   if (!interactionType) {
+    switchAdminCreateTabForField('interactionType');
     Toast.show('Vui lòng chọn loại tương tác.');
     return;
   }
   if (!Number.isInteger(quantity) || quantity < Number(interactionType.min_quantity || 1) || quantity > Number(interactionType.max_quantity || 1000)) {
+    switchAdminCreateTabForField('targetQuantity');
     Toast.show(`Số lượng phải từ ${interactionType.min_quantity} đến ${interactionType.max_quantity}.`);
+    return;
+  }
+  const targetValidation = validateCampaignTargetUrl(interactionType, values.targetUrl);
+  if (!targetValidation.valid) {
+    switchAdminCreateTabForField('targetUrl');
+    Toast.show(targetValidation.message);
     return;
   }
 
@@ -1477,15 +2124,96 @@ async function createAdminCampaign(form) {
     });
     Toast.show('Đã tạo tăng tương tác.');
     form.reset();
+    state.createCampaignTab = 'owner';
+    syncAdminCreateTabs();
     await Promise.allSettled([loadCampaigns(), loadInteractionTypes()]);
   } catch (error) {
     Toast.show(isMissingDatabaseFeatureError(error)
-      ? migrationRequiredMessage('tạo tăng tương tác')
+      ? adminFriendlyFeatureMessage('tạo tăng tương tác')
       : error?.message || 'Không thể tạo tăng tương tác.');
   } finally {
     button.disabled = false;
     button.textContent = 'Tạo tăng tương tác';
     syncAdminCampaignCost();
+  }
+}
+
+function switchAdminCreateTabForField(fieldName) {
+  const tabByField = {
+    ownerUserId: 'owner',
+    interactionType: 'owner',
+    targetQuantity: 'owner',
+    targetUrl: 'target',
+    targetFacebookId: 'target',
+    targetLabel: 'target',
+    commentOptions: 'notes',
+    reason: 'notes',
+  };
+  state.createCampaignTab = tabByField[fieldName] || 'owner';
+  syncAdminCreateTabs();
+  requestAnimationFrame(() => {
+    const field = document.querySelector(`#admin-ttc-create-campaign-form [name="${fieldName}"]`);
+    if (field && typeof field.focus === 'function') field.focus();
+  });
+}
+
+function openCancelCampaignModal(campaignId) {
+  const campaign = state.campaigns.find((item) => String(item.id) === String(campaignId));
+  if (!campaign) {
+    Toast.show('Không tìm thấy đơn tăng tương tác để hủy.');
+    return;
+  }
+  const remainingCount = Math.max(0, Number(campaign.target_quantity || 0) - Number(campaign.completed_count || 0));
+  const refundableAmount = Math.max(0, Number(campaign.reserved_amount || 0) - Number(campaign.spent_amount || 0) - Number(campaign.refunded_amount || 0));
+  Modal.open({
+    title: 'Hủy/hoàn tiền tăng tương tác',
+    body: `
+      <form id="admin-cancel-campaign-form" class="stacked-form">
+        <p class="muted-text">Đơn #${escapeHtml(String(campaign.id || '—'))} còn ${formatNumber(remainingCount)} lượt chưa chạy. Hệ thống sẽ gọi RPC hủy chiến dịch và hoàn phần xu còn lại nếu có.</p>
+        <div class="admin-cancel-campaign-summary">
+          <span>Đã chạy <strong>${formatNumber(campaign.completed_count || 0)}/${formatNumber(campaign.target_quantity || 0)}</strong></span>
+          <span>Dự kiến hoàn <strong>${formatNumber(refundableAmount)} xu</strong></span>
+        </div>
+        <label class="form-group">
+          <span>Lý do hủy *</span>
+          <textarea class="form-control" name="reason" rows="3" placeholder="Ví dụ: user yêu cầu hủy đơn, link sai, hoặc hoàn phần còn lại" required></textarea>
+        </label>
+        <div class="modal-actions">
+          <button class="btn-secondary" type="button" data-cancel-campaign-close>Đóng</button>
+          <button class="btn-danger" type="submit">Hủy và hoàn tiền</button>
+        </div>
+      </form>
+    `,
+  });
+  document.querySelector('[data-cancel-campaign-close]')?.addEventListener('click', Modal.close);
+  document.getElementById('admin-cancel-campaign-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    await cancelAdminCampaign(campaign.id, event.currentTarget);
+  });
+}
+
+async function cancelAdminCampaign(campaignId, form) {
+  const reason = new FormData(form).get('reason')?.trim() || '';
+  if (!reason) {
+    Toast.show('Vui lòng nhập lý do hủy chiến dịch.');
+    form.querySelector('[name="reason"]')?.focus();
+    return;
+  }
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  button.textContent = 'Đang hủy...';
+  try {
+    await TtcAdminService.cancelCampaign(campaignId, reason);
+    Modal.close();
+    Toast.show('Đã hủy đơn và hoàn xu phần còn lại.');
+    await Promise.allSettled([loadCampaigns(), loadUsers(), loadWalletLedger()]);
+  } catch (error) {
+    Toast.show(isMissingDatabaseFeatureError(error)
+      ? adminFriendlyFeatureMessage('hủy/hoàn tiền tăng tương tác')
+      : error?.message || 'Không thể hủy đơn tăng tương tác.');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Hủy và hoàn tiền';
   }
 }
 
@@ -1504,7 +2232,7 @@ async function updateInteractionType(form) {
     await loadInteractionTypes();
   } catch (error) {
     Toast.show(isMissingDatabaseFeatureError(error)
-      ? migrationRequiredMessage('cấu hình giá TTC')
+      ? adminFriendlyFeatureMessage('cấu hình giá TTC')
       : error?.message || 'Không thể cập nhật bảng giá.');
   } finally {
     button.disabled = false;
@@ -1568,6 +2296,45 @@ function actionLabel(action, fallback = '') {
     join_group: 'Join group',
     subscribe: 'Tăng subscribe',
   }[action] || fallback || action || 'Tương tác';
+}
+
+function validateCampaignTargetUrl(interactionType, targetUrl) {
+  const action = interactionAction(interactionType);
+  const url = String(targetUrl || '').trim();
+  if (!url) return { valid: false, message: 'Vui lòng nhập link mục tiêu.' };
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { valid: false, message: 'Link mục tiêu không hợp lệ.' };
+  }
+  if (!/(^|\.)facebook\.com$/i.test(parsed.hostname)) {
+    return { valid: false, message: 'Link mục tiêu phải là link Facebook.' };
+  }
+  if (['like', 'reaction', 'comment', 'share'].includes(action) && !isFacebookContentUrl(parsed)) {
+    return {
+      valid: false,
+      message: 'Nhiệm vụ like/cảm xúc/comment/share phải dùng link bài viết, ảnh, video, reel hoặc story cụ thể.',
+    };
+  }
+  return { valid: true };
+}
+
+function isFacebookContentUrl(parsed) {
+  const path = parsed.pathname.toLowerCase();
+  if (path === '/story.php' && parsed.searchParams.get('story_fbid')) return true;
+  return [
+    '/posts/',
+    '/videos/',
+    '/reel/',
+    '/photo/',
+    '/photos/',
+    '/permalink.php',
+    '/watch/',
+    '/share/p/',
+    '/share/v/',
+    '/share/r/',
+  ].some((part) => path.includes(part));
 }
 
 function campaignTypeLabel(campaign) {
@@ -1648,6 +2415,11 @@ function walletTransactionLabel(type) {
   }[type] || type || 'Giao dịch';
 }
 
+function walletLedgerLabel(row = {}) {
+  if (String(row.related_table || '') === 'payos_orders') return 'Nạp xu PayOS';
+  return walletTransactionLabel(row.transaction_type);
+}
+
 function renderEvidence(evidence) {
   if (!evidence || typeof evidence !== 'object') return 'Không có bằng chứng.';
   return evidence.text || JSON.stringify(evidence);
@@ -1659,8 +2431,13 @@ function showMigrationNotice(error, featureName) {
   if (!notice) return;
   notice.innerHTML = `
     <div class="notice warning">
-      <strong>Cần deploy migration</strong>
-      <span>${escapeHtml(migrationRequiredMessage(featureName))}</span>
+      <strong>Dữ liệu đang được đồng bộ</strong>
+      <span>${escapeHtml(adminFriendlyFeatureMessage(featureName))}</span>
     </div>
   `;
+}
+
+function adminFriendlyFeatureMessage(featureName) {
+  const name = String(featureName || 'chức năng này');
+  return `${name} đang được cập nhật dữ liệu. Vui lòng kiểm tra lại cấu hình hoặc thử lại sau.`;
 }

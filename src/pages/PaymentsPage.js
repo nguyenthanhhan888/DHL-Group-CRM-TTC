@@ -1,7 +1,7 @@
 import { EmptyState } from '../components/EmptyState.js';
 import { Modal } from '../components/Modal.js';
 import { PageHeader } from '../components/PageHeader.js';
-import { bindPayosCopyButtons, PayosResultCard } from '../components/PayosResultCard.js';
+import { bindPayosCopyButtons, PayosResultCard, watchPayosPaymentStatus } from '../components/PayosResultCard.js';
 import { StatCard } from '../components/StatCard.js';
 import { Toast } from '../components/Toast.js';
 import { Toolbar } from '../components/Toolbar.js';
@@ -9,7 +9,7 @@ import { openPaymentEditForm } from '../components/PaymentEditForm.js';
 import { BusinessTypeService } from '../services/BusinessTypeService.js';
 import { PayosService } from '../services/PayosService.js';
 import { PaymentService } from '../services/PaymentService.js';
-import { formatCurrency } from '../utils/currency.js';
+import { bindCurrencyInput, formatCurrency, parseCurrencyInput } from '../utils/currency.js';
 import { debounce } from '../utils/dom.js';
 import { escapeHtml } from '../utils/html.js';
 
@@ -54,7 +54,7 @@ export function PaymentsPage() {
   return `
     ${PageHeader({
       title: 'Thanh toán',
-      description: 'Theo dõi thanh toán Kiosk. PayOS tự hoàn tất khi webhook báo đã thanh toán; xác nhận thủ công chỉ dùng cho ngoại lệ.',
+      description: 'Theo dõi thanh toán Kiosk. Hệ thống tự hoàn tất khi ngân hàng xác nhận; xác nhận thủ công chỉ dùng cho ngoại lệ.',
     })}
     ${Toolbar({
       children: `
@@ -339,7 +339,7 @@ function renderApprovalAction(payment) {
 
   return `
     <div class="payment-approval-actions">
-      <button class="table-approve-button" type="button" data-payment-action="payos" data-payment-id="${escapeHtml(payment.id)}" ${isProcessing ? 'disabled' : ''}>Tạo PayOS</button>
+      <button class="table-approve-button" type="button" data-payment-action="payos" data-payment-id="${escapeHtml(payment.id)}" ${isProcessing ? 'disabled' : ''}>Tạo link</button>
       <details class="row-action-menu">
         <summary>Khác</summary>
         <div class="row-action-menu-panel">
@@ -355,20 +355,20 @@ function renderApprovalAction(payment) {
 
 function openPaymentPayos(payment) {
   Modal.open({
-    title: `Tạo PayOS cho thanh toán #${escapeHtml(payment.id)}`,
+    title: `Tạo link thanh toán #${escapeHtml(payment.id)}`,
     body: `
       <div class="approval-message">
-        <p>Tạo link PayOS cho khoản Pending của Kiosk <strong>${escapeHtml(payment.kiosks?.facebook_name || '—')}</strong>.</p>
+        <p>Tạo link thanh toán cho khoản đang chờ của Kiosk <strong>${escapeHtml(payment.kiosks?.facebook_name || '—')}</strong>.</p>
         <div class="registration-summary">
           <div class="setting-item"><span class="setting-name">Khách hàng</span><span class="setting-value">${escapeHtml(payment.customers?.facebook_name || '—')}</span></div>
           <div class="setting-item"><span class="setting-name">Số tiền</span><span class="setting-value">${formatCurrency(payment.total_amount || 0)}</span></div>
         </div>
-        <p class="muted-text">Sau khi ngân hàng/PayOS báo thành công, webhook sẽ tự xác nhận payment và kích hoạt Kiosk. Màn hình này chỉ tạo QR/link để khách thanh toán.</p>
+        <p class="muted-text">Sau khi ngân hàng xác nhận thành công, hệ thống sẽ tự xác nhận thanh toán và kích hoạt Kiosk. Màn hình này chỉ tạo QR/link để khách thanh toán.</p>
         <div id="payment-payos-result"></div>
       </div>
       <div class="modal-actions">
         <button class="btn-secondary" type="button" data-payos-close>Đóng</button>
-        <button class="btn-primary" type="button" data-payos-create>Tạo link PayOS</button>
+        <button class="btn-primary" type="button" data-payos-create>Tạo link thanh toán</button>
       </div>
     `,
   });
@@ -385,7 +385,7 @@ async function createPaymentPayos(payment, button) {
   state.processingPaymentId = payment.id;
   button.disabled = true;
   button.textContent = 'Đang tạo...';
-  setPayosResult('Đang tạo link PayOS...', true);
+  setPayosResult('Đang tạo link thanh toán...', true);
 
   try {
     const { data } = await PayosService.createCrmPayment({
@@ -397,12 +397,18 @@ async function createPaymentPayos(payment, button) {
     });
     setPayosResult(renderPayosResult(data), false, true);
     bindPayosCopyButtons(document);
-    button.textContent = 'Đã tạo PayOS';
-    Toast.show('Đã tạo link PayOS. Chờ webhook xác nhận khi khách thanh toán.');
+    watchPayosPaymentStatus(document, {
+      onPaid: () => {
+        Toast.show('PayOS đã xác nhận thanh toán.');
+        loadPayments();
+      },
+    });
+    button.textContent = 'Đã tạo link';
+    Toast.show('Đã tạo link thanh toán. Chờ ngân hàng xác nhận khi khách thanh toán.');
   } catch (error) {
-    setPayosResult(escapeHtml(error?.message || 'Không tạo được link PayOS.'), false);
+    setPayosResult(escapeHtml(error?.message || 'Không tạo được link thanh toán.'), false);
     button.disabled = false;
-    button.textContent = 'Tạo link PayOS';
+    button.textContent = 'Tạo link thanh toán';
   } finally {
     state.processingPaymentId = null;
   }
@@ -413,12 +419,12 @@ function openPaymentApproval(payment) {
     title: 'Xác nhận thủ công',
     body: `
       <div class="approval-message">
-        <p>Chỉ dùng khi khách thanh toán ngoài PayOS hoặc webhook không thể xử lý. Xác nhận đã nhận tiền cho Kiosk <strong>${escapeHtml(payment.kiosks?.facebook_name || '—')}</strong>?</p>
+        <p>Chỉ dùng khi khách đã chuyển khoản nhưng hệ thống chưa tự xử lý. Xác nhận đã nhận tiền cho Kiosk <strong>${escapeHtml(payment.kiosks?.facebook_name || '—')}</strong>?</p>
         <div class="registration-summary">
           <div class="setting-item"><span class="setting-name">Khách hàng</span><span class="setting-value">${escapeHtml(payment.customers?.facebook_name || '—')}</span></div>
           <div class="setting-item"><span class="setting-name">Số tiền</span><span class="setting-value">${formatCurrency(payment.total_amount || 0)}</span></div>
         </div>
-        <p class="muted-text">PayOS chuẩn sẽ tự hoàn tất qua webhook; thao tác thủ công là fallback có trách nhiệm đối soát.</p>
+        <p class="muted-text">Luồng tự động sẽ hoàn tất khi ngân hàng xác nhận; thao tác thủ công là fallback có trách nhiệm đối soát.</p>
       </div>
       <div class="modal-actions">
         <button class="btn-secondary" type="button" data-approval-cancel>Đóng</button>
@@ -561,7 +567,7 @@ function openPaymentAdjustment(payment) {
         <div class="form-row">
           <label class="form-group">
             <span>Chênh lệch số tiền *</span>
-            <input class="form-control" id="payment-adjustment-amount" type="number" step="1000" value="0" required />
+            <input class="form-control" id="payment-adjustment-amount" type="text" inputmode="numeric" placeholder="0 VNĐ" required />
           </label>
           <label class="form-group">
             <span>Chênh lệch số tháng</span>
@@ -581,6 +587,8 @@ function openPaymentAdjustment(payment) {
     `,
   });
 
+  bindCurrencyInput(document.getElementById('payment-adjustment-amount'), { allowNegative: true });
+
   document.querySelector('[data-adjustment-close]')?.addEventListener('click', Modal.close);
   document.querySelector('[data-adjustment-confirm]')?.addEventListener('click', (event) => {
     createAdjustment(payment.id, event.currentTarget);
@@ -595,7 +603,7 @@ async function createAdjustment(paymentId, button) {
 
   try {
     await PaymentService.createAdjustment(paymentId, {
-      amountDelta: document.getElementById('payment-adjustment-amount')?.value,
+      amountDelta: parseCurrencyInput(document.getElementById('payment-adjustment-amount')?.value, { allowNegative: true }),
       serviceMonthDelta: document.getElementById('payment-adjustment-months')?.value,
       reason: document.getElementById('payment-adjustment-reason')?.value,
     });
@@ -700,8 +708,8 @@ function renderPayosHint(summary = {}) {
   }
   hint.innerHTML = `
     <div class="notice warning payments-payos-hint">
-      <strong>PayOS</strong>
-      <span>Nút Tạo PayOS chỉ hiện với thanh toán Chờ xác nhận. Hiện chưa có payment pending trong bộ lọc này.</span>
+      <strong>Thanh toán</strong>
+      <span>Nút tạo link chỉ hiện với thanh toán Chờ xác nhận. Hiện chưa có thanh toán chờ xử lý trong bộ lọc này.</span>
     </div>
   `;
 }
@@ -761,10 +769,16 @@ function setPayosResult(content, isMuted = false, isHtml = false) {
 
 function renderPayosResult(data = {}) {
   return PayosResultCard({
+    amountLabel: data.amount ? formatCurrency(data.amount) : '',
+    accountName: data.accountName,
+    accountNumber: data.accountNumber,
+    bankName: data.bankName,
+    bin: data.bin,
     checkoutUrl: data.checkoutUrl,
+    description: data.description,
     orderCode: data.orderCode,
     paymentLinkId: data.paymentLinkId,
     qrCode: data.qrCode,
-    note: 'Webhook PayOS sẽ tự xác nhận payment khi ngân hàng báo thanh toán thành công.',
+    note: 'Hệ thống sẽ tự xác nhận thanh toán khi ngân hàng báo thành công.',
   });
 }

@@ -9,7 +9,7 @@ const args = parseArgs(process.argv.slice(2));
 loadEnvFile(args.env || '.env.local');
 
 const SUPABASE_URL = requireEnv('SUPABASE_URL').replace(/\/+$/, '');
-const SUPABASE_SERVICE_KEY = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || requireEnv('SUPABASE_SERVICE_KEY');
 const PURPOSE = args.purpose || 'wallet_topup';
 const EXECUTE = Boolean(args.execute);
 const INSPECT = Boolean(args.inspect);
