@@ -14,7 +14,7 @@ html {
 
 :root,
 html[data-theme="dark"] {
-  --bg-page: #0f172a; --bg-surface: #172033; --bg-muted: #1e293b; --bg-elevated: #243147;
+  --bg-page: #0f172a; --bg-surface: #172033; --bg-soft: #1e293b; --bg-muted: var(--bg-soft); --bg-elevated: #243147;
   --text-primary: #f8fafc; --text-secondary: #cbd5e1; --text-muted: #94a3b8; --text-inverse: #fff;
   --border-default: #334155; --border-strong: #475569;
   --primary: #60a5fa; --primary-hover: #3b82f6; --primary-soft: rgba(59,130,246,.16);
@@ -22,14 +22,16 @@ html[data-theme="dark"] {
   --footer-bg: #080f1f; --footer-text: #f1f5f9; --footer-muted: #b6c2d1; --footer-link: #93c5fd; --footer-border: #263349;
   --form-control-height: 44px; --form-control-radius: 10px; --form-section-gap: 24px; --money-suffix-text: var(--text-secondary);
   --brand-asset-surface: #fff; --brand-visual-ring: var(--border-strong); --brand-visual-glow: var(--primary-soft);
+  --info-bg: rgba(59,130,246,.14); --info-border: rgba(96,165,250,.35); --info-text: #dbeafe;
 }
 html[data-theme="light"] {
-  --bg-page: #f8fafc; --bg-surface: #fff; --bg-muted: #f1f5f9; --bg-elevated: #fff;
+  --bg-page: #f8fafc; --bg-surface: #fff; --bg-soft: #f1f5f9; --bg-muted: var(--bg-soft); --bg-elevated: #fff;
   --text-primary: #0f172a; --text-secondary: #475569; --text-muted: #64748b; --text-inverse: #fff;
   --border-default: #e2e8f0; --border-strong: #cbd5e1;
   --primary: #2563eb; --primary-hover: #1d4ed8; --primary-soft: #eff6ff;
   --success: #16a34a; --warning: #d97706; --danger: #dc2626; --shadow-surface: 0 12px 35px rgba(15,23,42,.07);
   --footer-bg: #0f2340; --footer-text: #f8fafc; --footer-muted: #cbd5e1; --footer-link: #bfdbfe; --footer-border: #334b68;
+  --info-bg: #eff6ff; --info-border: #93c5fd; --info-text: #1e3a8a;
 }
 
 /* Public community portal */
@@ -627,6 +629,18 @@ textarea {
 [hidden] {
   display: none !important;
 }
+
+/* Semantic contrast corrections for shared notices and customer details. */
+.notice,.legacy-scope-notice,.legacy-payment-proof,.lookup-guide,.lookup-support {
+  color:var(--info-text);
+  background:var(--info-bg);
+  border-color:var(--info-border);
+}
+.notice strong,.notice span,.notice code,.legacy-scope-notice strong,.legacy-scope-notice p,.legacy-payment-proof strong,.legacy-payment-proof p,.lookup-guide strong,.lookup-guide span,.lookup-support strong,.lookup-support span { color:inherit; }
+.admin-card,.dash-card,.form-card,.table-card { color:var(--text-primary); background:var(--bg-surface); border-color:var(--border-default); }
+.dash-card-header h3,.admin-card h3,.detail-section h3 { color:var(--text-primary); }
+.detail-note,.empty-state,.field-helper,.muted-text { color:var(--text-secondary); }
+.payos-expiry-countdown{margin:0;color:var(--info-text);font-variant-numeric:tabular-nums;font-weight:700}
 
 .app-shell {
   display: flex;

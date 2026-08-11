@@ -3,6 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    try {
+      const savedTheme = localStorage.getItem('dhlThemePreference');
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        document.documentElement.dataset.theme = savedTheme;
+        document.documentElement.style.colorScheme = savedTheme;
+      }
+    } catch {}
+  </script>
   <title>Diễn Châu - À Đây Rồi DHL | Cổng Kiosk cộng đồng</title>
   <meta
     name="description"

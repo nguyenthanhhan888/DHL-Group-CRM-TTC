@@ -3,6 +3,7 @@ const {
   PAYOS_CREATE_PAYMENT_PATH,
   callSupabaseRpc,
   createOrderCode,
+  createPaymentExpiredAt,
   normalizePayosDescription,
   normalizePositiveAmount,
   normalizePurpose,
@@ -68,6 +69,7 @@ module.exports = async function createPayosPaymentHandler(req, res) {
       checkoutUrl: payosData?.data?.checkoutUrl || null,
       qrCode: payosData?.data?.qrCode || null,
       paymentLinkId: payosData?.data?.paymentLinkId || null,
+      expiresAt: payload.request.expiredAt,
       ...formatPayosTransferInfo(payosData?.data, payload),
     });
   } catch (error) {
@@ -131,6 +133,7 @@ function buildPaymentPayload(body, checksumKey) {
     description,
     returnUrl,
     cancelUrl,
+    expiredAt: createPaymentExpiredAt(),
   };
   request.signature = signPaymentRequest(request, checksumKey);
 

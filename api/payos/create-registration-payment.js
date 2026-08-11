@@ -2,6 +2,7 @@ const {
   PAYOS_API_BASE_URL,
   PAYOS_CREATE_PAYMENT_PATH,
   createOrderCode,
+  createPaymentExpiredAt,
   getSupabaseServiceConfig,
   normalizePayosDescription,
   parseJsonBody,
@@ -61,6 +62,7 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
         description: normalizePayosDescription(`DHL${row.payment_id}`, orderCode),
         returnUrl,
         cancelUrl,
+        expiredAt: createPaymentExpiredAt(),
       };
       request.signature = signPaymentRequest(request, checksumKey);
 
@@ -98,7 +100,7 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
         paymentLinkId: payosData?.data?.paymentLinkId || null,
         providerPayload: payosData,
       });
-      payments.push(formatPaymentResult(row, savedOrder));
+      payments.push(formatPaymentResult(row, savedOrder, request.expiredAt));
     }
 
     return res.status(200).json({ success: true, payments });
@@ -352,7 +354,7 @@ async function upsertPayosOrder({
   return Array.isArray(data) ? data[0] : data;
 }
 
-function formatPaymentResult(row, order) {
+function formatPaymentResult(row, order, expiresAt = null) {
   const providerData = order.provider_payload?.data || {};
   return {
     requestId: Number(row.id),
@@ -362,6 +364,7 @@ function formatPaymentResult(row, order) {
     checkoutUrl: order.checkout_url || null,
     qrCode: order.qr_code || null,
     paymentLinkId: order.payment_link_id || null,
+    expiresAt,
     accountName: providerData.accountName || providerData.account_name || null,
     accountNumber: providerData.accountNumber || providerData.account_number || null,
     bankName: providerData.bankName || providerData.bank_name || null,

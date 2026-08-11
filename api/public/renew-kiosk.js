@@ -1,4 +1,4 @@
-const { PAYOS_API_BASE_URL, PAYOS_CREATE_PAYMENT_PATH, callSupabaseRpc, createOrderCode, normalizePayosDescription, parseJsonBody, requireEnv, sendError, signPaymentRequest } = require('../payos/_utils');
+const { PAYOS_API_BASE_URL, PAYOS_CREATE_PAYMENT_PATH, callSupabaseRpc, createOrderCode, createPaymentExpiredAt, normalizePayosDescription, parseJsonBody, requireEnv, sendError, signPaymentRequest } = require('../payos/_utils');
 const { renewalNonceHash, verifyRenewalToken } = require('./_renewal-token');
 
 const ALLOWED_MONTHS = new Set([1, 3, 6, 12]);
@@ -19,14 +19,14 @@ module.exports = async function publicRenewKiosk(req, res) {
     const orderCode = createOrderCode();
     const description = normalizePayosDescription(`DHL${payment.id}`, orderCode);
     const returnUrl = safeReturnUrl(parsed.value.returnUrl);
-    const request = { orderCode, amount, description, returnUrl, cancelUrl: returnUrl };
+    const request = { orderCode, amount, description, returnUrl, cancelUrl: returnUrl, expiredAt: createPaymentExpiredAt() };
     request.signature = signPaymentRequest(request, requireEnv('PAYOS_CHECKSUM_KEY'));
     await recordOrder(payment.id, request, { stage: 'reserved' });
     const providerResponse = await fetch(`${PAYOS_API_BASE_URL}${PAYOS_CREATE_PAYMENT_PATH}`, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'x-client-id': requireEnv('PAYOS_CLIENT_ID'), 'x-api-key': requireEnv('PAYOS_API_KEY') }, body: JSON.stringify(request) });
     const provider = await providerResponse.json().catch(() => null);
     if (!providerResponse.ok || provider?.code !== '00') throw new Error(provider?.desc || 'Không tạo được QR PayOS.');
     await recordOrder(payment.id, request, provider, provider.data || {});
-    return res.status(200).json({ success: true, orderCode, amount, kiosk: prepared.kiosk_name, checkoutUrl: provider.data?.checkoutUrl || null, qrCode: provider.data?.qrCode || null, paymentLinkId: provider.data?.paymentLinkId || null, description: provider.data?.description || description, expiresAt: authorization.exp });
+    return res.status(200).json({ success: true, orderCode, amount, kiosk: prepared.kiosk_name, checkoutUrl: provider.data?.checkoutUrl || null, qrCode: provider.data?.qrCode || null, paymentLinkId: provider.data?.paymentLinkId || null, description: provider.data?.description || description, expiresAt: request.expiredAt });
   } catch (error) { const status = ['INVALID_RENEWAL_TOKEN','TOKEN_EXPIRED','TOKEN_SCOPE_MISMATCH'].includes(error?.code) ? 401 : error?.code === 'MISSING_ENV' ? 500 : 400; return sendError(res, status, error?.code || 'PUBLIC_RENEWAL_FAILED', error?.message || 'Không thể tạo thanh toán gia hạn.'); }
 };
 

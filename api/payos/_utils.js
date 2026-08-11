@@ -2,6 +2,11 @@ const crypto = require('crypto');
 
 const PAYOS_API_BASE_URL = 'https://api-merchant.payos.vn';
 const PAYOS_CREATE_PAYMENT_PATH = '/v2/payment-requests';
+const PAYOS_PAYMENT_TTL_SECONDS = 15 * 60;
+
+function createPaymentExpiredAt(now = Date.now()) {
+  return Math.floor(now / 1000) + PAYOS_PAYMENT_TTL_SECONDS;
+}
 
 function parseJsonBody(body) {
   if (body && typeof body === 'object' && !Array.isArray(body)) {
@@ -186,8 +191,10 @@ function sendError(res, status, code, message, details) {
 module.exports = {
   PAYOS_API_BASE_URL,
   PAYOS_CREATE_PAYMENT_PATH,
+  PAYOS_PAYMENT_TTL_SECONDS,
   callSupabaseRpc,
   createOrderCode,
+  createPaymentExpiredAt,
   getSupabaseServiceConfig,
   getSupabaseUserConfig,
   normalizePayosDescription,
