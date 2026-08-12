@@ -163,7 +163,9 @@ async function callSupabaseRpc(functionName, payload, options = {}) {
   if (!response.ok) {
     const error = new Error(data?.message || data?.error || 'Supabase RPC thất bại.');
     error.status = response.status;
-    error.details = data;
+    error.code = data?.code;
+    error.details = data?.details;
+    error.hint = data?.hint;
     throw error;
   }
   return data;

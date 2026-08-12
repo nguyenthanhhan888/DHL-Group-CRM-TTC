@@ -1,10 +1,6 @@
 const {
-  PAYOS_API_BASE_URL,
-  PAYOS_CREATE_PAYMENT_PATH,
-  callSupabaseRpc,
   getSupabaseServiceConfig,
   getSupabaseUserConfig,
-  requireEnv,
   sendError,
 } = require('./_utils');
 
@@ -27,15 +23,13 @@ module.exports = async function payosStatusHandler(req, res) {
       return sendError(res, 404, 'PAYOS_ORDER_NOT_FOUND', 'Không tìm thấy thanh toán PayOS.');
     }
 
-    const syncedOrder = await syncPendingOrderFromPayos(order);
-
     return res.status(200).json({
       success: true,
-      orderCode: Number(syncedOrder.order_code),
-      status: String(syncedOrder.status || ''),
-      amount: Number(syncedOrder.amount || 0),
-      confirmedAt: syncedOrder.confirmed_at || null,
-      processedAt: syncedOrder.processed_at || null,
+      orderCode: Number(order.order_code),
+      status: String(order.status || ''),
+      amount: Number(order.amount || 0),
+      confirmedAt: order.confirmed_at || null,
+      processedAt: order.processed_at || null,
     });
   } catch (error) {
     const status = error?.code === 'MISSING_ENV' ? 500 : 400;
@@ -54,58 +48,6 @@ function normalizeOrderCode(value) {
     throw new Error('Mã đơn PayOS không hợp lệ.');
   }
   return orderCode;
-}
-
-async function syncPendingOrderFromPayos(order) {
-  if (String(order.status || '').toLowerCase() !== 'pending') return order;
-
-  const payosData = await fetchPayosPaymentRequest(order.order_code);
-  const payment = payosData?.data || {};
-  if (String(payment.status || '').toUpperCase() !== 'PAID') return order;
-
-  const amount = Number(payment.amount || order.amount || 0);
-  if (!Number.isFinite(amount) || amount <= 0) return order;
-
-  const result = await callSupabaseRpc('handle_payos_webhook', {
-    order_code_input: Number(order.order_code),
-    amount_input: amount,
-    payment_link_id_input: payment.paymentLinkId || order.payment_link_id || null,
-    reference_input: payment.reference || payment.transactions?.[0]?.reference || null,
-    provider_payload_input: {
-      source: 'payos-status-poll',
-      data: payment,
-    },
-    signature_input: null,
-    event_key_input: `payos-status:${order.order_code}:${payment.reference || payment.paymentLinkId || 'paid'}`,
-  }, {
-    serviceRole: true,
-  });
-
-  return result?.order || {
-    ...order,
-    status: 'paid',
-    confirmed_at: new Date().toISOString(),
-    processed_at: new Date().toISOString(),
-  };
-}
-
-async function fetchPayosPaymentRequest(orderCode) {
-  try {
-    const clientId = requireEnv('PAYOS_CLIENT_ID');
-    const apiKey = requireEnv('PAYOS_API_KEY');
-    const response = await fetch(`${PAYOS_API_BASE_URL}${PAYOS_CREATE_PAYMENT_PATH}/${orderCode}`, {
-      headers: {
-        Accept: 'application/json',
-        'x-client-id': clientId,
-        'x-api-key': apiKey,
-      },
-    });
-    const data = await safeJson(response);
-    if (!response.ok || data?.code !== '00') return null;
-    return data;
-  } catch {
-    return null;
-  }
 }
 
 function normalizeBearerToken(value) {

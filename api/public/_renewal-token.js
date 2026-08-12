@@ -29,7 +29,7 @@ function verifyRenewalToken(token, { now = Date.now(), expectedKioskId } = {}) {
 }
 
 function encryptionKey() { return crypto.createHash('sha256').update(requireSecret()).digest(); }
-function requireSecret() { const secret = process.env.PUBLIC_RENEWAL_TOKEN_SECRET; if (!secret || secret.length < 32) { const error = new Error('Thiếu cấu hình PUBLIC_RENEWAL_TOKEN_SECRET an toàn.'); error.code = 'MISSING_ENV'; throw error; } return secret; }
+function requireSecret() { const secret = process.env.PUBLIC_RENEWAL_TOKEN_SECRET; if (!secret || secret.length < 32) { const error = new Error('Thiếu cấu hình PUBLIC_RENEWAL_TOKEN_SECRET an toàn.'); error.code = 'MISSING_RENEWAL_SECRET'; throw error; } return secret; }
 function positiveInteger(value) { const number = Number(value); if (!Number.isSafeInteger(number) || number < 1) throw tokenError('Kiosk không hợp lệ.'); return number; }
 function tokenError(message, code = 'INVALID_RENEWAL_TOKEN') { const error = new Error(message); error.code = code; return error; }
 

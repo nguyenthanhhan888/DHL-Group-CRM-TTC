@@ -232,8 +232,20 @@ function renderCopyRow(label, value) {
   `;
 }
 
-function renderPayosQr(qrCode) {
-  if (!qrCode) {
+export function normalizePayosQr(qr) {
+  const value = typeof qr === 'object' && qr !== null ? qr.value : qr;
+  const normalized = String(value || '').trim();
+  if (!normalized) return { format: 'none', value: '' };
+  const declaredFormat = typeof qr === 'object' && qr !== null ? String(qr.format || '') : '';
+  if (declaredFormat === 'image' || /^(https?:|data:image\/)/i.test(normalized)) {
+    return { format: 'image', value: normalized };
+  }
+  return { format: 'payload', value: normalized };
+}
+
+export function renderPayosQr(qrCode, { className = '' } = {}) {
+  const qr = normalizePayosQr(qrCode);
+  if (qr.format === 'none') {
     return `
       <div class="payos-qr-placeholder">
         <span>QR</span>
@@ -242,22 +254,13 @@ function renderPayosQr(qrCode) {
     `;
   }
 
-  const normalized = String(qrCode).trim();
-  if (!normalized) {
-    return `
-      <div class="payos-qr-placeholder">
-        <span>QR</span>
-        <small>Mở trang thanh toán để hoàn tất</small>
-      </div>
-    `;
-  }
-
-  const src = /^(https?:|data:image\/)/i.test(normalized)
-    ? normalized
-    : `https://api.qrserver.com/v1/create-qr-code/?size=360x360&ecc=M&qzone=2&data=${encodeURIComponent(normalized)}`;
+  const src = qr.format === 'image'
+    ? qr.value
+    : `https://api.qrserver.com/v1/create-qr-code/?size=360x360&ecc=M&qzone=4&data=${encodeURIComponent(qr.value)}`;
+  const classes = ['payos-qr-frame', className].filter(Boolean).join(' ');
 
   return `
-    <a class="payos-qr-frame" href="${escapeHtml(src)}" target="_blank" rel="noopener noreferrer" aria-label="Mở ảnh QR thanh toán">
+    <a class="${escapeHtml(classes)}" href="${escapeHtml(src)}" target="_blank" rel="noopener noreferrer" aria-label="Mở ảnh QR thanh toán">
       <img class="payos-qr-code" src="${escapeHtml(src)}" alt="QR thanh toán" loading="lazy" />
     </a>
   `;

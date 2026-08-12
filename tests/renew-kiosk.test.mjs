@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { calendarPeriodEnd, renewalStartDate } from '../src/components/RenewKioskForm.js';
 import { formatCurrency } from '../src/utils/currency.js';
+import { renewalBlockedMessage } from '../src/pages/LookupPage.js';
 
 test('active Kiosk renewal starts one day after current expiry', () => {
   assert.equal(renewalStartDate('2026-08-31', new Date(2026, 7, 11)), '2026-09-01');
@@ -10,6 +11,12 @@ test('active Kiosk renewal starts one day after current expiry', () => {
 
 test('expired Kiosk renewal starts today', () => {
   assert.equal(renewalStartDate('2026-07-31', new Date(2026, 7, 11)), '2026-08-11');
+});
+
+test('public renewal blocked states use friendly Admin-support messages', () => {
+  assert.equal(renewalBlockedMessage('PENDING_APPROVAL'), 'Kiosk đang chờ duyệt nên chưa thể gia hạn. Vui lòng liên hệ Admin để được hỗ trợ.');
+  assert.equal(renewalBlockedMessage('INVALID_PRICE'), 'Hiện chưa xác định được giá gia hạn cho Kiosk này. Vui lòng liên hệ Admin để được hỗ trợ.');
+  assert.doesNotMatch(renewalBlockedMessage('RENEWAL_CONFIG_UNAVAILABLE'), /token|RPC|PayOS|secret/i);
 });
 
 test('renewal end uses calendar months and inclusive end date', () => {
