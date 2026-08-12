@@ -90,10 +90,6 @@ function renderBusinessTypeForm(businessType, categories) {
   const pricePerMonth = Number.isFinite(Number(businessType?.price_per_month))
     ? Number(businessType.price_per_month)
     : 0;
-  const sortOrder = Number.isFinite(Number(businessType?.sort_order))
-    ? Number(businessType.sort_order)
-    : 0;
-
   return `
     <form id="business-type-form" class="modal-form" novalidate>
       <div id="business-type-form-error" class="form-error hidden"></div>
@@ -111,10 +107,6 @@ function renderBusinessTypeForm(businessType, categories) {
       <label class="form-group">
         <span>Giá theo tháng *</span>
         <input class="form-control" id="business-type-monthly-price" type="text" inputmode="numeric" placeholder="0 VNĐ" value="${pricePerMonth ? formatVndNumber(pricePerMonth) : ''}" required />
-      </label>
-      <label class="form-group">
-        <span>Độ ưu tiên *</span>
-        <input class="form-control" id="business-type-priority" type="number" min="0" step="1" value="${sortOrder}" required />
       </label>
       <label class="form-group">
         <span>Mô tả</span>
@@ -144,7 +136,6 @@ function readBusinessTypePayload() {
     name: readValue('business-type-name'),
     description: optionalValue('business-type-description'),
     price_per_month: parseCurrencyInput(readValue('business-type-monthly-price')),
-    sort_order: Number(readValue('business-type-priority')),
     is_active: Boolean(document.getElementById('business-type-is-active')?.checked),
   };
 }
@@ -161,11 +152,6 @@ function validateBusinessTypeForm() {
   const price = parseCurrencyInput(readValue('business-type-monthly-price'));
   if (!Number.isFinite(price) || price < 0) {
     return { valid: false, message: 'Giá theo tháng phải là số không âm.' };
-  }
-
-  const priority = Number(readValue('business-type-priority'));
-  if (!Number.isInteger(priority) || priority < 0) {
-    return { valid: false, message: 'Độ ưu tiên phải là số nguyên không âm.' };
   }
 
   return { valid: true };

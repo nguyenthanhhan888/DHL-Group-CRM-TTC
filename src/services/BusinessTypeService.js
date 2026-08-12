@@ -11,7 +11,6 @@ const BUSINESS_TYPE_MUTABLE_FIELDS = [
   'name',
   'description',
   'price_per_month',
-  'sort_order',
   'is_active',
 ];
 
@@ -20,7 +19,7 @@ export const BusinessTypeService = {
     searchTerm = '',
     status = '',
     categoryId = '',
-    sort = { column: 'sort_order', ascending: true },
+    sort = { column: 'name', ascending: true },
     pagination,
   } = {}) {
     const supabase = requireSupabaseClient();
@@ -44,7 +43,7 @@ export const BusinessTypeService = {
     searchTerm = '',
     status = '',
     categoryId = '',
-    sort = { column: 'sort_order', ascending: true },
+    sort = { column: 'category_name', ascending: true },
     pagination,
   } = {}) {
     const supabase = requireSupabaseClient();
@@ -58,7 +57,9 @@ export const BusinessTypeService = {
     if (status === 'inactive') query = query.eq('is_active', false);
     if (categoryId) query = query.eq('category_id', categoryId);
 
-    return runQuery(applyPagination(applySort(query, sort), pagination));
+    query = applySort(query, sort);
+    if (sort.column === 'category_name') query = query.order('name', { ascending: true });
+    return runQuery(applyPagination(query, pagination));
   },
 
   async listByCategory(categoryId) {
@@ -69,30 +70,34 @@ export const BusinessTypeService = {
         .select('id, name, price_per_month')
         .eq('category_id', categoryId)
         .eq('is_active', true)
-        .order('sort_order'),
+        .order('name'),
     );
   },
 
   async listActive() {
     const supabase = requireSupabaseClient();
-    return runQuery(
+    const result = await runQuery(
       supabase
         .from('business_types')
-        .select('id, name, price_per_month, category_id')
+        .select('id, name, price_per_month, category_id, categories(name)')
         .eq('is_active', true)
-        .order('sort_order'),
+        .order('name'),
     );
+    result.data = sortBusinessTypesByCategory(result.data);
+    return result;
   },
 
   async listPublicActive() {
     const supabase = requirePublicSupabaseClient();
-    return runQuery(
+    const result = await runQuery(
       supabase
         .from('business_types')
-        .select('id, name, price_per_month, category_id')
+        .select('id, name, price_per_month, category_id, categories(name)')
         .eq('is_active', true)
-        .order('sort_order'),
+        .order('name'),
     );
+    result.data = sortBusinessTypesByCategory(result.data);
+    return result;
   },
 
   async getById(id) {
@@ -146,4 +151,16 @@ function pickBusinessTypePayload(businessType = {}) {
 
     return payload;
   }, {});
+}
+
+const vietnameseCollator = new Intl.Collator('vi', { sensitivity: 'base' });
+
+function sortBusinessTypesByCategory(businessTypes = []) {
+  return [...businessTypes].sort((left, right) => {
+    const categoryDifference = vietnameseCollator.compare(
+      left.categories?.name || '',
+      right.categories?.name || '',
+    );
+    return categoryDifference || vietnameseCollator.compare(left.name || '', right.name || '');
+  });
 }

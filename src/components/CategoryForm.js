@@ -43,10 +43,6 @@ export function openCategoryForm({ category = null, onSaved } = {}) {
 }
 
 function renderCategoryForm(category) {
-  const sortOrder = Number.isFinite(Number(category?.sort_order))
-    ? Number(category.sort_order)
-    : 0;
-
   return `
     <form id="category-form" class="modal-form" novalidate>
       <div id="category-form-error" class="form-error hidden"></div>
@@ -57,10 +53,6 @@ function renderCategoryForm(category) {
       <label class="form-group">
         <span>Mô tả</span>
         <textarea class="form-control" id="category-description" rows="3">${escapeHtml(category?.description || '')}</textarea>
-      </label>
-      <label class="form-group">
-        <span>Thứ tự sắp xếp *</span>
-        <input class="form-control" id="category-sort-order" type="number" min="0" step="1" value="${sortOrder}" required />
       </label>
       <label class="checkbox-field">
         <input id="category-is-active" type="checkbox" ${category?.is_active === false ? '' : 'checked'} />
@@ -78,7 +70,6 @@ function readCategoryPayload() {
   return {
     name: readValue('category-name'),
     description: optionalValue('category-description'),
-    sort_order: Number(readValue('category-sort-order')),
     is_active: Boolean(document.getElementById('category-is-active')?.checked),
   };
 }
@@ -86,11 +77,6 @@ function readCategoryPayload() {
 function validateCategoryForm() {
   if (!readValue('category-name')) {
     return { valid: false, message: 'Tên danh mục là bắt buộc.' };
-  }
-
-  const sortOrder = Number(readValue('category-sort-order'));
-  if (!Number.isInteger(sortOrder) || sortOrder < 0) {
-    return { valid: false, message: 'Thứ tự sắp xếp phải là số nguyên không âm.' };
   }
 
   return { valid: true };

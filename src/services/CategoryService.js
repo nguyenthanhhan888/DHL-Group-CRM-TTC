@@ -9,7 +9,6 @@ import {
 const CATEGORY_MUTABLE_FIELDS = [
   'name',
   'description',
-  'sort_order',
   'is_active',
 ];
 
@@ -17,7 +16,7 @@ export const CategoryService = {
   async list({
     searchTerm = '',
     status = '',
-    sort = { column: 'sort_order', ascending: true },
+    sort = { column: 'name', ascending: true },
     pagination,
   } = {}) {
     const supabase = requireSupabaseClient();
@@ -36,7 +35,7 @@ export const CategoryService = {
     return runQuery(applyPagination(applySort(query, sort), pagination));
   },
 
-  async listWithStats({ sort = { column: 'sort_order', ascending: true }, pagination } = {}) {
+  async listWithStats({ sort = { column: 'name', ascending: true }, pagination } = {}) {
     const supabase = requireSupabaseClient();
     const query = supabase.rpc('get_categories_with_stats');
     return runQuery(applyPagination(applySort(query, sort), pagination));
@@ -49,7 +48,7 @@ export const CategoryService = {
         .from('categories')
         .select('id, name')
         .eq('is_active', true)
-        .order('sort_order'),
+        .order('name'),
     );
   },
 
@@ -60,7 +59,7 @@ export const CategoryService = {
         .from('categories')
         .select('id, name')
         .eq('is_active', true)
-        .order('sort_order'),
+        .order('name'),
     );
   },
 
