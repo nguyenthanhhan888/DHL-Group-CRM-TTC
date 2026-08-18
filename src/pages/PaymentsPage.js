@@ -769,16 +769,9 @@ function setPayosResult(content, isMuted = false, isHtml = false) {
 
 function renderPayosResult(data = {}) {
   return PayosResultCard({
-    amountLabel: data.amount ? formatCurrency(data.amount) : '',
-    accountName: data.accountName,
-    accountNumber: data.accountNumber,
-    bankName: data.bankName,
-    bin: data.bin,
     checkoutUrl: data.checkoutUrl,
-    description: data.description,
     orderCode: data.orderCode,
     paymentLinkId: data.paymentLinkId,
-    qrCode: data.qrCode,
-    note: 'Hệ thống sẽ tự xác nhận thanh toán khi ngân hàng báo thành công.',
+    note: 'Mở hoặc gửi link PayOS. Webhook sẽ tự xác nhận thanh toán.',
   });
 }

@@ -57,7 +57,7 @@ test('manual admin renewal stays PayOS-free while admin PayOS remains pending un
   assert.match(form, /if \(values\.path === 'paid'\) await submitManual/);
   assert.match(form, /else await submitPayos/);
   assert.doesNotMatch(service.match(/async manualRenewKiosk[\s\S]*?\n  },/)?.[0] || '', /PayosService|create-payment/);
-  assert.match(form, /Kiosk chỉ được gia hạn sau khi PayOS xác nhận thành công/);
+  assert.match(form, /Kiosk chỉ được gia hạn sau khi webhook PayOS xác nhận thành công/);
 });
 
 test('checkout APIs reuse active orders and never trust return URL or polling to complete payment', async () => {
@@ -103,7 +103,7 @@ test('public PayOS errors are sanitized and active checkout copy is friendly', a
   assert.match(registration, /publicRegistrationError/);
   assert.match(renewal, /publicRenewalError/);
   assert.doesNotMatch(registration, /sendError\([\s\S]{0,180}error\?\.message/);
-  for (const source of [registerPage, lookupPage]) assert.match(source, /Bạn đang có một mã thanh toán còn hiệu lực/);
+  for (const source of [registerPage, lookupPage]) assert.match(source, /window\.location\.assign/);
 });
 
 test('admin PayOS preparation reuses one pending business intent', async () => {

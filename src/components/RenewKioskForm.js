@@ -41,7 +41,7 @@ function formView(kiosk) {
     </section>
     <fieldset class="renew-payment-paths"><legend>Trạng thái thanh toán</legend>
       <label><input type="radio" name="renew-payment-path" value="paid" checked><span><strong>Đã nhận thanh toán</strong><small>Admin đã nhận tiền trực tiếp; không tạo QR.</small></span></label>
-      <label><input type="radio" name="renew-payment-path" value="payos"><span><strong>Khách hàng chưa thanh toán</strong><small>Tạo thanh toán Pending và QR PayOS.</small></span></label>
+      <label><input type="radio" name="renew-payment-path" value="payos"><span><strong>Khách hàng chưa thanh toán</strong><small>Tạo thanh toán Pending và link PayOS.</small></span></label>
     </fieldset>
     <label class="form-group" data-manual-method><span>Phương thức thanh toán *</span><select class="form-control" id="renew-payment-method"><option value="transfer">Chuyển khoản</option><option value="cash">Tiền mặt</option><option value="other">Khác</option></select></label>
     <label class="form-group"><span>Ghi chú</span><textarea class="form-control" id="renew-note" rows="2"></textarea></label>
@@ -83,11 +83,12 @@ async function submitPayos(values, onSaved) {
   const paymentId = payment?.id || data?.payment_id;
   const amount = Number(payment?.total_amount || values.total);
   if (!paymentId) throw new Error('Đã tạo thanh toán Pending nhưng chưa đọc được mã thanh toán.');
-  Modal.open({ title: 'QR PayOS gia hạn Kiosk', body: `<div class="approval-message"><p>Thanh toán đang Pending. Kiosk chỉ được gia hạn sau khi PayOS xác nhận thành công.</p><div id="renew-payos-result"><p class="muted-text">Đang tạo QR PayOS...</p></div></div><div class="modal-actions"><button class="btn-secondary" type="button" data-renew-cancel>Đóng</button></div>` });
+  Modal.open({ title: 'PayOS gia hạn Kiosk', body: `<div class="approval-message"><p>Thanh toán đang Pending. Kiosk chỉ được gia hạn sau khi webhook PayOS xác nhận thành công.</p><div id="renew-payos-result"><p class="muted-text">Đang tạo link PayOS...</p></div></div><div class="modal-actions"><button class="btn-secondary" type="button" data-renew-cancel>Đóng</button></div>` });
   const { data: payos } = await PayosService.createCrmPayment({ paymentId, amount, description: `DHL${paymentId}`, returnUrl: routeUrl(), cancelUrl: routeUrl() });
   const container = document.getElementById('renew-payos-result');
-  if (container) { container.innerHTML = PayosResultCard({ amountLabel: formatCurrency(amount), ...payos, note: 'Webhook PayOS sẽ hoàn tất thanh toán và gia hạn Kiosk.' }); bindPayosCopyButtons(container); watchPayosPaymentStatus(container, { onPaid: () => { Toast.show('PayOS đã xác nhận thanh toán gia hạn.'); onSaved?.(); } }); }
-  Toast.show('Đã tạo thanh toán Pending và QR PayOS.'); await onSaved?.();
+  if (container) { container.innerHTML = PayosResultCard({ ...payos, note: 'Gửi link cho khách hàng hoặc mở PayOS. Webhook sẽ hoàn tất gia hạn.' }); bindPayosCopyButtons(container); watchPayosPaymentStatus(container, { onPaid: () => { Toast.show('PayOS đã xác nhận thanh toán gia hạn.'); onSaved?.(); } }); }
+  if (payos.checkoutUrl) window.open(payos.checkoutUrl, '_blank', 'noopener,noreferrer');
+  Toast.show('Đã tạo thanh toán Pending và link PayOS.'); await onSaved?.();
 }
 
 function updateCalculation() {
@@ -105,6 +106,6 @@ function stateView(title, message) { return `<div class="empty-state"><div class
 function methodLabel(value) { return ({ transfer: 'Chuyển khoản', cash: 'Tiền mặt', other: 'Khác' })[value] || value || '—'; }
 function value(id) { return document.getElementById(id)?.value.trim() || ''; } function number(id) { return Number(value(id) || 0); } function setText(id, text) { const element = document.getElementById(id); if (element) element.textContent = text; }
 function showError(message) { const element = document.getElementById('renew-form-error'); if (element) { element.textContent = message; element.classList.remove('hidden'); } } function clearError() { document.getElementById('renew-form-error')?.classList.add('hidden'); }
-function setSaving(button, saving, path) { if (!button) return; button.disabled = saving; button.textContent = saving ? (path === 'paid' ? 'Đang xác nhận...' : 'Đang tạo QR...') : (path === 'paid' ? 'Xác nhận đã thanh toán & Gia hạn' : 'Tạo QR PayOS'); }
+function setSaving(button, saving, path) { if (!button) return; button.disabled = saving; button.textContent = saving ? (path === 'paid' ? 'Đang xác nhận...' : 'Đang tạo link...') : (path === 'paid' ? 'Xác nhận đã thanh toán & Gia hạn' : 'Tạo PayOS'); }
 function routeUrl() { return `${window.location.origin}${window.location.pathname}#/kiosk-detail?id=${currentKiosk?.id || ''}`; }
 if (typeof document !== 'undefined') document.addEventListener('click', (event) => { if (event.target.matches('[data-renew-cancel]')) Modal.close(); });

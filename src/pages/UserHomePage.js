@@ -2,7 +2,6 @@ import { EmptyState } from '../components/EmptyState.js';
 import { bindFacebookIdResolvers, FacebookIdResolverFields } from '../components/FacebookIdResolver.js';
 import { Modal } from '../components/Modal.js';
 import { PageHeader } from '../components/PageHeader.js';
-import { bindPayosCopyButtons, PayosResultCard, watchPayosPaymentStatus } from '../components/PayosResultCard.js';
 import { Toast } from '../components/Toast.js';
 import { AnnouncementService } from '../services/AnnouncementService.js';
 import { FacebookIdService } from '../services/FacebookIdService.js';
@@ -1690,38 +1689,21 @@ function buildPayosRouteUrl(route) {
 }
 
 function showWalletPayosResult(amount, data = {}) {
+  if (data.checkoutUrl) {
+    window.location.assign(data.checkoutUrl);
+    return;
+  }
   Modal.open({
     title: 'Nạp tiền',
     body: `
       <div class="approval-message">
         <p>Đã tạo yêu cầu nạp <strong>${formatCurrency(amount)}</strong>. Xu sẽ tự cộng vào ví sau khi ngân hàng xác nhận thanh toán.</p>
-        ${PayosResultCard({
-          amountLabel: formatCurrency(amount),
-          accountName: data.accountName,
-          accountNumber: data.accountNumber,
-          bankName: data.bankName,
-          bin: data.bin,
-          checkoutUrl: data.checkoutUrl,
-          description: data.description,
-          orderCode: data.orderCode,
-          paymentLinkId: data.paymentLinkId,
-          qrCode: data.qrCode,
-          note: 'Quét QR hoặc mở trang thanh toán. Sau khi thanh toán thành công, ví sẽ tự cập nhật trong vài giây.',
-        })}
+        <p class="form-error">Chưa nhận được link thanh toán PayOS. Vui lòng thử lại.</p>
       </div>
       <div class="modal-actions">
         <button class="btn-secondary" type="button" data-payos-close>Đóng</button>
       </div>
     `,
-  });
-  bindPayosCopyButtons(document);
-  watchPayosPaymentStatus(document, {
-    onPaid: () => {
-      Toast.show('Đã nhận thanh toán. Ví đang được cập nhật.');
-      Modal.close();
-      loadWalletAndLedger();
-      startWalletPolling('payos-paid');
-    },
   });
   document.querySelector('[data-payos-close]')?.addEventListener('click', Modal.close);
 }

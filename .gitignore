@@ -16,3 +16,5 @@ config.local.js
 .playwright-cli/
 .vercel
 .env*
+
+supabase/.temp/

@@ -25,12 +25,12 @@ test('PayOS creation paths send a 15-minute expiredAt independent of renewal tok
   assert.match(publicRenewal, /expiresAt: request\.expiredAt/);
 });
 
-test('expired public renewal QR stops polling and offers regeneration', async () => {
+test('public renewal return polling is bounded and offers retry for terminal orders', async () => {
   const source = await readFile(path.join(root, 'src/pages/LookupPage.js'), 'utf8');
-  assert.match(source, /isRenewalExpired/);
-  assert.match(source, /stopRenewalTimers/);
-  assert.match(source, /Mã thanh toán đã hết hạn\./);
-  assert.match(source, /Tạo mã thanh toán mới/);
+  assert.match(source, /attempt < 10/);
+  assert.match(source, /setTimeout\(resolve, 3000\)/);
+  assert.match(source, /cancelled.*expired.*failed/);
+  assert.match(source, /data-renew-retry/);
 });
 
 test('semantic theme roles cover notices and Customer Detail headings', async () => {

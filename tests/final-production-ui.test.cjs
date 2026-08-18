@@ -64,7 +64,7 @@ test('lookup always renders renewal entry point and blocks unavailable flows bef
   const lookup = await source('src/pages/LookupPage.js');
   assert.match(lookup, /Gia hạn Kiosk/);
   assert.doesNotMatch(lookup, /item\.renewalAvailable\?`<button/);
-  assert.match(lookup, /if\(!item\.renewalAvailable\)\{panel\.innerHTML=blockedRenewalPanel/);
+  assert.match(lookup, /if \(!item\.renewalAvailable\).*blockedRenewalPanel/);
   assert.match(lookup, /PENDING_APPROVAL/);
   assert.match(lookup, /INVALID_PRICE/);
 });

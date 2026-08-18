@@ -55,19 +55,20 @@ export const RegistrationService = {
       });
       const data = await safeJson(response);
       if (!response.ok || data?.success === false) {
-        throw new Error(data?.message || 'Không tạo được QR PayOS.');
+        throw new Error(data?.message || 'Không tạo được link PayOS.');
       }
       return {
         data: {
           ...submitted.data,
-          payosPayments: data.payments || [],
+          registrationBatch: data.batch || null,
+          payosPayment: data.payment || null,
         },
       };
     } catch (error) {
       return {
         data: {
           ...submitted.data,
-          payosError: error?.message || 'Không tạo được QR PayOS.',
+          payosError: error?.message || 'Không tạo được link PayOS.',
         },
       };
     }
