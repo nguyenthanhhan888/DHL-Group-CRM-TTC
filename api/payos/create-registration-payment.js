@@ -44,7 +44,13 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
     return res.status(200).json({ success: true, batch: formatBatch(prepared), payment: formatPayment(saved, amount, false, request.expiredAt) });
   } catch (error) {
     const status = error?.status || (error?.code === 'MISSING_ENV' ? 500 : 400);
-    console.error('REGISTRATION_BATCH_PAYOS_FAILED', { code: /^[A-Z0-9_]{1,64}$/i.test(String(error?.code || '')) ? error.code : null, status });
+    console.error('REGISTRATION_BATCH_PAYOS_FAILED', {
+      code: safeDiagnostic(error?.code),
+      message: safeDiagnostic(error?.message),
+      details: safeDiagnostic(error?.details),
+      hint: safeDiagnostic(error?.hint),
+      status,
+    });
     return sendError(res, status, error?.code || 'REGISTRATION_BATCH_PAYOS_ERROR', publicRegistrationError(error));
   }
 };
@@ -53,7 +59,13 @@ async function prepareBatch(requestIds, phone) {
   const config = getSupabaseServiceConfig();
   const response = await fetch(`${config.url}/rest/v1/rpc/prepare_registration_batch_for_payos`, { method: 'POST', headers: { apikey: config.key, Authorization: `Bearer ${config.key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ request_ids_input: requestIds, phone_input: phone }) });
   const data = await safeJson(response);
-  if (!response.ok) { const error = new Error(data?.message || 'Không chuẩn bị được lô đăng ký.'); error.code = data?.code; throw error; }
+  if (!response.ok) {
+    const error = new Error(data?.message || 'Không chuẩn bị được lô đăng ký.');
+    error.code = data?.code;
+    error.details = data?.details;
+    error.hint = data?.hint;
+    throw error;
+  }
   return data;
 }
 
@@ -94,3 +106,11 @@ function publicRegistrationError(error) { if (error?.status === 429) return 'B�
 function originFromRequest(req) { return `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000'}`; }
 function toUnixSeconds(value) { const time = Date.parse(value || ''); return Number.isFinite(time) ? Math.floor(time / 1000) : null; }
 async function safeJson(response) { return response.json().catch(() => null); }
+function safeDiagnostic(value) {
+  const text = String(value || '').slice(0, 500);
+  if (!text) return null;
+  return text
+    .replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]')
+    .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED_JWT]')
+    .replace(/\+?\d{9,}/g, '[REDACTED_NUMBER]');
+}
