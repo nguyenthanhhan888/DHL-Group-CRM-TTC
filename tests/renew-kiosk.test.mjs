@@ -20,6 +20,9 @@ test('public renewal blocked states use friendly Admin-support messages', () => 
 });
 
 test('renewal end uses calendar months and inclusive end date', () => {
+  assert.equal(calendarPeriodEnd('2026-08-18', 1), '2026-09-17');
+  assert.equal(calendarPeriodEnd('2026-08-15', 1), '2026-09-14');
+  assert.equal(calendarPeriodEnd('2026-08-15', 6), '2027-02-14');
   assert.equal(calendarPeriodEnd('2026-09-01', 1), '2026-09-30');
   assert.equal(calendarPeriodEnd('2026-01-31', 1), '2026-02-27');
   assert.equal(calendarPeriodEnd('2026-08-11', 3), '2026-11-10');

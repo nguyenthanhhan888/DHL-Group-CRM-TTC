@@ -50,7 +50,7 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
 
       const existingOrder = await fetchExistingPayosOrder(row.payment_id);
       if (existingOrder?.checkout_url || existingOrder?.qr_code) {
-        payments.push(formatPaymentResult(row, existingOrder));
+        payments.push(formatPaymentResult(row, existingOrder, toUnixSeconds(existingOrder.expires_at), true));
         continue;
       }
 
@@ -71,7 +71,7 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
         orderCode,
         amount,
         description: request.description,
-        providerPayload: { stage: 'reserved', requestId },
+        providerPayload: { stage: 'reserved', requestId, expiresAt: request.expiredAt },
       });
 
       const payosResponse = await fetch(`${PAYOS_API_BASE_URL}${PAYOS_CREATE_PAYMENT_PATH}`, {
@@ -98,7 +98,7 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
         checkoutUrl: payosData?.data?.checkoutUrl || null,
         qrCode: payosData?.data?.qrCode || null,
         paymentLinkId: payosData?.data?.paymentLinkId || null,
-        providerPayload: payosData,
+        providerPayload: { ...payosData, expiresAt: request.expiredAt },
       });
       payments.push(formatPaymentResult(row, savedOrder, request.expiredAt));
     }
@@ -106,14 +106,30 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
     return res.status(200).json({ success: true, payments });
   } catch (error) {
     const status = error?.status || (error?.code === 'MISSING_ENV' ? 500 : 400);
+    logSafeRegistrationError(error);
     return sendError(
       res,
       status,
       error?.code || 'REGISTRATION_PAYOS_ERROR',
-      error?.message || 'Không tạo được thanh toán PayOS cho đăng ký.',
+      publicRegistrationError(error),
     );
   }
 };
+
+function publicRegistrationError(error) {
+  if (error?.status === 429) return 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.';
+  if (error?.status === 403) return 'Số điện thoại không khớp yêu cầu đăng ký.';
+  if (error?.code === '23505') return 'Bạn đang có một yêu cầu hoặc mã thanh toán còn hiệu lực.';
+  if (error?.code === 'MISSING_ENV') return 'Hệ thống thanh toán chưa được cấu hình đầy đủ.';
+  return 'Không tạo được thanh toán PayOS cho đăng ký. Vui lòng thử lại hoặc liên hệ hỗ trợ.';
+}
+
+function logSafeRegistrationError(error) {
+  console.error('REGISTRATION_PAYOS_FAILED', {
+    code: /^[A-Z0-9_]{1,64}$/i.test(String(error?.code || '')) ? error.code : null,
+    status: Number.isInteger(error?.status) ? error.status : null,
+  });
+}
 
 function enforceRateLimit(req) {
   const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
@@ -300,7 +316,7 @@ function assertRegistrationCanCreatePayos(row, phone, requestId) {
 async function fetchExistingPayosOrder(paymentId) {
   const config = getSupabaseServiceConfig();
   const response = await fetch(
-    `${config.url}/rest/v1/payos_orders?select=*&purpose=eq.crm_payment&payment_id=eq.${Number(paymentId)}&status=eq.pending&order=created_at.desc&limit=1`,
+    `${config.url}/rest/v1/payos_orders?select=*&purpose=eq.crm_payment&payment_id=eq.${Number(paymentId)}&status=eq.pending&active_slot=is.true&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&order=created_at.desc&limit=1`,
     {
       headers: {
         apikey: config.key,
@@ -326,25 +342,22 @@ async function upsertPayosOrder({
   providerPayload,
 }) {
   const config = getSupabaseServiceConfig();
-  const response = await fetch(`${config.url}/rest/v1/payos_orders?on_conflict=order_code&select=*`, {
+  const response = await fetch(`${config.url}/rest/v1/rpc/record_registration_payos_order`, {
     method: 'POST',
     headers: {
       apikey: config.key,
       Authorization: `Bearer ${config.key}`,
       'Content-Type': 'application/json',
-      Prefer: 'resolution=merge-duplicates,return=representation',
     },
     body: JSON.stringify({
-      purpose: 'crm_payment',
-      payment_id: Number(paymentId),
-      order_code: Number(orderCode),
-      amount: Number(amount),
-      description,
-      status: 'pending',
-      checkout_url: checkoutUrl,
-      qr_code: qrCode,
-      payment_link_id: paymentLinkId,
-      provider_payload: providerPayload,
+      payment_id_input: Number(paymentId),
+      order_code_input: Number(orderCode),
+      amount_input: Number(amount),
+      description_input: description,
+      checkout_url_input: checkoutUrl,
+      qr_code_input: qrCode,
+      payment_link_id_input: paymentLinkId,
+      provider_payload_input: providerPayload,
     }),
   });
   const data = await safeJson(response);
@@ -354,7 +367,7 @@ async function upsertPayosOrder({
   return Array.isArray(data) ? data[0] : data;
 }
 
-function formatPaymentResult(row, order, expiresAt = null) {
+function formatPaymentResult(row, order, expiresAt = null, reused = false) {
   const providerData = order.provider_payload?.data || {};
   return {
     requestId: Number(row.id),
@@ -371,7 +384,14 @@ function formatPaymentResult(row, order, expiresAt = null) {
     bin: providerData.bin || null,
     description: providerData.description || order.description || null,
     currency: providerData.currency || 'VND',
+    reused,
+    message: reused ? 'Bạn đang có một mã thanh toán còn hiệu lực.' : null,
   };
+}
+
+function toUnixSeconds(value) {
+  const milliseconds = Date.parse(value || '');
+  return Number.isFinite(milliseconds) ? Math.floor(milliseconds / 1000) : null;
 }
 
 function originFromRequest(req) {

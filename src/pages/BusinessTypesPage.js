@@ -11,10 +11,9 @@ import { escapeHtml } from '../utils/html.js';
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
 const BUSINESS_TYPE_COLUMNS = [
   { label: '#', key: null },
-  { label: 'Danh mục', key: null },
+  { label: 'Danh mục', key: 'category_name' },
   { label: 'Tên loại hình', key: 'name' },
   { label: 'Giá/tháng', key: 'price_per_month' },
-  { label: 'Độ ưu tiên', key: 'sort_order' },
   { label: 'Trạng thái', key: 'is_active' },
   { label: 'Mô tả', key: 'description' },
   { label: 'Hành động', key: null },
@@ -25,7 +24,7 @@ const state = {
   status: '',
   page: 1,
   pageSize: 10,
-  sort: { column: 'sort_order', ascending: true },
+  sort: { column: 'category_name', ascending: true },
   total: 0,
   requestId: 0,
   items: [],
@@ -177,7 +176,7 @@ async function loadBusinessTypes() {
   setLoadingState();
 
   try {
-    const { data, count } = await BusinessTypeService.list({
+    const { data, count } = await BusinessTypeService.listWithStats({
       searchTerm: state.searchTerm,
       status: state.status,
       sort: state.sort,
@@ -216,7 +215,6 @@ function renderBusinessTypes(businessTypes) {
       <td>${escapeHtml(categoryName(businessType))}</td>
       <td class="strong-cell">${escapeHtml(businessType.name || '—')}</td>
       <td>${formatCurrency(businessType.price_per_month || 0)}</td>
-      <td>${formatPriority(businessType.sort_order)}</td>
       <td>${renderStatusBadge(businessType.is_active)}</td>
       <td>${escapeHtml(businessType.description || '—')}</td>
       <td>
@@ -324,11 +322,6 @@ function renderStatusBadge(isActive) {
   return isActive
     ? '<span class="badge badge-active">Hoạt động</span>'
     : '<span class="badge badge-inactive">Không hoạt động</span>';
-}
-
-function formatPriority(value) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : 0;
 }
 
 function setButtonBusy(button, isBusy, label) {

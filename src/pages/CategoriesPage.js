@@ -13,7 +13,6 @@ const CATEGORY_COLUMNS = [
   { label: '#', key: null },
   { label: 'Tên danh mục', key: 'name' },
   { label: 'Mô tả', key: 'description' },
-  { label: 'Thứ tự', key: 'sort_order' },
   { label: 'Trạng thái', key: 'is_active' },
   { label: 'Hành động', key: null },
 ];
@@ -23,7 +22,7 @@ const state = {
   status: '',
   page: 1,
   pageSize: 10,
-  sort: { column: 'sort_order', ascending: true },
+  sort: { column: 'name', ascending: true },
   total: 0,
   requestId: 0,
   items: [],
@@ -216,7 +215,6 @@ function renderCategories(categories) {
       <td>${startIndex + index + 1}</td>
       <td class="strong-cell">${escapeHtml(category.name || '—')}</td>
       <td>${escapeHtml(category.description || '—')}</td>
-      <td>${formatSortOrder(category.sort_order)}</td>
       <td>${renderStatusBadge(category.is_active)}</td>
       <td>
         <div class="inline-actions">
@@ -338,11 +336,6 @@ function renderStatusBadge(isActive) {
   return isActive
     ? '<span class="badge badge-active">Hoạt động</span>'
     : '<span class="badge badge-inactive">Không hoạt động</span>';
-}
-
-function formatSortOrder(value) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : 0;
 }
 
 function showDeleteError(message) {

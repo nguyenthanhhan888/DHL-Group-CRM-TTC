@@ -11,7 +11,6 @@ const BUSINESS_TYPE_MUTABLE_FIELDS = [
   'name',
   'description',
   'price_per_month',
-  'sort_order',
   'is_active',
 ];
 
@@ -20,7 +19,7 @@ export const BusinessTypeService = {
     searchTerm = '',
     status = '',
     categoryId = '',
-    sort = { column: 'sort_order', ascending: true },
+    sort = { column: 'category_id', ascending: true },
     pagination,
   } = {}) {
     const supabase = requireSupabaseClient();
@@ -37,14 +36,14 @@ export const BusinessTypeService = {
     if (status === 'inactive') query = query.eq('is_active', false);
     if (categoryId) query = query.eq('category_id', categoryId);
 
-    return runQuery(applyPagination(applySort(query, sort), pagination));
+    return runQuery(applyPagination(applyBusinessTypeSort(query, sort), pagination));
   },
 
   async listWithStats({
     searchTerm = '',
     status = '',
     categoryId = '',
-    sort = { column: 'sort_order', ascending: true },
+    sort = { column: 'category_name', ascending: true },
     pagination,
   } = {}) {
     const supabase = requireSupabaseClient();
@@ -58,7 +57,7 @@ export const BusinessTypeService = {
     if (status === 'inactive') query = query.eq('is_active', false);
     if (categoryId) query = query.eq('category_id', categoryId);
 
-    return runQuery(applyPagination(applySort(query, sort), pagination));
+    return runQuery(applyPagination(applyBusinessTypeSort(query, sort), pagination));
   },
 
   async listByCategory(categoryId) {
@@ -69,7 +68,7 @@ export const BusinessTypeService = {
         .select('id, name, price_per_month')
         .eq('category_id', categoryId)
         .eq('is_active', true)
-        .order('sort_order'),
+        .order('name', { ascending: true }),
     );
   },
 
@@ -80,7 +79,8 @@ export const BusinessTypeService = {
         .from('business_types')
         .select('id, name, price_per_month, category_id')
         .eq('is_active', true)
-        .order('sort_order'),
+        .order('category_id', { ascending: true })
+        .order('name', { ascending: true }),
     );
   },
 
@@ -91,7 +91,8 @@ export const BusinessTypeService = {
         .from('business_types')
         .select('id, name, price_per_month, category_id')
         .eq('is_active', true)
-        .order('sort_order'),
+        .order('category_id', { ascending: true })
+        .order('name', { ascending: true }),
     );
   },
 
@@ -137,6 +138,15 @@ export const BusinessTypeService = {
     return BusinessTypeService.update(id, { is_active: isActive });
   },
 };
+
+function applyBusinessTypeSort(query, sort = {}) {
+  const column = sort?.column || 'category_id';
+  const ascending = sort?.ascending !== false;
+  const sorted = applySort(query, { column, ascending });
+  return ['category_id', 'category_name'].includes(column)
+    ? sorted.order('name', { ascending: true })
+    : sorted;
+}
 
 function pickBusinessTypePayload(businessType = {}) {
   return BUSINESS_TYPE_MUTABLE_FIELDS.reduce((payload, field) => {
