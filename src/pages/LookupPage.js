@@ -3,6 +3,7 @@ import { isValidPhone } from '../utils/formValidation.js';
 import { formatCurrency } from '../utils/currency.js';
 import { escapeHtml } from '../utils/html.js';
 import { PublicContactLinks, PublicSupport } from '../components/PublicSupport.js';
+import { PaymentActionButtons, PaymentProgress, PaymentStatusHero, PaymentSummaryCard } from '../components/PaymentExperience.js';
 
 let lookupRows = [];
 const ALLOWED_PUBLIC_MONTHS = new Set([1, 3, 6, 12]);
@@ -15,6 +16,10 @@ LookupPage.afterRender = async function afterRender() {
   lookupRows = [];
   document.getElementById('lookup-form')?.addEventListener('submit', lookup);
   document.getElementById('lookup-results')?.addEventListener('click', handleResultClick);
+  const prefillPhone = sessionStorage.getItem('lookup-prefill-phone') || '';
+  sessionStorage.removeItem('lookup-prefill-phone');
+  const phone = document.getElementById('lookup-phone');
+  if (phone && prefillPhone) phone.value = prefillPhone;
   await handleRenewalReturn();
 };
 
@@ -76,11 +81,15 @@ async function createRenewal(index) {
 async function handleRenewalReturn() {
   const params = payosReturnParams(); const orderCode = params.get('orderCode');
   if (!orderCode) return false;
+  const stored = readStoredPayosState(`renewal-payos:${orderCode}`);
+  if (!stored.renewalToken || String(stored.orderCode) !== String(orderCode)) {
+    clearPayosReturnParams();
+    return false;
+  }
   document.getElementById('lookup-form')?.classList.add('hidden');
   const target = document.getElementById('lookup-results');
-  const stored = JSON.parse(sessionStorage.getItem(`renewal-payos:${orderCode}`) || '{}');
   if (String(params.get('cancel')).toLowerCase() === 'true' || String(params.get('status')).toLowerCase() === 'cancelled') {
-    target.innerHTML = '<div class="renew-success"><h3>Bạn đã huỷ thanh toán.</h3><p>Kiosk chưa được gia hạn.</p><button class="btn-primary" type="button" data-renew-retry>Thử lại</button></div>'; return true;
+    target.innerHTML = terminalRenewalCard('cancelled'); return true;
   }
   target.innerHTML = pendingRenewalCard();
   if (!stored.renewalToken) return true;
@@ -97,16 +106,18 @@ async function handleRenewalReturn() {
 
 export function renewalConfirmationCard(item, index, months) {
   const period = item.renewalPeriods?.[months] || {}; const total = Number(item.pricePerMonth) * months;
-  return `<div class="public-renew-panel public-renew-confirmation"><header><span class="public-renew-eyebrow">Gia hạn Kiosk</span><h3>${escapeHtml(item.kiosk || 'Kiosk')}</h3></header><div class="renew-money-row"><span>Giá dịch vụ</span><strong>${formatCurrency(item.pricePerMonth)} / tháng</strong></div><fieldset class="public-renew-duration"><legend>Thời hạn</legend>${[1, 3, 6, 12].map((value) => `<label><input type="radio" name="public-renew-months" value="${value}" ${value === months ? 'checked' : ''}><span>${value} tháng</span></label>`).join('')}</fieldset><dl class="public-renew-preview"><div><dt>Ngày hết hạn hiện tại</dt><dd>${date(item.endDate)}</dd></div><div><dt>Ngày hết hạn dự kiến</dt><dd data-renew-proposed>${date(period.proposedExpiry)}</dd></div><div class="is-total"><dt>Thành tiền</dt><dd data-renew-total>${formatCurrency(total)}</dd></div></dl><p class="form-error hidden" data-renew-error role="alert"></p><button class="btn-primary" type="button" data-create-public-renewal="${index}">Thanh toán</button></div>`;
+  return `<div class="public-renew-panel public-renew-confirmation payment-experience">${PaymentStatusHero({ status: 'checkout', eyebrow: 'Gia hạn Kiosk', title: item.kiosk || 'Kiosk', description: 'Kiểm tra thời hạn và số tiền trước khi chuyển sang PayOS.' })}<div class="renew-money-row"><span>Giá dịch vụ</span><strong>${formatCurrency(item.pricePerMonth)} / tháng</strong></div><fieldset class="public-renew-duration"><legend>Chọn thời hạn gia hạn</legend>${[1, 3, 6, 12].map((value) => `<label><input type="radio" name="public-renew-months" value="${value}" ${value === months ? 'checked' : ''}><span>${value} tháng</span></label>`).join('')}</fieldset><dl class="public-renew-preview"><div><dt>Ngày hết hạn hiện tại</dt><dd>${date(item.endDate)}</dd></div><div><dt>Ngày hết hạn dự kiến</dt><dd data-renew-proposed>${date(period.proposedExpiry)}</dd></div><div class="is-total"><dt>Tổng thanh toán</dt><dd data-renew-total>${formatCurrency(total)}</dd></div></dl><p class="form-error hidden" data-renew-error role="alert"></p>${PaymentActionButtons([{ label: 'Thanh toán qua PayOS', icon: 'checkout', attrs: `data-create-public-renewal="${index}"` }])}</div>`;
 }
 
 // Compatibility export for callers/tests; inline payment presentation is intentionally gone.
 export function renewalPaymentCard(data) { return `<div class="public-renew-panel public-renew-payment-card"><h3>Đang chuyển đến PayOS</h3><p>${escapeHtml(data?.kiosk || 'Kiosk')}</p></div>`; }
 function updateRenewalConfirmation(item, panel, months) { const period = item.renewalPeriods?.[months] || {}; panel.querySelector('[data-renew-proposed]').textContent = date(period.proposedExpiry); panel.querySelector('[data-renew-total]').textContent = formatCurrency(Number(item.pricePerMonth) * months); }
-function renewalSuccessCard(data) { return `<div class="renew-success public-renew-success"><div class="renew-success-icon">✓</div><h3>Gia hạn thành công</h3><p><strong>${escapeHtml(data.kiosk || 'Kiosk')}</strong></p><dl><div><dt>Đã thanh toán</dt><dd>${formatCurrency(data.amount)}</dd></div><div><dt>Ngày hết hạn cũ</dt><dd>${date(data.currentExpiry)}</dd></div><div><dt>Ngày hết hạn mới</dt><dd>${date(data.newExpiry)}</dd></div><div><dt>Trạng thái thanh toán</dt><dd>Đã hoàn tất</dd></div></dl><button class="btn-primary" type="button" data-lookup-again>Tra cứu lại</button></div>`; }
-function pendingRenewalCard(timedOut = false) { return `<div class="renew-success"><h3>Thanh toán đang được xác nhận</h3><p>${timedOut ? 'Thanh toán của bạn đang chờ hệ thống xác nhận. Vui lòng kiểm tra lại sau hoặc liên hệ Admin nếu cần hỗ trợ.' : 'Hệ thống đang chờ webhook PayOS xác nhận giao dịch.'}</p></div>`; }
-function terminalRenewalCard(value) { const cancelled = value === 'cancelled'; return `<div class="renew-success"><h3>${cancelled ? 'Bạn đã huỷ thanh toán.' : 'Thanh toán chưa hoàn tất'}</h3><p>Kiosk chưa được gia hạn.</p><button class="btn-primary" type="button" data-renew-retry>Thử lại</button></div>`; }
+function renewalSuccessCard(data) { return `<div class="renew-success public-renew-success payment-experience">${PaymentStatusHero({ status: 'success', eyebrow: 'Gia hạn hoàn tất', title: 'Gia hạn thành công', description: `${data.kiosk || 'Kiosk'} đã được cập nhật thời hạn sử dụng.` })}${PaymentProgress({ activeStep: 4 })}${PaymentSummaryCard([{ label: 'Kiosk', value: data.kiosk || 'Kiosk' }, { label: 'Đã thanh toán', value: formatCurrency(data.amount), emphasis: true }, { label: 'Ngày hết hạn cũ', value: date(data.currentExpiry) }, { label: 'Ngày hết hạn mới', value: date(data.newExpiry) }, { label: 'Trạng thái', value: '<span class="payment-status-pill is-success">Hoàn tất</span>', html: true }])}${PaymentActionButtons([{ label: 'Tra cứu lại Kiosk', attrs: 'data-lookup-again', icon: 'kiosk' }])}</div>`; }
+function pendingRenewalCard(timedOut = false) { return `<div class="renew-success payment-experience payment-processing" role="status" aria-live="polite">${PaymentStatusHero({ status: 'pending', eyebrow: 'Đang xử lý an toàn', title: 'Đang xác nhận thanh toán', description: timedOut ? 'Giao dịch đang chờ PayOS xác nhận. Bạn có thể kiểm tra lại sau ít phút.' : 'Ngân hàng đã tiếp nhận giao dịch. Hệ thống đang xác nhận với PayOS.', helper: 'Quá trình này thường chỉ mất vài giây.' })}${PaymentProgress({ activeStep: 2 })}</div>`; }
+function terminalRenewalCard(value) { const cancelled = value === 'cancelled'; return `<div class="renew-success payment-experience">${PaymentStatusHero({ status: cancelled ? 'cancelled' : 'warning', eyebrow: 'Giao dịch chưa hoàn tất', title: cancelled ? 'Bạn đã huỷ thanh toán' : value === 'expired' ? 'Liên kết thanh toán đã hết hạn' : 'Thanh toán chưa hoàn tất', description: cancelled ? 'Giao dịch chưa được hoàn tất và Kiosk chưa được gia hạn.' : 'Kiosk chưa được gia hạn. Bạn có thể tạo một liên kết PayOS mới.' })}${PaymentActionButtons([{ label: 'Thử thanh toán lại', attrs: 'data-renew-retry', icon: 'checkout' }, { label: 'Liên hệ hỗ trợ', href: '#/contact', secondary: true }])}</div>`; }
 function payosReturnParams() { const params = new URLSearchParams(window.location.search); const query = String(window.location.hash || '').split('?')[1]; if (query) new URLSearchParams(query).forEach((value, key) => params.set(key, value)); return params; }
+function readStoredPayosState(key) { try { return JSON.parse(sessionStorage.getItem(key) || '{}'); } catch { return {}; } }
+function clearPayosReturnParams() { window.history.replaceState({}, '', `${window.location.pathname}#/lookup`); }
 function show(element, message) { if (element) { element.textContent = message; element.classList.remove('hidden'); } }
 function remainingDays(value) { if (!value) return 0; const end = new Date(`${value}T00:00:00`); const today = new Date(); today.setHours(0, 0, 0, 0); return Math.ceil((end - today) / 86400000); }
 function date(value) { const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return match ? `${match[3]}/${match[2]}/${match[1]}` : '—'; }

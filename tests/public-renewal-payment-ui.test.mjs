@@ -12,8 +12,8 @@ test('public renewal confirmation shows authoritative price, periods, and checko
   assert.match(html, /300\.000 VNĐ \/ tháng/);
   for (const months of [1, 3, 6, 12]) assert.match(html, new RegExp(`value="${months}"`));
   assert.match(html, /14\/09\/2026/);
-  assert.match(html, /Thành tiền/);
-  assert.match(html, />Thanh toán</);
+  assert.match(html, /Tổng thanh toán/);
+  assert.match(html, /Thanh toán qua PayOS/);
   assert.doesNotMatch(html, /discount|promotion|giảm giá/i);
 });
 
@@ -32,7 +32,7 @@ test('public renewal redirects and return handling polls only the read-only endp
   assert.match(page, /window\.location\.assign\(data\.checkoutUrl\)/);
   assert.match(page, /attempt < 10/);
   assert.match(page, /setTimeout\(resolve, 3000\)/);
-  assert.match(page, /Thanh toán đang được xác nhận/);
+  assert.match(page, /Đang xác nhận thanh toán/);
   assert.match(page, /Bạn đã huỷ thanh toán/);
   assert.match(service, /\/api\/public\/renewal-status/);
   assert.doesNotMatch(status, /handle_payos_webhook|confirm_crm_payment|update\s+public\./i);
