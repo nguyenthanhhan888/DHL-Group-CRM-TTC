@@ -39,6 +39,13 @@ module.exports = async function payosWebhookHandler(req, res) {
     }
     logWebhook('PAYOS_SIGNATURE_VALID', { orderCode: safeOrderCode(data.orderCode) });
 
+    // PayOS uses orderCode 123 when verifying the webhook URL. Never pass this
+    // provider probe into business reconciliation.
+    if (Number(data.orderCode) === 123) {
+      logWebhook('PAYOS_WEBHOOK_TEST_IGNORED', { orderCode: 123 });
+      return res.status(200).json({ success: true, ignored: true, test: true });
+    }
+
     const paidCode = data.code || body.code;
     if (body.success !== true || paidCode !== '00') {
       logWebhook('PAYOS_WEBHOOK_REJECTED', { reason: 'NOT_PAID_EVENT', orderCode: safeOrderCode(data.orderCode) });

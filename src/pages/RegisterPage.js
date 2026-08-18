@@ -1,6 +1,6 @@
 import { PageHeader } from '../components/PageHeader.js';
 import { PublicSupport } from '../components/PublicSupport.js';
-import { bindPayosCopyButtons, PayosResultCard, watchPayosPaymentStatus } from '../components/PayosResultCard.js';
+import { fetchPayosStatus } from '../components/PayosResultCard.js';
 import { Toast } from '../components/Toast.js';
 import {
   bindFacebookIdResolvers,
@@ -11,7 +11,7 @@ import { BusinessTypeService } from '../services/BusinessTypeService.js';
 import { CategoryService } from '../services/CategoryService.js';
 import { RegistrationService } from '../services/RegistrationService.js';
 import { settingsService } from '../services/SettingsService.js';
-import { bindCurrencyInput, formatCurrency, parseCurrencyInput } from '../utils/currency.js';
+import { formatCurrency } from '../utils/currency.js';
 import { duplicateValues, isValidPhone, setInlineError } from '../utils/formValidation.js';
 import { escapeHtml } from '../utils/html.js';
 
@@ -71,6 +71,7 @@ export function RegisterPage() {
 }
 
 RegisterPage.afterRender = async function afterRenderRegister() {
+  if (await handleRegistrationReturn()) return;
   addKiosk({ announce: false, focusNewCard: false });
   bindEvents();
   settingsService.getPublicSettings().catch(() => null);
@@ -159,9 +160,7 @@ function renderKioskCard(id) {
       </div>
       <div class="form-row">
         ${field('Số tháng / Gói', '', { required: true, type: 'number', min: '1', max: '120', step: '1', value: '1', data: 'data-kiosk-months' })}
-        ${field('Giảm giá', '', { type: 'text', inputmode: 'numeric', placeholder: '0 VNĐ', data: 'data-kiosk-discount' })}
       </div>
-      ${field('Lý do giảm giá', '', { data: 'data-kiosk-discount-reason' })}
       ${field('Ghi chú Kiosk', '', { textarea: true, data: 'data-kiosk-note' })}
       <div class="kiosk-price-summary">
         <span>Giá/tháng: <strong data-kiosk-price>—</strong></span>
@@ -174,12 +173,11 @@ function renderKioskCard(id) {
 function bindKiosk(card) {
   bindFacebookIdResolvers(card);
   bindSelectSearch(card);
-  bindCurrencyInput(card.querySelector('[data-kiosk-discount]'));
   card.querySelector('[data-kiosk-category]')?.addEventListener('change', () => {
     renderBusinessTypes(card);
     calculateCard(card);
   });
-  ['business-type', 'months', 'discount'].forEach((name) => {
+  ['business-type', 'months'].forEach((name) => {
     card.querySelector(`[data-kiosk-${name}]`)?.addEventListener('input', () => calculateCard(card));
   });
 }
@@ -228,11 +226,9 @@ function renderBusinessTypes(card) {
 function calculateCard(card) {
   const businessType = findBusinessType(card);
   const months = Number(value(card, 'months'));
-  const discount = parseCurrencyInput(value(card, 'discount'));
   let total = 0;
-  if (businessType && Number.isInteger(months) && months > 0 && discount >= 0) {
-    total = (Number(businessType.price_per_month) * months) - discount;
-    if (total < 0) total = 0;
+  if (businessType && Number.isInteger(months) && months > 0) {
+    total = Number(businessType.price_per_month) * months;
   }
   card.dataset.subtotal = String(total);
   card.querySelector('[data-kiosk-price]').textContent = businessType
@@ -277,18 +273,10 @@ function validateForm() {
     const category = card.querySelector('[data-kiosk-category]');
     const businessType = card.querySelector('[data-kiosk-business-type]');
     const months = card.querySelector('[data-kiosk-months]');
-    const discount = card.querySelector('[data-kiosk-discount]');
-    const discountReason = card.querySelector('[data-kiosk-discount-reason]');
-    const bt = findBusinessType(card);
     valid = setInlineError(category, category.value ? '' : 'Danh mục là bắt buộc.') && valid;
     valid = setInlineError(businessType, businessType.value ? '' : 'Loại hình kinh doanh là bắt buộc.') && valid;
     valid = setInlineError(months, Number.isInteger(Number(months.value)) && Number(months.value) >= 1 && Number(months.value) <= 120
       ? '' : 'Số tháng phải từ 1 đến 120.') && valid;
-    const subtotal = Number(bt?.price_per_month || 0) * Number(months.value || 0);
-    valid = setInlineError(discount, parseCurrencyInput(discount.value) <= subtotal
-      ? '' : 'Giảm giá không hợp lệ hoặc lớn hơn tạm tính.') && valid;
-    valid = setInlineError(discountReason, parseCurrencyInput(discount.value) === 0 || discountReason.value.trim()
-      ? '' : 'Cần nhập lý do giảm giá.') && valid;
   });
 
   if (!valid) showFormError('Vui lòng kiểm tra các trường được đánh dấu bên dưới.');
@@ -315,7 +303,14 @@ async function submitRegistration(event) {
       },
       kiosks,
     });
-    renderSuccess(data, kiosks);
+    const payment = data?.payosPayment;
+    if (!payment?.checkoutUrl) throw new Error(data?.payosError || 'Chưa tạo được link thanh toán PayOS.');
+    sessionStorage.setItem(`registration-payos:${payment.orderCode}`, JSON.stringify({
+      paymentLinkId: payment.paymentLinkId,
+      batchId: data?.registrationBatch?.id,
+      requestIds: (data?.kiosks || []).map((item) => item?.request?.id).filter(Boolean),
+    }));
+    renderCheckoutConfirmation(data?.registrationBatch, payment);
   } catch (error) {
     showFormError(error?.message || 'Không thể gửi đăng ký. Dữ liệu của bạn vẫn được giữ để thử lại.');
   } finally {
@@ -333,63 +328,86 @@ function readKiosk(card) {
     category_id: card.querySelector('[data-kiosk-category]')?.value || '',
     business_type_id: value(card, 'business-type'),
     months: Number(value(card, 'months')),
-    discount: parseCurrencyInput(value(card, 'discount')),
-    discount_reason: value(card, 'discount-reason'),
+    discount: 0,
+    discount_reason: '',
     note: value(card, 'note'),
   };
 }
 
-function renderSuccess(data, submittedKiosks) {
+function renderSuccess(data) {
   document.getElementById('public-registration-form')?.classList.add('hidden');
   const success = document.getElementById('registration-success');
-  const items = data?.kiosks || [];
-  const total = items.reduce((sum, item) => sum + Number(item.preview?.totalAmount || 0), 0);
-  const codes = items.map((item) => item.request?.id).filter(Boolean).join(', ');
   success.classList.remove('hidden');
   success.innerHTML = `
     <div class="empty-state">
       <div class="empty-state-icon">✓</div>
-      <div class="empty-state-title">Đã gửi đăng ký</div>
-      <div class="empty-state-message">Yêu cầu đã được ghi nhận. Vui lòng thanh toán đúng số tiền bên dưới để hệ thống tự cập nhật khi ngân hàng báo về.</div>
+      <div class="empty-state-title">Thanh toán thành công</div>
+      <div class="empty-state-message">Webhook PayOS đã xác nhận và hệ thống đã cập nhật hồ sơ.</div>
     </div>
     <div class="registration-summary">
-      ${summary('Mã yêu cầu', escapeHtml(codes || 'Được cấp sau khi tiếp nhận'))}
-      ${summary('Kiosk đã gửi', escapeHtml(submittedKiosks.map((item) => item.facebook_name).join(', ')))}
-      ${summary('Tổng tiền', formatCurrency(total))}
-      ${summary('Trạng thái', '<span class="badge badge-pending">Chờ thanh toán</span>')}
-      ${summary('Bước tiếp theo', data?.payosPayments?.length ? 'Quét QR hoặc mở link thanh toán để hoàn tất.' : 'Chưa tạo được QR tự động, Ban quản trị sẽ hỗ trợ thanh toán.')}
+      ${summary('Số tiền đã thanh toán', formatCurrency(data?.amount || 0))}
+      ${summary('Trạng thái', '<span class="badge badge-success">Đang hoạt động</span>')}
     </div>
-    ${renderPayosPayments(data?.payosPayments || [])}
-    ${data?.payosError ? '<div class="form-error">Chưa tạo được QR thanh toán tự động. Ban quản trị sẽ hỗ trợ thanh toán yêu cầu này.</div>' : ''}`;
-  bindPayosCopyButtons(success);
-  watchPayosPaymentStatus(success, {
-    onPaid: () => Toast.show('Đã nhận thanh toán đăng ký. Hệ thống đang cập nhật hồ sơ.'),
+    <div class="registration-summary"><h3>Kiosk đã kích hoạt</h3>${(data?.kiosks || []).map((item) => `<div class="setting-item"><span class="setting-name">✓ ${escapeHtml(item.name || 'Kiosk')}</span><span class="setting-value detail-value">${escapeHtml(formatDateOnly(item.startDate))} → ${escapeHtml(formatDateOnly(item.endDate))}</span></div>`).join('')}</div>
+    <a class="btn-primary link-button" href="#/lookup">Xem Kiosk / Tra cứu Kiosk</a>`;
+}
+
+function renderCheckoutConfirmation(batch, payment) {
+  document.getElementById('public-registration-form')?.classList.add('hidden');
+  const target = document.getElementById('registration-success');
+  target?.classList.remove('hidden');
+  if (!target) return;
+  target.innerHTML = `<div class="empty-state"><div class="empty-state-title">Xác nhận thanh toán</div><div class="empty-state-message">Một thanh toán duy nhất sẽ kích hoạt toàn bộ Kiosk trong lô đăng ký.</div></div>
+    <div class="registration-summary">${summary('Số Kiosk', escapeHtml(String(batch?.kiosks?.length || 0)))}${summary('Tổng thanh toán', formatCurrency(batch?.amount || payment.amount || 0))}${summary('Kiosk', escapeHtml((batch?.kiosks || []).map((item) => item.name || 'Kiosk').join(', ')))}</div>
+    <button class="btn-primary" id="registration-checkout-button" type="button">Thanh toán</button>`;
+  document.getElementById('registration-checkout-button')?.addEventListener('click', (event) => {
+    event.currentTarget.disabled = true;
+    event.currentTarget.textContent = 'Đang chuyển đến PayOS...';
+    window.location.assign(payment.checkoutUrl);
   });
 }
 
-function renderPayosPayments(payments) {
-  if (!payments.length) return '';
-  return `
-    <div class="public-payos-list">
-      <h3>Thanh toán</h3>
-      ${payments.map((payment, index) => `
-        ${PayosResultCard({
-          amountLabel: `${payments.length > 1 ? `Kiosk ${index + 1} · ` : ''}${formatCurrency(payment.amount || 0)}`,
-          accountName: payment.accountName,
-          accountNumber: payment.accountNumber,
-          bankName: payment.bankName,
-          bin: payment.bin,
-          checkoutUrl: payment.checkoutUrl,
-          description: payment.description,
-          orderCode: payment.orderCode,
-          paymentLinkId: payment.paymentLinkId,
-          qrCode: payment.qrCode,
-          note: payment.reused ? 'Bạn đang có một mã thanh toán còn hiệu lực. Hãy xem và sử dụng mã hiện tại.' : 'Thanh toán đúng số tiền, hệ thống sẽ tự cập nhật khi ngân hàng xác nhận.',
-          className: 'public-payos-card',
-        })}
-      `).join('')}
-    </div>
-  `;
+async function handleRegistrationReturn() {
+  const params = payosReturnParams();
+  const orderCode = params.get('orderCode');
+  if (!orderCode) return false;
+  const stored = JSON.parse(sessionStorage.getItem(`registration-payos:${orderCode}`) || '{}');
+  const paymentLinkId = params.get('id') || params.get('paymentLinkId') || stored.paymentLinkId;
+  const success = document.getElementById('registration-success');
+  document.getElementById('public-registration-form')?.classList.add('hidden');
+  success?.classList.remove('hidden');
+  if (String(params.get('cancel')).toLowerCase() === 'true' || String(params.get('status')).toLowerCase() === 'cancelled') {
+    success.innerHTML = '<div class="empty-state"><div class="empty-state-title">Bạn đã huỷ thanh toán.</div><div class="empty-state-message">Yêu cầu vẫn được giữ để bạn có thể thử lại.</div><a class="btn-primary link-button" href="#/register">Thử lại</a></div>';
+    return true;
+  }
+  success.innerHTML = '<div class="empty-state"><div class="empty-state-title">Thanh toán đang được xác nhận</div><div class="empty-state-message">Hệ thống đang chờ webhook PayOS xác nhận giao dịch.</div></div>';
+  if (!paymentLinkId) { renderRegistrationPending(success); return true; }
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    try {
+      const status = await fetchPayosStatus(orderCode, paymentLinkId);
+      if (String(status.status).toLowerCase() === 'paid') { renderSuccess(status); return true; }
+      if (['cancelled', 'canceled', 'failed', 'expired'].includes(String(status.status).toLowerCase())) break;
+    } catch { /* Show the safe pending state after the bounded polling window. */ }
+    await new Promise((resolve) => window.setTimeout(resolve, 3000));
+  }
+  renderRegistrationPending(success);
+  return true;
+}
+
+function renderRegistrationPending(target) {
+  target.innerHTML = '<div class="empty-state"><div class="empty-state-title">Thanh toán đang được xác nhận</div><div class="empty-state-message">Thanh toán của bạn đang chờ hệ thống xác nhận. Kiosk hiện đang chờ xét duyệt. Vui lòng kiểm tra lại sau hoặc liên hệ Admin nếu cần hỗ trợ.</div><a class="btn-primary link-button" href="#/lookup">Tra cứu Kiosk</a></div>';
+}
+
+function payosReturnParams() {
+  const params = new URLSearchParams(window.location.search);
+  const hashQuery = String(window.location.hash || '').split('?')[1];
+  if (hashQuery) new URLSearchParams(hashQuery).forEach((value, key) => params.set(key, value));
+  return params;
+}
+
+function formatDateOnly(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : '—';
 }
 
 function field(label, id, options = {}) {
