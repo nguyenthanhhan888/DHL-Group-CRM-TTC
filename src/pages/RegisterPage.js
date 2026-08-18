@@ -309,6 +309,7 @@ async function submitRegistration(event) {
       paymentLinkId: payment.paymentLinkId,
       batchId: data?.registrationBatch?.id,
       requestIds: (data?.kiosks || []).map((item) => item?.request?.id).filter(Boolean),
+      phone: read('register-phone'),
     }));
     renderCheckoutConfirmation(data?.registrationBatch, payment);
   } catch (error) {
@@ -334,7 +335,7 @@ function readKiosk(card) {
   };
 }
 
-function renderSuccess(data) {
+function renderSuccess(data, phone = '') {
   document.getElementById('public-registration-form')?.classList.add('hidden');
   const success = document.getElementById('registration-success');
   success.classList.remove('hidden');
@@ -349,7 +350,13 @@ function renderSuccess(data) {
       ${summary('Trạng thái', '<span class="badge badge-success">Đang hoạt động</span>')}
     </div>
     <div class="registration-summary"><h3>Kiosk đã kích hoạt</h3>${(data?.kiosks || []).map((item) => `<div class="setting-item"><span class="setting-name">✓ ${escapeHtml(item.name || 'Kiosk')}</span><span class="setting-value detail-value">${escapeHtml(formatDateOnly(item.startDate))} → ${escapeHtml(formatDateOnly(item.endDate))}</span></div>`).join('')}</div>
-    <a class="btn-primary link-button" href="#/lookup">Xem Kiosk / Tra cứu Kiosk</a>`;
+    <a class="btn-primary link-button" href="#/lookup" data-registration-lookup>Xem Kiosk / Tra cứu Kiosk</a>`;
+  success.querySelector('[data-registration-lookup]')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    if (phone) sessionStorage.setItem('lookup-prefill-phone', phone);
+    window.history.replaceState({}, '', `${window.location.pathname}#/lookup`);
+    window.location.reload();
+  });
 }
 
 function renderCheckoutConfirmation(batch, payment) {
@@ -385,7 +392,7 @@ async function handleRegistrationReturn() {
   for (let attempt = 0; attempt < 10; attempt += 1) {
     try {
       const status = await fetchPayosStatus(orderCode, paymentLinkId);
-      if (String(status.status).toLowerCase() === 'paid') { renderSuccess(status); return true; }
+      if (String(status.status).toLowerCase() === 'paid') { renderSuccess(status, stored.phone); return true; }
       if (['cancelled', 'canceled', 'failed', 'expired'].includes(String(status.status).toLowerCase())) break;
     } catch { /* Show the safe pending state after the bounded polling window. */ }
     await new Promise((resolve) => window.setTimeout(resolve, 3000));

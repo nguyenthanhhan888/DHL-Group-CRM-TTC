@@ -15,6 +15,10 @@ LookupPage.afterRender = async function afterRender() {
   lookupRows = [];
   document.getElementById('lookup-form')?.addEventListener('submit', lookup);
   document.getElementById('lookup-results')?.addEventListener('click', handleResultClick);
+  const prefillPhone = sessionStorage.getItem('lookup-prefill-phone') || '';
+  sessionStorage.removeItem('lookup-prefill-phone');
+  const phone = document.getElementById('lookup-phone');
+  if (phone && prefillPhone) phone.value = prefillPhone;
   await handleRenewalReturn();
 };
 
@@ -76,9 +80,13 @@ async function createRenewal(index) {
 async function handleRenewalReturn() {
   const params = payosReturnParams(); const orderCode = params.get('orderCode');
   if (!orderCode) return false;
+  const stored = readStoredPayosState(`renewal-payos:${orderCode}`);
+  if (!stored.renewalToken || String(stored.orderCode) !== String(orderCode)) {
+    clearPayosReturnParams();
+    return false;
+  }
   document.getElementById('lookup-form')?.classList.add('hidden');
   const target = document.getElementById('lookup-results');
-  const stored = JSON.parse(sessionStorage.getItem(`renewal-payos:${orderCode}`) || '{}');
   if (String(params.get('cancel')).toLowerCase() === 'true' || String(params.get('status')).toLowerCase() === 'cancelled') {
     target.innerHTML = '<div class="renew-success"><h3>Bạn đã huỷ thanh toán.</h3><p>Kiosk chưa được gia hạn.</p><button class="btn-primary" type="button" data-renew-retry>Thử lại</button></div>'; return true;
   }
@@ -107,6 +115,8 @@ function renewalSuccessCard(data) { return `<div class="renew-success public-ren
 function pendingRenewalCard(timedOut = false) { return `<div class="renew-success"><h3>Thanh toán đang được xác nhận</h3><p>${timedOut ? 'Thanh toán của bạn đang chờ hệ thống xác nhận. Vui lòng kiểm tra lại sau hoặc liên hệ Admin nếu cần hỗ trợ.' : 'Hệ thống đang chờ webhook PayOS xác nhận giao dịch.'}</p></div>`; }
 function terminalRenewalCard(value) { const cancelled = value === 'cancelled'; return `<div class="renew-success"><h3>${cancelled ? 'Bạn đã huỷ thanh toán.' : 'Thanh toán chưa hoàn tất'}</h3><p>Kiosk chưa được gia hạn.</p><button class="btn-primary" type="button" data-renew-retry>Thử lại</button></div>`; }
 function payosReturnParams() { const params = new URLSearchParams(window.location.search); const query = String(window.location.hash || '').split('?')[1]; if (query) new URLSearchParams(query).forEach((value, key) => params.set(key, value)); return params; }
+function readStoredPayosState(key) { try { return JSON.parse(sessionStorage.getItem(key) || '{}'); } catch { return {}; } }
+function clearPayosReturnParams() { window.history.replaceState({}, '', `${window.location.pathname}#/lookup`); }
 function show(element, message) { if (element) { element.textContent = message; element.classList.remove('hidden'); } }
 function remainingDays(value) { if (!value) return 0; const end = new Date(`${value}T00:00:00`); const today = new Date(); today.setHours(0, 0, 0, 0); return Math.ceil((end - today) / 86400000); }
 function date(value) { const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return match ? `${match[3]}/${match[2]}/${match[1]}` : '—'; }
