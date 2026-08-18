@@ -74,26 +74,30 @@ export const BusinessTypeService = {
 
   async listActive() {
     const supabase = requireSupabaseClient();
-    return runQuery(
+    const result = await runQuery(
       supabase
         .from('business_types')
-        .select('id, name, price_per_month, category_id')
+        .select('id, name, price_per_month, category_id, categories(name)')
         .eq('is_active', true)
         .order('category_id', { ascending: true })
         .order('name', { ascending: true }),
     );
+    result.data = sortBusinessTypesByCategory(result.data);
+    return result;
   },
 
   async listPublicActive() {
     const supabase = requirePublicSupabaseClient();
-    return runQuery(
+    const result = await runQuery(
       supabase
         .from('business_types')
-        .select('id, name, price_per_month, category_id')
+        .select('id, name, price_per_month, category_id, categories(name)')
         .eq('is_active', true)
         .order('category_id', { ascending: true })
         .order('name', { ascending: true }),
     );
+    result.data = sortBusinessTypesByCategory(result.data);
+    return result;
   },
 
   async getById(id) {
@@ -156,4 +160,16 @@ function pickBusinessTypePayload(businessType = {}) {
 
     return payload;
   }, {});
+}
+
+const vietnameseCollator = new Intl.Collator('vi', { sensitivity: 'base' });
+
+function sortBusinessTypesByCategory(businessTypes = []) {
+  return [...businessTypes].sort((left, right) => {
+    const categoryDifference = vietnameseCollator.compare(
+      left.categories?.name || '',
+      right.categories?.name || '',
+    );
+    return categoryDifference || vietnameseCollator.compare(left.name || '', right.name || '');
+  });
 }
