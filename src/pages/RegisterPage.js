@@ -1,5 +1,13 @@
 import { PageHeader } from '../components/PageHeader.js';
 import { PublicSupport } from '../components/PublicSupport.js';
+import {
+  PaymentActionButtons,
+  PaymentKioskList,
+  PaymentProgress,
+  PaymentSecureNote,
+  PaymentStatusHero,
+  PaymentSummaryCard,
+} from '../components/PaymentExperience.js';
 import { fetchPayosStatus } from '../components/PayosResultCard.js';
 import { Toast } from '../components/Toast.js';
 import {
@@ -311,7 +319,7 @@ async function submitRegistration(event) {
       requestIds: (data?.kiosks || []).map((item) => item?.request?.id).filter(Boolean),
       phone: read('register-phone'),
     }));
-    renderCheckoutConfirmation(data?.registrationBatch, payment);
+    renderCheckoutConfirmation(data?.registrationBatch, payment, data?.kiosks || []);
   } catch (error) {
     showFormError(error?.message || 'Không thể gửi đăng ký. Dữ liệu của bạn vẫn được giữ để thử lại.');
   } finally {
@@ -339,18 +347,22 @@ function renderSuccess(data, phone = '') {
   document.getElementById('public-registration-form')?.classList.add('hidden');
   const success = document.getElementById('registration-success');
   success.classList.remove('hidden');
-  success.innerHTML = `
-    <div class="empty-state">
-      <div class="empty-state-icon">✓</div>
-      <div class="empty-state-title">Thanh toán thành công</div>
-      <div class="empty-state-message">Webhook PayOS đã xác nhận và hệ thống đã cập nhật hồ sơ.</div>
-    </div>
-    <div class="registration-summary">
-      ${summary('Số tiền đã thanh toán', formatCurrency(data?.amount || 0))}
-      ${summary('Trạng thái', '<span class="badge badge-success">Đang hoạt động</span>')}
-    </div>
-    <div class="registration-summary"><h3>Kiosk đã kích hoạt</h3>${(data?.kiosks || []).map((item) => `<div class="setting-item"><span class="setting-name">✓ ${escapeHtml(item.name || 'Kiosk')}</span><span class="setting-value detail-value">${escapeHtml(formatDateOnly(item.startDate))} → ${escapeHtml(formatDateOnly(item.endDate))}</span></div>`).join('')}</div>
-    <a class="btn-primary link-button" href="#/lookup" data-registration-lookup>Xem Kiosk / Tra cứu Kiosk</a>`;
+  const kiosks = data?.kiosks || [];
+  success.innerHTML = `<div class="payment-experience payment-receipt">
+    ${PaymentStatusHero({ status: 'success', eyebrow: 'Giao dịch hoàn tất', title: 'Thanh toán thành công', description: 'PayOS đã xác nhận giao dịch và Kiosk của bạn đã được kích hoạt.' })}
+    ${PaymentProgress({ activeStep: 4 })}
+    ${PaymentSummaryCard([
+      { label: 'Tổng đã thanh toán', value: formatCurrency(data?.amount || 0), emphasis: true },
+      { label: 'Trạng thái', value: '<span class="payment-status-pill is-success">Hoàn tất</span>', html: true },
+      { label: 'Số Kiosk đã kích hoạt', value: kiosks.length },
+      data?.orderCode ? { label: 'Mã giao dịch', value: `#${data.orderCode}` } : null,
+    ])}
+    ${PaymentKioskList(kiosks, { success: true })}
+    ${PaymentActionButtons([
+      { label: 'Tra cứu Kiosk', href: '#/lookup', icon: 'kiosk', attrs: 'data-registration-lookup' },
+      { label: 'Về trang chủ', href: '#/', secondary: true },
+    ])}
+  </div>`;
   success.querySelector('[data-registration-lookup]')?.addEventListener('click', (event) => {
     event.preventDefault();
     if (phone) sessionStorage.setItem('lookup-prefill-phone', phone);
@@ -359,14 +371,27 @@ function renderSuccess(data, phone = '') {
   });
 }
 
-function renderCheckoutConfirmation(batch, payment) {
+function renderCheckoutConfirmation(batch, payment, submittedKiosks = []) {
   document.getElementById('public-registration-form')?.classList.add('hidden');
   const target = document.getElementById('registration-success');
   target?.classList.remove('hidden');
   if (!target) return;
-  target.innerHTML = `<div class="empty-state"><div class="empty-state-title">Xác nhận thanh toán</div><div class="empty-state-message">Một thanh toán duy nhất sẽ kích hoạt toàn bộ Kiosk trong lô đăng ký.</div></div>
-    <div class="registration-summary">${summary('Số Kiosk', escapeHtml(String(batch?.kiosks?.length || 0)))}${summary('Tổng thanh toán', formatCurrency(batch?.amount || payment.amount || 0))}${summary('Kiosk', escapeHtml((batch?.kiosks || []).map((item) => item.name || 'Kiosk').join(', ')))}</div>
-    <button class="btn-primary" id="registration-checkout-button" type="button">Thanh toán</button>`;
+  const kiosks = (batch?.kiosks || []).map((item, index) => ({
+    ...item,
+    businessType: submittedKiosks[index]?.businessType?.name || submittedKiosks[index]?.preview?.businessTypeName,
+  }));
+  target.innerHTML = `<div class="payment-experience payment-checkout">
+    ${PaymentStatusHero({ status: 'checkout', eyebrow: 'Thanh toán đăng ký', title: 'Xác nhận thanh toán', description: 'Kiểm tra thông tin trước khi chuyển sang PayOS.' })}
+    ${PaymentProgress({ activeStep: 1 })}
+    ${PaymentSummaryCard([
+      { label: 'Số lượng Kiosk', value: kiosks.length },
+      { label: 'Phương thức', value: 'PayOS' },
+      { label: 'Tổng thanh toán', value: formatCurrency(batch?.amount || payment.amount || 0), emphasis: true },
+    ])}
+    ${PaymentKioskList(kiosks, { showAmounts: true })}
+    ${PaymentSecureNote()}
+    ${PaymentActionButtons([{ label: 'Thanh toán qua PayOS', icon: 'checkout', attrs: 'id="registration-checkout-button"' }])}
+  </div>`;
   document.getElementById('registration-checkout-button')?.addEventListener('click', (event) => {
     event.currentTarget.disabled = true;
     event.currentTarget.textContent = 'Đang chuyển đến PayOS...';
@@ -384,16 +409,20 @@ async function handleRegistrationReturn() {
   document.getElementById('public-registration-form')?.classList.add('hidden');
   success?.classList.remove('hidden');
   if (String(params.get('cancel')).toLowerCase() === 'true' || String(params.get('status')).toLowerCase() === 'cancelled') {
-    success.innerHTML = '<div class="empty-state"><div class="empty-state-title">Bạn đã huỷ thanh toán.</div><div class="empty-state-message">Yêu cầu vẫn được giữ để bạn có thể thử lại.</div><a class="btn-primary link-button" href="#/register">Thử lại</a></div>';
+    success.innerHTML = `<div class="payment-experience">${PaymentStatusHero({ status: 'cancelled', eyebrow: 'Giao dịch chưa hoàn tất', title: 'Bạn đã huỷ thanh toán', description: 'Giao dịch chưa được hoàn tất và Kiosk chưa được kích hoạt.' })}${PaymentActionButtons([{ label: 'Thử thanh toán lại', href: '#/register', icon: 'checkout' }, { label: 'Về trang đăng ký', href: '#/register', secondary: true }])}</div>`;
     return true;
   }
-  success.innerHTML = '<div class="empty-state"><div class="empty-state-title">Thanh toán đang được xác nhận</div><div class="empty-state-message">Hệ thống đang chờ webhook PayOS xác nhận giao dịch.</div></div>';
+  success.innerHTML = registrationPendingMarkup();
   if (!paymentLinkId) { renderRegistrationPending(success); return true; }
   for (let attempt = 0; attempt < 10; attempt += 1) {
     try {
       const status = await fetchPayosStatus(orderCode, paymentLinkId);
       if (String(status.status).toLowerCase() === 'paid') { renderSuccess(status, stored.phone); return true; }
-      if (['cancelled', 'canceled', 'failed', 'expired'].includes(String(status.status).toLowerCase())) break;
+      const terminalStatus = String(status.status).toLowerCase();
+      if (['cancelled', 'canceled', 'failed', 'expired'].includes(terminalStatus)) {
+        renderRegistrationTerminal(success, terminalStatus);
+        return true;
+      }
     } catch { /* Show the safe pending state after the bounded polling window. */ }
     await new Promise((resolve) => window.setTimeout(resolve, 3000));
   }
@@ -402,7 +431,17 @@ async function handleRegistrationReturn() {
 }
 
 function renderRegistrationPending(target) {
-  target.innerHTML = '<div class="empty-state"><div class="empty-state-title">Thanh toán đang được xác nhận</div><div class="empty-state-message">Thanh toán của bạn đang chờ hệ thống xác nhận. Kiosk hiện đang chờ xét duyệt. Vui lòng kiểm tra lại sau hoặc liên hệ Admin nếu cần hỗ trợ.</div><a class="btn-primary link-button" href="#/lookup">Tra cứu Kiosk</a></div>';
+  target.innerHTML = `${registrationPendingMarkup(true)}${PaymentActionButtons([{ label: 'Tra cứu Kiosk', href: '#/lookup', secondary: true }])}`;
+}
+
+function registrationPendingMarkup(timedOut = false) {
+  return `<div class="payment-experience payment-processing" role="status" aria-live="polite">${PaymentStatusHero({ status: 'pending', eyebrow: 'Đang xử lý an toàn', title: 'Đang xác nhận thanh toán', description: timedOut ? 'Giao dịch đang chờ PayOS xác nhận. Bạn có thể kiểm tra lại sau ít phút.' : 'Ngân hàng đã tiếp nhận giao dịch. Hệ thống đang xác nhận với PayOS.', helper: 'Quá trình này thường chỉ mất vài giây.' })}${PaymentProgress({ activeStep: 2 })}</div>`;
+}
+
+function renderRegistrationTerminal(target, status) {
+  const expired = status === 'expired';
+  const cancelled = ['cancelled', 'canceled'].includes(status);
+  target.innerHTML = `<div class="payment-experience">${PaymentStatusHero({ status: cancelled ? 'cancelled' : 'warning', eyebrow: 'Giao dịch chưa hoàn tất', title: cancelled ? 'Bạn đã huỷ thanh toán' : expired ? 'Liên kết thanh toán đã hết hạn' : 'Thanh toán chưa hoàn tất', description: 'Kiosk chưa được kích hoạt. Yêu cầu đăng ký của bạn vẫn được giữ an toàn.' })}${PaymentActionButtons([{ label: 'Thử thanh toán lại', href: '#/register', icon: 'checkout' }, { label: 'Liên hệ hỗ trợ', href: '#/contact', secondary: true }])}</div>`;
 }
 
 function payosReturnParams() {

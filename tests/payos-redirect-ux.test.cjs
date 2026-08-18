@@ -17,9 +17,9 @@ test('registration creates checkout then redirects without inline payment presen
 test('return hints never finalize and completed registration renders kiosk details', async () => {
   const [page, status] = await Promise.all([source('src/pages/RegisterPage.js'), source('api/payos/status.js')]);
   assert.match(page, /payosReturnParams/);
-  assert.match(page, /Thanh toán đang được xác nhận/);
+  assert.match(page, /Đang xác nhận thanh toán/);
   assert.match(page, /Thanh toán thành công/);
-  assert.match(page, /Danh mục/);
+  assert.match(page, /PaymentKioskList/);
   assert.doesNotMatch(`${page}\n${status}`, /handle_payos_webhook|confirm_crm_payment|update\s+public\./i);
   assert.match(status, /order === 'paid' && payment === 'completed'/);
 });
