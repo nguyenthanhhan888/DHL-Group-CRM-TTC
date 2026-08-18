@@ -11,7 +11,7 @@ import { escapeHtml } from '../utils/html.js';
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
 const BUSINESS_TYPE_COLUMNS = [
   { label: '#', key: null },
-  { label: 'Danh mục', key: null },
+  { label: 'Danh mục', key: 'category_name' },
   { label: 'Tên loại hình', key: 'name' },
   { label: 'Giá/tháng', key: 'price_per_month' },
   { label: 'Trạng thái', key: 'is_active' },

@@ -384,7 +384,7 @@ function renderPayosPayments(payments) {
           orderCode: payment.orderCode,
           paymentLinkId: payment.paymentLinkId,
           qrCode: payment.qrCode,
-          note: 'Thanh toán đúng số tiền, hệ thống sẽ tự cập nhật khi ngân hàng xác nhận.',
+          note: payment.reused ? 'Bạn đang có một mã thanh toán còn hiệu lực. Hãy xem và sử dụng mã hiện tại.' : 'Thanh toán đúng số tiền, hệ thống sẽ tự cập nhật khi ngân hàng xác nhận.',
           className: 'public-payos-card',
         })}
       `).join('')}

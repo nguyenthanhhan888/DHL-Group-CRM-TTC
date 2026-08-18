@@ -4,6 +4,7 @@ const {
   callSupabaseRpc,
   createOrderCode,
   createPaymentExpiredAt,
+  getSupabaseServiceConfig,
   normalizePayosDescription,
   normalizePositiveAmount,
   normalizePurpose,
@@ -33,7 +34,12 @@ module.exports = async function createPayosPaymentHandler(req, res) {
     const payload = buildPaymentPayload(parsed.value, checksumKey);
     const accessToken = req.headers.authorization;
 
-    await recordPayosOrder(payload, accessToken, { stage: 'reserved' });
+    if (payload.purpose === 'crm_payment') {
+      const existingOrder = await fetchActiveCrmOrder(payload.paymentId, payload.amount);
+      if (existingOrder) return res.status(200).json(formatExistingOrder(existingOrder));
+    }
+
+    await recordPayosOrder(payload, accessToken, { stage: 'reserved', expiresAt: payload.request.expiredAt });
 
     const payosResponse = await fetch(`${PAYOS_API_BASE_URL}${PAYOS_CREATE_PAYMENT_PATH}`, {
       method: 'POST',
@@ -57,7 +63,7 @@ module.exports = async function createPayosPaymentHandler(req, res) {
       );
     }
 
-    await recordPayosOrder(payload, accessToken, payosData, {
+    await recordPayosOrder(payload, accessToken, { ...payosData, expiresAt: payload.request.expiredAt }, {
       checkoutUrl: payosData?.data?.checkoutUrl || null,
       qrCode: payosData?.data?.qrCode || null,
       paymentLinkId: payosData?.data?.paymentLinkId || null,
@@ -98,6 +104,22 @@ async function recordPayosOrder(payload, accessToken, providerPayload, overrides
     }, {
       accessToken,
     });
+}
+
+async function fetchActiveCrmOrder(paymentId, amount) {
+  const config=getSupabaseServiceConfig();
+  const query=new URLSearchParams({select:'*',purpose:'eq.crm_payment',payment_id:`eq.${paymentId}`,status:'eq.pending',active_slot:'is.true',expires_at:`gt.${new Date().toISOString()}`,order:'created_at.desc',limit:'1'});
+  const response=await fetch(`${config.url}/rest/v1/payos_orders?${query}`,{headers:{apikey:config.key,Authorization:`Bearer ${config.key}`}});
+  const rows=await safeJson(response);
+  if(!response.ok) throw new Error(rows?.message||'Không đọc được mã PayOS hiện tại.');
+  const order=rows?.[0];
+  if(order&&Number(order.amount)!==amount) throw new Error('Số tiền không khớp mã PayOS đang hoạt động.');
+  return order||null;
+}
+
+function formatExistingOrder(order) {
+  const provider=order.provider_payload?.data||{};
+  return {success:true,reused:true,message:'Bạn đang có một mã thanh toán còn hiệu lực.',orderCode:Number(order.order_code),checkoutUrl:order.checkout_url||null,qrCode:order.qr_code||null,paymentLinkId:order.payment_link_id||null,expiresAt:order.expires_at?Math.floor(Date.parse(order.expires_at)/1000):null,...formatPayosTransferInfo(provider,{amount:Number(order.amount),description:order.description})};
 }
 
 function formatPayosTransferInfo(data = {}, payload = {}) {

@@ -48,7 +48,7 @@ export const CategoryService = {
         .from('categories')
         .select('id, name')
         .eq('is_active', true)
-        .order('name'),
+        .order('name', { ascending: true }),
     );
   },
 
@@ -59,7 +59,7 @@ export const CategoryService = {
         .from('categories')
         .select('id, name')
         .eq('is_active', true)
-        .order('name'),
+        .order('name', { ascending: true }),
     );
   },
 

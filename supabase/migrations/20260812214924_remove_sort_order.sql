@@ -87,5 +87,6 @@ $function$;
 
 grant execute on function public.get_business_types_with_stats(text)
   to anon, authenticated, service_role;
+
 grant execute on function public.get_categories_with_stats()
   to anon, authenticated, service_role;
