@@ -8,6 +8,7 @@ import { Toolbar } from '../components/Toolbar.js';
 import { openPaymentEditForm } from '../components/PaymentEditForm.js';
 import { BusinessTypeService } from '../services/BusinessTypeService.js';
 import { PayosService } from '../services/PayosService.js';
+import { renderIcon } from '../utils/icons.js';
 import { PaymentService } from '../services/PaymentService.js';
 import { bindCurrencyInput, formatCurrency, parseCurrencyInput } from '../utils/currency.js';
 import { debounce } from '../utils/dom.js';
@@ -76,9 +77,9 @@ export function PaymentsPage() {
       `,
     })}
     <div class="payments-summary">
-      ${StatCard({ tone: 'green', icon: '💰', value: '<span id="payments-total-revenue">—</span>', label: 'Tổng thu' })}
-      ${StatCard({ tone: 'blue', icon: '📅', value: '<span id="payments-month-revenue">—</span>', label: 'Tháng này' })}
-      ${StatCard({ tone: 'purple', icon: '⏳', value: '<span id="payments-pending-count">—</span>', label: 'Chờ xác nhận' })}
+      ${StatCard({ tone: 'green', icon: renderIcon('money'), value: '<span id="payments-total-revenue">—</span>', label: 'Tổng thu' })}
+      ${StatCard({ tone: 'blue', icon: renderIcon('calendar'), value: '<span id="payments-month-revenue">—</span>', label: 'Tháng này' })}
+      ${StatCard({ tone: 'purple', icon: renderIcon('clock'), value: '<span id="payments-pending-count">—</span>', label: 'Chờ xác nhận' })}
     </div>
     <div id="payments-payos-hint"></div>
     <div class="table-card payments-table-card">

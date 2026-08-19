@@ -53,7 +53,7 @@ export function CustomersPage() {
       </select>
       <select id="customer-kiosk-state-filter" class="filter-select" aria-label="Lọc tình trạng kiosk">
         <option value="">Tất cả tình trạng Kiosk</option>
-        <option value="warning">Có Kiosk sắp hết hạn (&lt;${getExpiryWarningDays()} ngày)</option>
+        <option value="warning">Có Kiosk sắp hết hạn (≤${getExpiryWarningDays()} ngày)</option>
         <option value="expired">Có Kiosk đã hết hạn</option>
       </select>
     </div>

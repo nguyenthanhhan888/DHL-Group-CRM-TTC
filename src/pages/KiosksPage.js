@@ -16,7 +16,7 @@ const PAGE_SIZE_OPTIONS = [12, 24, 48];
 function kioskStatusOptions() {
   return [
     { value: 'active', label: 'Hoạt động' },
-    { value: 'warning', label: `Sắp hết hạn (<${getExpiryWarningDays()} ngày)` },
+    { value: 'warning', label: `Sắp hết hạn (≤${getExpiryWarningDays()} ngày)` },
     { value: 'expired', label: 'Đã hết hạn' },
     { value: 'pending', label: 'Chờ duyệt' },
   ];

@@ -7,6 +7,7 @@ import { PaymentService } from '../services/PaymentService.js';
 import { bindCurrencyInput, formatCurrency, parseCurrencyInput } from '../utils/currency.js';
 import { formatDate, parseDateOnly, startOfToday, toDateOnly } from '../utils/date.js';
 import { escapeHtml } from '../utils/html.js';
+import { renderIcon } from '../utils/icons.js';
 
 let currentKiosk = null;
 
@@ -73,7 +74,7 @@ function bindForm(onSaved) {
 async function submitManual(values, onSaved) {
   const { data } = await PaymentService.manualRenewKiosk({ kioskId: currentKiosk.id, months: values.months, startDate: values.startDate, baseAmount: values.subtotal, discount: values.discount, discountReason: values.discountReason, paymentMethod: values.paymentMethod, note: values.note });
   const period = data?.period || {};
-  Modal.open({ title: 'Gia hạn thành công', body: `<div class="renew-success"><div class="renew-success-icon">✓</div><h3>Gia hạn thành công</h3>${detail('Kỳ mới', `${formatDate(period.start_date)} → ${formatDate(period.end_date)}`)}${detail('Số tiền', formatCurrency(data?.payment?.total_amount ?? values.total))}${detail('Phương thức', methodLabel(data?.payment?.payment_method || values.paymentMethod))}${detail('Trạng thái', 'Đang hoạt động')}</div><div class="modal-actions"><button class="btn-primary" type="button" data-renew-cancel>Đóng</button></div>` });
+  Modal.open({ title: 'Gia hạn thành công', body: `<div class="renew-success"><div class="renew-success-icon">${renderIcon('check-circle')}</div><h3>Gia hạn thành công</h3>${detail('Kỳ mới', `${formatDate(period.start_date)} → ${formatDate(period.end_date)}`)}${detail('Số tiền', formatCurrency(data?.payment?.total_amount ?? values.total))}${detail('Phương thức', methodLabel(data?.payment?.payment_method || values.paymentMethod))}${detail('Trạng thái', 'Đang hoạt động')}</div><div class="modal-actions"><button class="btn-primary" type="button" data-renew-cancel>Đóng</button></div>` });
   Toast.show('Gia hạn Kiosk thành công.'); await onSaved?.();
 }
 

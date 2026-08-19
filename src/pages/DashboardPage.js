@@ -1,9 +1,10 @@
 import { ConnectionNotice } from '../components/ConnectionNotice.js';
 import { renderCategoryChart, renderRevenueChart } from '../components/DashboardCharts.js';
 import { EmptyState } from '../components/EmptyState.js';
+import { renderIcon } from '../utils/icons.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { StatCard } from '../components/StatCard.js';
-import { getExpiryWarningDays } from '../config/organization.js';
+import { getExpiryWarningDays, normalizeExpiryWarningDays } from '../config/organization.js';
 import { DashboardService } from '../services/DashboardService.js';
 import { formatCurrency } from '../utils/currency.js';
 import { daysUntil, formatDate } from '../utils/date.js';
@@ -17,14 +18,14 @@ export function DashboardPage() {
     })}
     ${ConnectionNotice()}
     <div class="stats-grid">
-      ${StatCard({ tone: 'blue', icon: '👥', value: '—', label: 'Tổng khách hàng', statId: 'stat-total-customers' })}
-      ${StatCard({ tone: 'purple', icon: '🏪', value: '—', label: 'Tổng Kiosk', statId: 'stat-total-kiosks' })}
-      ${StatCard({ tone: 'orange', icon: '✅', value: '—', label: 'Kiosk hoạt động', statId: 'stat-active-kiosks' })}
-      ${StatCard({ tone: 'orange', icon: '⏳', value: '—', label: 'Kiosk chờ duyệt', statId: 'stat-pending-kiosks' })}
-      ${StatCard({ tone: 'red', icon: '❌', value: '—', label: 'Kiosk hết hạn', statId: 'stat-expired-kiosks' })}
-      ${StatCard({ tone: 'orange', icon: '⏰', value: '—', label: 'Kiosk sắp hết hạn', statId: 'stat-expiring-soon' })}
-      ${StatCard({ tone: 'green', icon: '💵', value: '—', label: 'Doanh thu tháng này', statId: 'stat-revenue-month', className: 'stat-card-fluid' })}
-      ${StatCard({ tone: 'teal', icon: '📈', value: '—', label: 'Doanh thu năm', statId: 'stat-revenue-year', className: 'stat-card-fluid' })}
+      ${StatCard({ tone: 'blue', icon: renderIcon('users'), value: '—', label: 'Tổng khách hàng', statId: 'stat-total-customers' })}
+      ${StatCard({ tone: 'purple', icon: renderIcon('kiosk'), value: '—', label: 'Tổng Kiosk', statId: 'stat-total-kiosks' })}
+      ${StatCard({ tone: 'orange', icon: renderIcon('check-circle'), value: '—', label: 'Kiosk hoạt động', statId: 'stat-active-kiosks' })}
+      ${StatCard({ tone: 'orange', icon: renderIcon('clock'), value: '—', label: 'Kiosk chờ duyệt', statId: 'stat-pending-kiosks' })}
+      ${StatCard({ tone: 'red', icon: renderIcon('x-circle'), value: '—', label: 'Kiosk hết hạn', statId: 'stat-expired-kiosks' })}
+      ${StatCard({ tone: 'orange', icon: renderIcon('warning'), value: '—', label: 'Kiosk sắp hết hạn', statId: 'stat-expiring-soon' })}
+      ${StatCard({ tone: 'green', icon: renderIcon('money'), value: '—', label: 'Doanh thu tháng này', statId: 'stat-revenue-month', className: 'stat-card-fluid' })}
+      ${StatCard({ tone: 'teal', icon: renderIcon('trending-up'), value: '—', label: 'Doanh thu năm', statId: 'stat-revenue-year', className: 'stat-card-fluid' })}
     </div>
 
     <div class="dashboard-grid">
@@ -46,7 +47,7 @@ export function DashboardPage() {
       <section class="dash-card">
         <div class="dash-card-header"><h3>Đăng ký gần đây</h3></div>
         <div id="recent-list" class="recent-list">
-          ${EmptyState({ title: 'Đang tải dữ liệu', message: 'Đang đọc khách hàng gần đây từ Supabase.' })}
+          ${EmptyState({ title: 'Đang tải dữ liệu', message: 'Đang đọc đăng ký gần đây từ Supabase.' })}
         </div>
       </section>
       <section class="dash-card">
@@ -71,7 +72,7 @@ DashboardPage.afterRender = async function afterRenderDashboard() {
     renderRevenueChart(dashboard.charts.monthlyRevenue);
     renderCategoryChart(dashboard.charts.categoryDistribution);
     renderExpiringKiosks(dashboard.lists.expiringKiosks, dashboard.warningDays);
-    renderRecentCustomers(dashboard.lists.recentCustomers);
+    renderRecentRegistrations(dashboard.lists.recentRegistrations);
   } catch (error) {
     renderDashboardError(error);
   }
@@ -120,8 +121,8 @@ function renderExpiringKiosks(kiosks, warningDays = getExpiryWarningDays()) {
     return `
       <div class="expiring-item">
         <div>
-          <div class="expiring-name">🏪 ${escapeHtml(kiosk.facebook_name || '—')}</div>
-          <div class="expiring-date">👤 ${escapeHtml(kiosk.customers?.facebook_name || '—')} · HH: ${formatDate(kiosk.end_date)}</div>
+          <div class="expiring-name">${escapeHtml(kiosk.facebook_name || '—')}</div>
+          <div class="expiring-date">${escapeHtml(kiosk.customers?.facebook_name || '—')} · HH: ${formatDate(kiosk.end_date)}</div>
         </div>
         <span class="expiring-days ${daysClass}">Còn ${days} ngày</span>
       </div>
@@ -134,28 +135,29 @@ export function expiringKiosksEmptyMessage(warningDays = getExpiryWarningDays())
 }
 
 function normalizeWarningDays(value) {
-  const days = Number(value);
-  return Number.isFinite(days) && days > 0 ? Math.floor(days) : getExpiryWarningDays();
+  return value == null || value === '' ? getExpiryWarningDays() : normalizeExpiryWarningDays(value);
 }
 
-function renderRecentCustomers(customers) {
+function renderRecentRegistrations(registrations) {
   const element = document.getElementById('recent-list');
   if (!element) return;
 
-  if (!customers.length) {
+  if (!registrations.length) {
     element.innerHTML = EmptyState({
-      title: 'Chưa có khách hàng gần đây',
-      message: 'Không tìm thấy bản ghi customer mới.',
+      title: 'Chưa có đăng ký gần đây',
+      message: 'Không tìm thấy đăng ký Kiosk mới.',
     });
     return;
   }
 
-  element.innerHTML = customers.map((customer) => `
+  element.innerHTML = registrations.map((registration) => `
     <div class="recent-item">
-      <div>
-        <div class="expiring-name">👤 ${escapeHtml(customer.facebook_name || '—')}</div>
-        <div class="expiring-date">Ngày tạo: ${formatDate(customer.created_at)}</div>
+      <span class="recent-registration-icon" aria-hidden="true">${renderIcon('store')}</span>
+      <div class="recent-registration-copy">
+        <div class="expiring-name">${escapeHtml(registration.kioskName || 'Kiosk')}</div>
+        <div class="expiring-date">${formatDate(registration.createdAt)}</div>
       </div>
+      <strong class="recent-registration-amount">${escapeHtml(formatCurrency(registration.amount))}</strong>
     </div>
   `).join('');
 }

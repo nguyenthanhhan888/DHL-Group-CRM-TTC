@@ -1,7 +1,7 @@
 import { applyPagination, applySort, requireSupabaseClient, runQuery } from './BaseService.js';
 import { AuditLogService } from './AuditLogService.js';
-import { getExpiryWarningDays } from '../config/organization.js';
 import { startOfToday, toDateOnly } from '../utils/date.js';
+import { expiryDateRange } from '../utils/kioskStatus.js';
 
 const KIOSK_SELECT = '*, customers(id, facebook_name, facebook_id, phone, address, status, total_paid, total_kiosks, note), categories(name), business_types(name, price_per_month)';
 
@@ -185,13 +185,12 @@ function applyStatusFilter(query, status) {
 
   if (status !== 'warning') return query.eq('status', status);
 
-  const warningEndDate = new Date(today);
-  warningEndDate.setDate(today.getDate() + getExpiryWarningDays());
+  const warningRange = expiryDateRange({ today });
 
   return query
     .in('status', ['active', 'warning'])
-    .gte('end_date', todayDate)
-    .lt('end_date', toDateOnly(warningEndDate));
+    .gte('end_date', warningRange.startDate)
+    .lte('end_date', warningRange.endDate);
 }
 
 function resolveKioskSort(status, sort) {
