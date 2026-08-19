@@ -2,6 +2,7 @@ import { escapeHtml } from '../utils/html.js';
 import { PublicContactLinks } from './PublicSupport.js';
 import { PublicLogo } from './PublicLogo.js';
 import { PUBLIC_BRAND } from '../config/organization.js';
+import { renderIcon } from '../utils/icons.js';
 
 const links = [
   ['home', 'Trang chủ'],
@@ -32,7 +33,7 @@ export function PublicLayout({ route = 'home', content = '' } = {}) {
       <main class="portal-main" data-public-outlet><div class="public-content-container">${content}</div></main>
       ${PublicFooter()}
     </div>
-    <div class="modal-overlay hidden" data-modal-overlay><div class="modal" data-modal role="dialog" aria-modal="true" aria-labelledby="app-modal-title"><div class="modal-header"><h3 id="app-modal-title" data-modal-title></h3><button class="modal-close" type="button" data-modal-close>✕</button></div><div class="modal-body" data-modal-body></div></div></div>
+    <div class="modal-overlay hidden" data-modal-overlay><div class="modal" data-modal role="dialog" aria-modal="true" aria-labelledby="app-modal-title"><div class="modal-header"><h3 id="app-modal-title" data-modal-title></h3><button class="modal-close" type="button" data-modal-close aria-label="Đóng"><span aria-hidden="true">${renderIcon('x')}</span></button></div><div class="modal-body" data-modal-body></div></div></div>
     <div class="toast-container" data-toast-container aria-live="polite"></div>`;
 }
 

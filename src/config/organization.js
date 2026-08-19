@@ -37,9 +37,13 @@ export function getOrganizationSetting(key, fallback = '') {
 }
 
 export function getExpiryWarningDays() {
-  const value = Number(getOrganizationSetting('warning_days', DEFAULT_EXPIRY_WARNING_DAYS));
-  if (!Number.isFinite(value) || value <= 0) return DEFAULT_EXPIRY_WARNING_DAYS;
-  return Math.floor(value);
+  return normalizeExpiryWarningDays(getOrganizationSetting('warning_days', DEFAULT_EXPIRY_WARNING_DAYS));
+}
+
+export function normalizeExpiryWarningDays(value) {
+  const days = Number(value);
+  if (!Number.isFinite(days) || days <= 0) return DEFAULT_EXPIRY_WARNING_DAYS;
+  return Math.floor(days);
 }
 
 export function getFacebookGroupMemberBaseUrl() {

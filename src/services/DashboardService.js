@@ -1,5 +1,4 @@
 import { requireSupabaseClient, runQuery } from './BaseService.js';
-import { KioskService } from './KioskService.js';
 import { RevenueService } from './RevenueService.js';
 
 export const DashboardService = {
@@ -17,8 +16,6 @@ export const DashboardService = {
     const summary = dashboard.summary || {};
     const charts = dashboard.charts || {};
     const lists = dashboard.lists || {};
-    const expiringKiosks = await getExpiringKiosks();
-
     return {
       summary: {
         totalCustomers: toCount(summary.totalCustomers),
@@ -26,7 +23,7 @@ export const DashboardService = {
         activeKiosks: toCount(summary.activeKiosks),
         pendingKiosks: toCount(summary.pendingKiosks),
         expiredKiosks: toCount(summary.expiredKiosks),
-        expiringSoon: expiringKiosks.count,
+        expiringSoon: toCount(summary.expiringSoon),
         revenueThisMonth: RevenueService.toAmount(summary.revenueThisMonth),
         revenueThisYear: RevenueService.toAmount(summary.revenueThisYear),
       },
@@ -40,8 +37,8 @@ export const DashboardService = {
           : [],
       },
       lists: {
-        expiringKiosks: expiringKiosks.data,
-        recentCustomers: Array.isArray(lists.recentCustomers) ? lists.recentCustomers : [],
+        expiringKiosks: Array.isArray(lists.expiringKiosks) ? lists.expiringKiosks : [],
+        recentRegistrations: normalizeRecentRegistrations(lists.recentRegistrations),
       },
       year: toCount(dashboard.year) || year,
       month: toCount(dashboard.month) || month,
@@ -50,15 +47,14 @@ export const DashboardService = {
   },
 };
 
-async function getExpiringKiosks() {
-  const { data, count } = await KioskService.list({
-    status: 'warning',
-    pagination: { page: 1, pageSize: 24 },
-  });
-  return {
-    data: Array.isArray(data) ? data : [],
-    count: Number.isFinite(Number(count)) ? Number(count) : (data || []).length,
-  };
+export function normalizeRecentRegistrations(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => ({
+    id: item?.id ?? null,
+    kioskName: String(item?.kioskName || 'Kiosk'),
+    amount: RevenueService.toAmount(item?.amount),
+    createdAt: item?.createdAt || null,
+  }));
 }
 
 function toCount(value) {

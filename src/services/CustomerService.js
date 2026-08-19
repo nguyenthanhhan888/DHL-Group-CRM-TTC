@@ -1,7 +1,7 @@
 import { applyPagination, applySort, requireSupabaseClient, runQuery } from './BaseService.js';
 import { AuditLogService } from './AuditLogService.js';
-import { getExpiryWarningDays } from '../config/organization.js';
 import { startOfToday, toDateOnly } from '../utils/date.js';
+import { expiryDateRange } from '../utils/kioskStatus.js';
 
 const CUSTOMER_MUTABLE_FIELDS = [
   'facebook_name',
@@ -178,12 +178,11 @@ async function findCustomerMatchesByKioskState(supabase, kioskState) {
   if (kioskState === 'expired') {
     query = query.or(`status.eq.expired,end_date.lt.${todayDate}`);
   } else if (kioskState === 'warning') {
-    const warningEndDate = new Date(today);
-    warningEndDate.setDate(today.getDate() + getExpiryWarningDays());
+    const warningRange = expiryDateRange({ today });
     query = query
       .in('status', ['active', 'warning'])
-      .gte('end_date', todayDate)
-      .lt('end_date', toDateOnly(warningEndDate));
+      .gte('end_date', warningRange.startDate)
+      .lte('end_date', warningRange.endDate);
   } else {
     return null;
   }

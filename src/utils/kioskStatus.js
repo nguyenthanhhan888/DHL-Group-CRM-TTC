@@ -1,5 +1,5 @@
-import { getExpiryWarningDays } from '../config/organization.js';
-import { startOfToday } from './date.js';
+import { getExpiryWarningDays, normalizeExpiryWarningDays } from '../config/organization.js';
+import { startOfToday, toDateOnly } from './date.js';
 
 const DATE_DRIVEN_STATUSES = new Set(['active', 'warning', 'expired']);
 
@@ -14,11 +14,34 @@ export function deriveKioskStatus(kioskOrStatus, endDateValue = null) {
   if (!endDate) return normalized;
   const today = startOfToday();
   if (endDate < today) return 'expired';
-
-  const warningEndDate = new Date(today);
-  warningEndDate.setDate(today.getDate() + getExpiryWarningDays());
-  if (endDate < warningEndDate) return 'warning';
+  if (isExpiringSoon(source, { today })) return 'warning';
   return 'active';
+}
+
+export function isExpiringSoon(kiosk, {
+  warningDays = getExpiryWarningDays(),
+  today = startOfToday(),
+} = {}) {
+  const endDate = parseDateOnly(kiosk?.end_date);
+  if (!endDate) return false;
+  const { start, end } = expiryDateRange({ warningDays, today });
+  return endDate >= start && endDate <= end;
+}
+
+export function expiryDateRange({
+  warningDays = getExpiryWarningDays(),
+  today = startOfToday(),
+} = {}) {
+  const start = new Date(today);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + normalizeExpiryWarningDays(warningDays));
+  return {
+    start,
+    end,
+    startDate: toDateOnly(start),
+    endDate: toDateOnly(end),
+  };
 }
 
 function parseDateOnly(value) {

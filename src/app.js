@@ -571,6 +571,7 @@ function setTheme(theme, { persist = true } = {}) {
   document.documentElement.dataset.theme = normalizedTheme;
   document.documentElement.style.colorScheme = normalizedTheme;
   if (persist) localStorage.setItem(THEME_STORAGE_KEY, normalizedTheme);
+  window.dispatchEvent(new CustomEvent('dhl:themechange', { detail: { theme: normalizedTheme } }));
 }
 
 function updateThemeToggle(button) {

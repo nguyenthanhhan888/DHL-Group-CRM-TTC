@@ -37,7 +37,10 @@ test('semantic theme roles cover notices and Customer Detail headings', async ()
   const css = await readFile(path.join(root, 'src/styles/app.css'), 'utf8');
   for (const token of ['--bg-soft', '--info-bg', '--info-border', '--info-text']) assert.match(css, new RegExp(token));
   assert.match(css, /\.legacy-scope-notice[^}]*color:var\(--info-text\)/s);
-  assert.match(css, /\.dash-card-header h3,\.admin-card h3,\.detail-section h3 \{ color:var\(--text-primary\)/);
+  for (const selector of ['.dash-card-header h3', '.admin-card h3', '.detail-section h3']) {
+    assert.ok(css.includes(selector));
+  }
+  assert.match(css, /Theme-neutral component layer[\s\S]*?color:var\(--text-primary\)/);
 });
 
 test('theme preference is shared and applied before the stylesheet loads', async () => {

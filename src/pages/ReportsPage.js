@@ -9,6 +9,7 @@ import { ReportService } from '../services/ReportService.js';
 import { formatCurrency } from '../utils/currency.js';
 import { formatDate, startOfToday, toDateOnly } from '../utils/date.js';
 import { escapeHtml } from '../utils/html.js';
+import { renderIcon } from '../utils/icons.js';
 
 const REPORT_TABS = [
   { id: 'overview', label: 'Tổng quan' },
@@ -339,11 +340,11 @@ function renderReportContent() {
 function renderOverview(report) {
   return `
     ${renderSummaryCards([
-      card('blue', '✅', report.summary.completedCount, 'Thanh toán hoàn thành'),
-      card('purple', '⏳', report.summary.pendingCount, 'Thanh toán chờ duyệt'),
-      card('orange', '⏰', report.summary.expiringSoon, 'Kiosk sắp hết hạn'),
-      card('red', '❌', report.summary.expiredKiosks, 'Kiosk hết hạn'),
-      card('green', '💰', formatCurrency(report.summary.totalRevenue), 'Doanh thu trong kỳ', true),
+      card('blue', renderIcon('check-circle'), report.summary.completedCount, 'Thanh toán hoàn thành'),
+      card('purple', renderIcon('clock'), report.summary.pendingCount, 'Thanh toán chờ duyệt'),
+      card('orange', renderIcon('warning'), report.summary.expiringSoon, 'Kiosk sắp hết hạn'),
+      card('red', renderIcon('x-circle'), report.summary.expiredKiosks, 'Kiosk hết hạn'),
+      card('green', renderIcon('money'), formatCurrency(report.summary.totalRevenue), 'Doanh thu trong kỳ', true),
     ])}
     <div class="report-grid">
       ${renderReportCard('Top 10 khách hàng doanh thu cao', renderTable(topCustomerColumns(), report.topCustomers, 'Không có khách hàng phát sinh doanh thu trong kỳ.'))}
@@ -355,11 +356,11 @@ function renderOverview(report) {
 function renderRevenue(report) {
   return `
     ${renderSummaryCards([
-      card('green', '💰', formatCurrency(report.summary.totalRevenue), 'Tổng doanh thu', true),
-      card('blue', '🧾', report.summary.completedCount, 'Thanh toán hoàn thành'),
-      card('purple', '📊', formatCurrency(report.summary.averagePayment), 'Trung bình'),
-      card('teal', '⬆️', formatCurrency(report.summary.highestPayment), 'Cao nhất'),
-      card('orange', '⬇️', formatCurrency(report.summary.lowestPayment), 'Thấp nhất'),
+      card('green', renderIcon('money'), formatCurrency(report.summary.totalRevenue), 'Tổng doanh thu', true),
+      card('blue', renderIcon('check-circle'), report.summary.completedCount, 'Thanh toán hoàn thành'),
+      card('purple', renderIcon('chart'), formatCurrency(report.summary.averagePayment), 'Trung bình'),
+      card('teal', renderIcon('trending-up'), formatCurrency(report.summary.highestPayment), 'Cao nhất'),
+      card('orange', renderIcon('report'), formatCurrency(report.summary.lowestPayment), 'Thấp nhất'),
     ])}
     <div class="report-grid">
       ${renderReportCard('Doanh thu theo tháng', renderTable(monthColumns(), report.groups.monthly, 'Không có doanh thu theo tháng.'))}
@@ -374,12 +375,12 @@ function renderRevenue(report) {
 function renderKiosks(report) {
   return `
     ${renderSummaryCards([
-      card('blue', '🏪', report.summary.totalKiosks, 'Tổng Kiosk'),
-      card('green', '✅', report.summary.activeKiosks, 'Hoạt động'),
-      card('purple', '⏳', report.summary.pendingKiosks, 'Chờ duyệt'),
-      card('red', '❌', report.summary.expiredKiosks, 'Hết hạn'),
-      card('teal', '⏸️', report.summary.suspendedKiosks, 'Tạm ngưng'),
-      card('orange', '⏰', report.summary.expiringSoon, 'Sắp hết hạn'),
+      card('blue', renderIcon('kiosk'), report.summary.totalKiosks, 'Tổng Kiosk'),
+      card('green', renderIcon('check-circle'), report.summary.activeKiosks, 'Hoạt động'),
+      card('purple', renderIcon('clock'), report.summary.pendingKiosks, 'Chờ duyệt'),
+      card('red', renderIcon('x-circle'), report.summary.expiredKiosks, 'Hết hạn'),
+      card('teal', renderIcon('warning'), report.summary.suspendedKiosks, 'Tạm ngưng'),
+      card('orange', renderIcon('warning'), report.summary.expiringSoon, 'Sắp hết hạn'),
     ])}
     ${renderReportCard('Trạng thái Kiosk', renderTable(kioskStatusColumns(), report.groups.kioskStatuses, 'Không có Kiosk.'))}
     ${renderReportCard('Chi tiết Kiosk', renderTable(kioskColumns(), report.rows, 'Không có Kiosk phù hợp.'))}
@@ -390,11 +391,11 @@ function renderKiosks(report) {
 function renderCustomers(report) {
   return `
     ${renderSummaryCards([
-      card('blue', '👥', report.summary.totalCustomers, 'Tổng khách hàng'),
-      card('purple', '🏪', report.summary.totalKiosks, 'Tổng Kiosk'),
-      card('green', '✅', report.summary.activeKiosks, 'Kiosk hoạt động'),
-      card('red', '❌', report.summary.expiredKiosks, 'Kiosk hết hạn'),
-      card('teal', '💰', formatCurrency(report.summary.totalPaid), 'Tổng đã trả', true),
+      card('blue', renderIcon('users'), report.summary.totalCustomers, 'Tổng khách hàng'),
+      card('purple', renderIcon('kiosk'), report.summary.totalKiosks, 'Tổng Kiosk'),
+      card('green', renderIcon('check-circle'), report.summary.activeKiosks, 'Kiosk hoạt động'),
+      card('red', renderIcon('x-circle'), report.summary.expiredKiosks, 'Kiosk hết hạn'),
+      card('teal', renderIcon('money'), formatCurrency(report.summary.totalPaid), 'Tổng đã trả', true),
     ])}
     ${renderReportCard('Chi tiết khách hàng', renderTable(customerColumns(), report.rows, 'Không có khách hàng phù hợp.'))}
     ${renderPagination(report.pagination)}
@@ -404,7 +405,7 @@ function renderCustomers(report) {
 function renderReconciliation(report) {
   return `
     ${renderSummaryCards([
-      card('orange', '⚠️', report.summary.issueCount, 'Mục cần kiểm tra'),
+      card('orange', renderIcon('alert'), report.summary.issueCount, 'Mục cần kiểm tra'),
     ])}
     <div class="notice warning reconciliation-note">
       <strong>Đối soát là danh sách gợi ý kiểm tra</strong>
@@ -418,10 +419,10 @@ function renderReconciliation(report) {
 function renderCategories(report) {
   return `
     ${renderSummaryCards([
-      card('blue', '🗂️', report.summary.totalCategories, 'Danh mục'),
-      card('purple', '🏷️', report.summary.totalBusinessTypes, 'Loại hình KD'),
-      card('orange', '🏪', report.summary.totalKiosks, 'Tổng Kiosk'),
-      card('green', '💰', formatCurrency(report.summary.totalRevenue), 'Doanh thu', true),
+      card('blue', renderIcon('list'), report.summary.totalCategories, 'Danh mục'),
+      card('purple', renderIcon('briefcase'), report.summary.totalBusinessTypes, 'Loại hình KD'),
+      card('orange', renderIcon('kiosk'), report.summary.totalKiosks, 'Tổng Kiosk'),
+      card('green', renderIcon('money'), formatCurrency(report.summary.totalRevenue), 'Doanh thu', true),
     ])}
     ${renderReportCard('Danh mục và loại hình kinh doanh', renderTable(categoryColumns(), report.rows, 'Không có dữ liệu danh mục.'))}
     ${renderPagination(report.pagination)}

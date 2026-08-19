@@ -8,6 +8,7 @@ import { bindFacebookIdResolvers, FacebookIdResolverFields, validateFacebookReso
 import { Toast } from '../components/Toast.js';
 import { getOrganizationSetting } from '../config/organization.js';
 import { escapeHtml } from '../utils/html.js';
+import { renderIcon } from '../utils/icons.js';
 import { toDateOnly } from '../utils/date.js';
 import { debounce } from '../utils/dom.js';
 import { duplicateValues, isDigits, isValidDateOnly, setInlineError } from '../utils/formValidation.js';
@@ -486,7 +487,7 @@ async function submitPublicLegacyRequest() {
   success.classList.remove('hidden');
   success.innerHTML = `
     <div class="empty-state">
-      <div class="empty-state-icon">✓</div>
+      <div class="empty-state-icon">${renderIcon('check-circle')}</div>
       <div class="empty-state-title">Đã gửi dữ liệu cũ</div>
       <div class="empty-state-message">Ban quản trị sẽ đối chiếu bằng chứng trước khi cập nhật hệ thống.</div>
     </div>

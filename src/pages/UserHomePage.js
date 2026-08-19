@@ -16,6 +16,7 @@ import { isMissingDatabaseFeatureError } from '../utils/databaseFeature.js';
 import { formatDate, formatDateTime } from '../utils/date.js';
 import { getUserAvatarPath } from '../utils/avatar.js';
 import { escapeHtml } from '../utils/html.js';
+import { renderIcon } from '../utils/icons.js';
 
 const WALLET_POLL_INTERVAL_MS = 4000;
 const WALLET_POLL_MAX_MS = 90_000;
@@ -1616,7 +1617,7 @@ function accountIcon(name) {
     save: '<svg viewBox="0 0 24 24"><path d="M5 4h12l2 2v14H5V4Zm2 2v12h10V8.5L14.5 6H14v5H8V6H7Zm3 0v3h2V6h-2Zm-1 8h6v2H9v-2Z"/></svg>',
     link: '<svg viewBox="0 0 24 24"><path d="M8.5 13.5 7.1 12l-1.4 1.4a3 3 0 0 0 4.2 4.2l2.8-2.8a3 3 0 0 0 0-4.2l-1.4-1.4 1.4-1.4 1.4 1.4a5 5 0 0 1 0 7.1l-2.8 2.8a5 5 0 0 1-7.1-7.1l1.4-1.4 2.9 2.9Zm7-3L16.9 12l1.4-1.4a3 3 0 0 0-4.2-4.2l-2.8 2.8a3 3 0 0 0 0 4.2l1.4 1.4-1.4 1.4-1.4-1.4a5 5 0 0 1 0-7.1l2.8-2.8a5 5 0 0 1 7.1 7.1l-1.4 1.4-2.9-2.9Z"/></svg>',
   };
-  return icons[name] || '';
+  return icons[name] || renderIcon(name) || '';
 }
 
 function filterCustomerLinks(links) {

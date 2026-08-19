@@ -10,18 +10,50 @@ test('semantic theme tokens cover readable text, borders, notices, and statuses'
   const css = await source('src/styles/app.css');
   for (const token of [
     '--bg-page', '--bg-surface', '--bg-elevated', '--bg-soft',
+    '--bg-card', '--bg-control', '--bg-hover', '--bg-header', '--bg-sidebar', '--bg-overlay',
     '--text-primary', '--text-secondary', '--text-muted', '--text-disabled',
-    '--border-default', '--border-soft', '--primary', '--primary-hover', '--primary-soft',
+    '--text-on-accent', '--border-default', '--border-soft', '--border-interactive',
+    '--primary', '--primary-hover', '--primary-soft', '--shadow-card',
     '--info-bg', '--info-border', '--info-text', '--success-bg', '--success-text',
-    '--warning-bg', '--warning-text', '--danger-bg', '--danger-text',
+    '--success-border', '--warning-bg', '--warning-border', '--warning-text',
+    '--danger-bg', '--danger-border', '--danger-text',
+    '--table-header-bg', '--chart-grid', '--chart-label', '--chart-center', '--chart-center-text',
   ]) assert.match(css, new RegExp(token));
   assert.match(css, /html\[data-theme="light"\][\s\S]*--text-primary:\s*#0f172a/);
   assert.match(css, /html\[data-theme="light"\][\s\S]*--info-text:\s*#1e3a8a/);
 });
 
+test('theme architecture uses one token definition instead of light-only correction passes', async () => {
+  const css = await source('src/styles/app.css');
+  assert.equal((css.match(/html\[data-theme="light"\]/g) || []).length, 1);
+  assert.doesNotMatch(css, /Final light-theme pass|late component blocks from falling back/i);
+  assert.match(css, /Theme-neutral component layer/);
+  assert.match(css, /\.form-control,[\s\S]*?background:var\(--bg-control\);[\s\S]*?border-color:var\(--border-default\)/);
+  assert.match(css, /\.data-table thead \{ background:var\(--table-header-bg\); \}/);
+  assert.match(css, /\.modal,\.toast,[\s\S]*?background:var\(--bg-elevated\)/);
+  assert.equal((css.match(/!important/g) || []).length, 1);
+});
+
+test('dashboard canvas resolves semantic theme colors and redraws after theme changes', async () => {
+  const [charts, app] = await Promise.all([
+    source('src/components/DashboardCharts.js'),
+    source('src/app.js'),
+  ]);
+  for (const token of ['--primary', '--chart-grid', '--chart-label', '--chart-center', '--chart-center-text']) {
+    assert.match(charts, new RegExp(token));
+  }
+  assert.match(charts, /getComputedStyle\(document\.documentElement\)/);
+  assert.match(charts, /addEventListener\('dhl:themechange'/);
+  assert.match(app, /dispatchEvent\(new CustomEvent\('dhl:themechange'/);
+  assert.doesNotMatch(charts, /ctx\.(?:fillStyle|strokeStyle)\s*=\s*['"](?:#|rgba?\()/);
+});
+
 test('detail headings, tabs, and information banners use semantic colors', async () => {
   const css = await source('src/styles/app.css');
-  assert.match(css, /\.dash-card-header h3,\.admin-card h3,\.detail-section h3\s*\{\s*color:var\(--text-primary\)/);
+  for (const selector of ['.dash-card-header h3', '.admin-card h3', '.detail-section h3']) {
+    assert.ok(css.includes(selector));
+  }
+  assert.match(css, /Theme-neutral component layer[\s\S]*?color:var\(--text-primary\)/);
   assert.match(css, /\.admin-user-tab\s*\{[\s\S]*?color:\s*var\(--text-secondary\)/);
   assert.match(css, /\.ttc-tab-button\s*\{[\s\S]*?color:\s*var\(--text-secondary\)/);
   assert.match(css, /\.legacy-scope-notice,\s*\.legacy-payment-proof\s*\{[\s\S]*?color:\s*var\(--info-text\)/);

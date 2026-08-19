@@ -4,6 +4,7 @@ import { formatCurrency } from '../utils/currency.js';
 import { escapeHtml } from '../utils/html.js';
 import { PublicContactLinks, PublicSupport } from '../components/PublicSupport.js';
 import { PaymentActionButtons, PaymentProgress, PaymentStatusHero, PaymentSummaryCard } from '../components/PaymentExperience.js';
+import { deriveKioskStatus } from '../utils/kioskStatus.js';
 
 let lookupRows = [];
 const ALLOWED_PUBLIC_MONTHS = new Set([1, 3, 6, 12]);
@@ -42,7 +43,7 @@ async function lookup(event) {
 
 function resultCard(item, index) {
   const days = remainingDays(item.endDate);
-  return `<article class="lookup-card"><div><span>Kiosk</span><h2>${escapeHtml(item.kiosk || 'Kiosk')}</h2></div><dl><div><dt>Danh mục</dt><dd>${escapeHtml(item.category || '—')}</dd></div><div><dt>Loại hình</dt><dd>${escapeHtml(item.businessType || '—')}</dd></div><div><dt>Ngày bắt đầu</dt><dd>${date(item.startDate)}</dd></div><div><dt>Ngày hết hạn</dt><dd>${date(item.endDate)}</dd></div><div><dt>Thời hạn còn lại</dt><dd>${days >= 0 ? `${days} ngày` : 'Đã hết hạn'}</dd></div><div><dt>Trạng thái</dt><dd><span class="status-pill">${status(item.status, days)}</span></dd></div></dl><button class="btn-primary lookup-renew-button" type="button" data-renew-index="${index}">Gia hạn Kiosk</button><div data-renew-panel="${index}"></div></article>`;
+  return `<article class="lookup-card"><div><span>Kiosk</span><h2>${escapeHtml(item.kiosk || 'Kiosk')}</h2></div><dl><div><dt>Danh mục</dt><dd>${escapeHtml(item.category || '—')}</dd></div><div><dt>Loại hình</dt><dd>${escapeHtml(item.businessType || '—')}</dd></div><div><dt>Ngày bắt đầu</dt><dd>${date(item.startDate)}</dd></div><div><dt>Ngày hết hạn</dt><dd>${date(item.endDate)}</dd></div><div><dt>Thời hạn còn lại</dt><dd>${days >= 0 ? `${days} ngày` : 'Đã hết hạn'}</dd></div><div><dt>Trạng thái</dt><dd><span class="status-pill">${publicKioskStatusLabel(item.status, item.endDate)}</span></dd></div></dl><button class="btn-primary lookup-renew-button" type="button" data-renew-index="${index}">Gia hạn Kiosk</button><div data-renew-panel="${index}"></div></article>`;
 }
 
 function handleResultClick(event) {
@@ -121,4 +122,4 @@ function clearPayosReturnParams() { window.history.replaceState({}, '', `${windo
 function show(element, message) { if (element) { element.textContent = message; element.classList.remove('hidden'); } }
 function remainingDays(value) { if (!value) return 0; const end = new Date(`${value}T00:00:00`); const today = new Date(); today.setHours(0, 0, 0, 0); return Math.ceil((end - today) / 86400000); }
 function date(value) { const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return match ? `${match[3]}/${match[2]}/${match[1]}` : '—'; }
-function status(value, days) { if (days < 0) return 'Hết hạn'; return ({ active: 'Đang hoạt động', warning: 'Sắp hết hạn', pending: 'Chờ duyệt' })[value] || 'Đang cập nhật'; }
+export function publicKioskStatusLabel(value, endDate) { const derived = deriveKioskStatus({ status: value, end_date: endDate }); return ({ active: 'Đang hoạt động', warning: 'Sắp hết hạn', expired: 'Hết hạn', pending: 'Chờ duyệt' })[derived] || 'Đang cập nhật'; }

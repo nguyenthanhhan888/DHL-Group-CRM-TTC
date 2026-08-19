@@ -49,7 +49,7 @@ test('kiosk expiry filters use kiosk end_date boundaries', async () => {
     ['in', 'status', ['active', 'warning']],
   ]);
   assert.equal(warningCalls.find(([method, column]) => method === 'gte' && column === 'end_date')?.[2], todayDate());
-  assert.equal(warningCalls.find(([method, column]) => method === 'lt' && column === 'end_date')?.[2], dateOnlyFromToday(20));
+  assert.equal(warningCalls.find(([method, column]) => method === 'lte' && column === 'end_date')?.[2], dateOnlyFromToday(20));
 
   calls = [];
   await KioskService.list({
@@ -86,14 +86,14 @@ test('customer kiosk-state filters use matching kiosk end_date rules', async () 
     ['order', 'end_date', { ascending: true }],
   ]);
   assert.equal(calls.find(([method, column]) => method === 'gte' && column === 'end_date')?.[2], todayDate());
-  assert.equal(calls.find(([method, column]) => method === 'lt' && column === 'end_date')?.[2], dateOnlyFromToday(20));
+  assert.equal(calls.find(([method, column]) => method === 'lte' && column === 'end_date')?.[2], dateOnlyFromToday(20));
   assert.deepEqual(data.map((customer) => customer.id), [101, 102]);
   assert.equal(count, 2);
 
   replaceOrganizationSettings({});
 });
 
-test('dashboard expiring kiosks use the same warning filter as kiosk list', async () => {
+test('dashboard keeps the inclusive RPC expiry result instead of replacing it', async () => {
   calls = [];
   replaceOrganizationSettings({ warning_days: '20' });
   setupSupabaseMock();
@@ -105,12 +105,7 @@ test('dashboard expiring kiosks use the same warning filter as kiosk list', asyn
   assert.deepEqual(calls.filter(([method]) => method === 'rpc'), [
     ['rpc', 'get_dashboard_data'],
   ]);
-  assert.deepEqual(calls.filter(([method]) => method === 'in'), [
-    ['in', 'status', ['active', 'warning']],
-  ]);
-  assert.deepEqual(calls.filter(([method]) => method === 'order'), [
-    ['order', 'end_date', { ascending: true }],
-  ]);
+  assert.deepEqual(calls.filter(([method]) => method === 'from'), []);
 
   replaceOrganizationSettings({});
 });
@@ -154,11 +149,17 @@ function setupSupabaseMock() {
           calls.push(['rpc', name]);
           return Promise.resolve({
             data: {
-              summary: { expiringSoon: 0 },
+              summary: { expiringSoon: 3 },
               charts: {},
               groups: { kioskStatuses: [] },
               rows: [],
-              lists: { expiringKiosks: [] },
+              lists: {
+                expiringKiosks: [
+                  { id: 201, end_date: dateOnlyFromToday(1) },
+                  { id: 202, end_date: dateOnlyFromToday(3) },
+                  { id: 203, end_date: dateOnlyFromToday(5) },
+                ],
+              },
               warningDays: 20,
             },
             error: null,
@@ -185,6 +186,10 @@ function createQuery(table) {
     },
     gte(...args) {
       calls.push(['gte', ...args]);
+      return query;
+    },
+    lte(...args) {
+      calls.push(['lte', ...args]);
       return query;
     },
     lt(...args) {
