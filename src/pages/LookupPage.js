@@ -6,12 +6,13 @@ import { PublicContactLinks, PublicSupport } from '../components/PublicSupport.j
 import { PaymentActionButtons, PaymentProgress, PaymentStatusHero, PaymentSummaryCard } from '../components/PaymentExperience.js';
 import { deriveKioskStatus } from '../utils/kioskStatus.js';
 import { StatusBadge } from '../components/StatusBadge.js';
+import { renderIcon } from '../utils/icons.js';
 
 let lookupRows = [];
 const ALLOWED_PUBLIC_MONTHS = new Set([1, 3, 6, 12]);
 
 export function LookupPage() {
-  return `<section class="portal-page narrow public-lookup-page"><div class="portal-page-heading"><span>Tra cứu công khai</span><h1>Tra cứu Kiosk</h1><p>Nhập số điện thoại đã dùng khi đăng ký để xem thông tin Kiosk an toàn.</p></div><form id="lookup-form" class="lookup-form" novalidate><label class="form-group"><span>Số điện thoại đã đăng ký</span><input id="lookup-phone" class="form-control" type="tel" inputmode="tel" autocomplete="tel" required></label><button class="btn-primary" type="submit">Tra cứu</button></form><div id="lookup-message" class="form-error hidden" role="alert"></div><div id="lookup-results" class="lookup-results" aria-live="polite"></div>${PublicSupport()}</section>`;
+  return `<section class="portal-page narrow public-lookup-page"><div class="portal-page-heading"><span>Tra cứu công khai</span><h1>Tra cứu Kiosk</h1><p>Nhập số điện thoại đã dùng khi đăng ký.</p></div><form id="lookup-form" class="lookup-form" novalidate><label class="form-group"><span>Số điện thoại</span><span class="public-input-icon">${renderIcon('phone')}<input id="lookup-phone" class="form-control" type="tel" inputmode="tel" autocomplete="tel" placeholder="Ví dụ: 0912 345 678" required></span></label><button class="btn-primary" type="submit">${renderIcon('search')} Tra cứu</button></form><div id="lookup-message" class="form-error hidden" role="alert"></div><div id="lookup-results" class="lookup-results" aria-live="polite"></div>${PublicSupport()}</section>`;
 }
 
 LookupPage.afterRender = async function afterRender() {
@@ -38,13 +39,13 @@ async function lookup(event) {
     const { data = [] } = await PublicLookupService.byPhone(phone.value);
     lookupRows = data;
     results.innerHTML = data.length ? data.map(resultCard).join('') : '<div class="lookup-empty"><strong>Chưa tìm thấy Kiosk</strong><span>Kiểm tra lại số điện thoại hoặc liên hệ hỗ trợ.</span></div>';
-  } catch (error) { show(message, error?.message || 'Không thể tra cứu lúc này.'); }
+  } catch { show(message, 'Không thể tra cứu lúc này. Vui lòng thử lại sau ít phút.'); }
   finally { button.disabled = false; button.textContent = 'Tra cứu'; }
 }
 
 function resultCard(item, index) {
   const days = remainingDays(item.endDate);
-  return `<article class="lookup-card"><div><span>Kiosk</span><h2>${escapeHtml(item.kiosk || 'Kiosk')}</h2></div><dl><div><dt>Danh mục</dt><dd>${escapeHtml(item.category || '—')}</dd></div><div><dt>Loại hình</dt><dd>${escapeHtml(item.businessType || '—')}</dd></div><div><dt>Ngày bắt đầu</dt><dd>${date(item.startDate)}</dd></div><div><dt>Ngày hết hạn</dt><dd>${date(item.endDate)}</dd></div><div><dt>Thời hạn còn lại</dt><dd>${days >= 0 ? `${days} ngày` : 'Đã hết hạn'}</dd></div><div><dt>Trạng thái</dt><dd>${StatusBadge(deriveKioskStatus({ status: item.status, end_date: item.endDate }))}</dd></div></dl><button class="btn-primary lookup-renew-button" type="button" data-renew-index="${index}">Gia hạn Kiosk</button><div data-renew-panel="${index}"></div></article>`;
+  return `<article class="lookup-card"><div class="lookup-card-heading"><span>${renderIcon('store')}</span><div><small>Facebook</small><h2>${escapeHtml(item.kiosk||'Kiosk')}</h2></div>${StatusBadge(deriveKioskStatus({status:item.status,end_date:item.endDate}))}</div><dl><div><dt>Ngành nghề</dt><dd>${escapeHtml(item.businessType||item.category||'—')}</dd></div><div><dt>Ngày hết hạn</dt><dd>${date(item.endDate)}</dd></div><div><dt>Thời hạn còn lại</dt><dd>${days>=0?`${days} ngày`:'Đã hết hạn'}</dd></div></dl><button class="btn-primary lookup-renew-button" type="button" data-renew-index="${index}">Gia hạn Kiosk</button><div data-renew-panel="${index}"></div></article>`;
 }
 
 function handleResultClick(event) {

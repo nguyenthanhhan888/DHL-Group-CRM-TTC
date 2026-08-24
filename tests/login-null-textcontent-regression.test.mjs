@@ -11,7 +11,7 @@ test('route initialization does not write textContent to the removed page-title 
   ]);
 
   assert.doesNotMatch(layout, /data-page-title/);
-  assert.match(layout, /class="top-bar-context">DHL Group</);
+  assert.match(layout, /class="top-bar-context">Diễn Châu - À Đây Rồi \(DHL\)</);
   assert.doesNotMatch(app, /(?:const|let)\s+pageTitle\s*=|pageTitle\.textContent/);
   assert.match(app, /document\.title\s*=\s*`\$\{PAGE_TITLES\[route\]/);
 });

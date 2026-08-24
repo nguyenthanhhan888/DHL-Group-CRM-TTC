@@ -12,16 +12,8 @@ export function AppLayout({ navSections, user }) {
     <div class="app-shell">
       <aside class="sidebar" data-sidebar>
         <div class="sidebar-logo">
-          <div class="sidebar-brand-image-wrap" aria-label="DHL Group">
-            <img class="sidebar-brand-image" src="logo/photo_2026-08-03_06-31-15.jpg" alt="DHL Group">
-            <div class="sidebar-brand-wordmark" aria-hidden="true">
-              <span>DHL</span>
-              <strong>DHL GROUP</strong>
-            </div>
-          </div>
-          <div>
-            <div class="sidebar-title">Diễn Châu - À Đây Rồi (DHL)</div>
-            <div class="sidebar-sub">DHL Group</div>
+          <div class="sidebar-brand-image-wrap" aria-label="Diễn Châu - À Đây Rồi (DHL)">
+            <img class="sidebar-brand-image" src="logo/photo_2026-08-03_06-31-15.jpg" alt="Diễn Châu - À Đây Rồi (DHL)">
           </div>
         </div>
         <nav class="sidebar-nav" aria-label="Điều hướng chính">
@@ -49,8 +41,8 @@ export function AppLayout({ navSections, user }) {
             <button class="icon-button" type="button" data-menu-toggle aria-label="Mở menu" aria-expanded="false">
               <span class="nav-icon bare-icon" aria-hidden="true">${renderIcon('menu')}</span>
             </button>
-            <img class="top-brand-mark" src="logo/photo_2026-08-03_06-31-15.jpg" alt="DHL Group" loading="lazy">
-            <span class="top-bar-context">DHL Group</span>
+            <img class="top-brand-mark" src="logo/photo_2026-08-03_06-31-15.jpg" alt="Diễn Châu - À Đây Rồi (DHL)" loading="lazy">
+            <span class="top-bar-context">Diễn Châu - À Đây Rồi (DHL)</span>
           </div>
           ${isAdmin
             ? renderAdminTopbar({ displayName, username, roleLabel, avatarPath })
@@ -94,6 +86,7 @@ function renderAdminTopbar({ displayName, username, roleLabel, avatarPath }) {
         <div class="top-bar-right top-bar-user-actions">
           <span class="connection-badge" data-supabase-badge>Chưa kết nối dữ liệu</span>
           <span class="current-date" data-current-date></span>
+          <details class="admin-notification-center"><summary class="top-icon-link" aria-label="Mở thông báo quản trị">${renderIcon('alert')}<span class="notification-count hidden" data-notification-count></span></summary><div class="admin-notification-popover"><header><strong>Việc cần chú ý</strong><span data-notification-summary>Đang tải...</span></header><div data-notification-list></div></div></details>
           <button class="top-icon-link theme-toggle-button" type="button" data-theme-toggle aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
             ${renderIcon('moon')}
           </button>
@@ -186,7 +179,7 @@ function renderNavItem(item) {
   return `
     <a href="#/${item.route}" class="nav-item ${item.subitem ? 'nav-subitem' : ''}" data-nav-route="${escapeHtml(item.route)}" ${item.matchRoute ? `data-nav-match-route="${escapeHtml(item.matchRoute)}"` : ''}>
       <span class="nav-icon" aria-hidden="true">${renderIcon(item.icon)}</span>
-      <span>${escapeHtml(item.label)}</span>
+      <span>${escapeHtml(item.label)}</span>${item.route==='registration-requests'?'<span class="nav-count-badge hidden" data-registration-nav-count></span>':''}
     </a>
   `;
 }

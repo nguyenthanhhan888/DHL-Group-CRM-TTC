@@ -90,7 +90,7 @@ export function ReportsPage() {
             <select id="report-payment-status-filter" class="filter-select" aria-label="Lọc trạng thái thanh toán">
               <option value="">Tất cả trạng thái</option>
               <option value="completed">Hoàn thành</option>
-              <option value="pending">Chờ duyệt</option>
+              <option value="pending">Đang chờ thanh toán</option>
               <option value="rejected">Từ chối</option>
               <option value="cancelled">Đã hủy</option>
             </select>
@@ -343,14 +343,14 @@ function renderOverview(report) {
   return `
     ${renderSummaryCards([
       card('blue', renderIcon('check-circle'), report.summary.completedCount, 'Thanh toán hoàn thành'),
-      card('purple', renderIcon('clock'), report.summary.pendingCount, 'Thanh toán chờ duyệt'),
+      card('purple', renderIcon('clock'), report.summary.pendingCount, 'Thanh toán đang chờ'),
       card('orange', renderIcon('warning'), report.summary.expiringSoon, 'Kiosk sắp hết hạn'),
       card('red', renderIcon('x-circle'), report.summary.expiredKiosks, 'Kiosk hết hạn'),
       card('green', renderIcon('money'), formatCurrency(report.summary.totalRevenue), 'Doanh thu trong kỳ', true),
     ])}
     <div class="report-grid">
       ${renderReportCard('Top 10 khách hàng doanh thu cao', renderTable(topCustomerColumns(), report.topCustomers, 'Không có khách hàng phát sinh doanh thu trong kỳ.'))}
-      ${renderReportCard('Kiosk cần xử lý', renderTable(kioskColumns(true), report.priorityKiosks, 'Không có Kiosk cần xử lý.'))}
+      ${renderReportCard('Kiosk cần chú ý', `<p class="report-definition">Gồm Kiosk chờ duyệt, sắp hết hạn hoặc đã hết hạn; mỗi dòng giữ trạng thái riêng.</p>${renderTable(kioskColumns(true), report.priorityKiosks, 'Không có Kiosk cần chú ý.')}`)}
     </div>
   `;
 }

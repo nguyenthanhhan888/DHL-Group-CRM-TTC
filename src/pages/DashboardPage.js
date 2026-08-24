@@ -44,9 +44,9 @@ export function DashboardPage() {
         </div>
       </section>
       <section class="dash-card">
-        <div class="dash-card-header"><h3>Đăng ký gần đây</h3></div>
+        <div class="dash-card-header"><h3>Hoạt động gần đây</h3></div>
         <div id="recent-list" class="recent-list">
-          ${EmptyState({ title: 'Đang tải dữ liệu', message: 'Đang tải các đăng ký gần đây.' })}
+          ${EmptyState({ title: 'Đang tải dữ liệu', message: 'Đang tải các hoạt động đã hoàn tất.' })}
         </div>
       </section>
       <section class="dash-card">
@@ -71,7 +71,7 @@ DashboardPage.afterRender = async function afterRenderDashboard() {
     renderRevenueChart(dashboard.charts.monthlyRevenue);
     renderCategoryChart(dashboard.charts.categoryDistribution);
     renderExpiringKiosks(dashboard.lists.expiringKiosks, dashboard.warningDays);
-    renderRecentRegistrations(dashboard.lists.recentRegistrations);
+    renderRecentActivity(dashboard.lists.recentActivity);
   } catch (error) {
     renderDashboardError(error);
   }
@@ -137,26 +137,26 @@ function normalizeWarningDays(value) {
   return value == null || value === '' ? getExpiryWarningDays() : normalizeExpiryWarningDays(value);
 }
 
-function renderRecentRegistrations(registrations) {
+function renderRecentActivity(activities) {
   const element = document.getElementById('recent-list');
   if (!element) return;
 
-  if (!registrations.length) {
+  if (!activities.length) {
     element.innerHTML = EmptyState({
-      title: 'Chưa có đăng ký gần đây',
-      message: 'Không tìm thấy đăng ký Kiosk mới.',
+      title: 'Chưa có hoạt động gần đây',
+      message: 'Không tìm thấy giao dịch hoặc nghiệp vụ đã hoàn tất.',
     });
     return;
   }
 
-  element.innerHTML = registrations.map((registration) => `
+  element.innerHTML = activities.map((activity) => `
     <div class="recent-item">
-      <span class="recent-registration-icon" aria-hidden="true">${renderIcon('store')}</span>
+      <span class="recent-registration-icon" aria-hidden="true">${renderIcon(activity.type==='Gia hạn'?'refresh':activity.type==='Bổ sung Kiosk'?'user-plus':activity.type==='Thanh toán thành công'?'money':'store')}</span>
       <div class="recent-registration-copy">
-        <div class="expiring-name">${escapeHtml(registration.kioskName || 'Kiosk')}</div>
-        <div class="expiring-date">${formatDate(registration.createdAt)}</div>
+        <span class="recent-activity-type">${escapeHtml(activity.label)}</span><div class="expiring-name">${escapeHtml(activity.name||'Kiosk')}</div>
+        <div class="expiring-date">${formatDate(activity.occurredAt)}</div>
       </div>
-      <strong class="recent-registration-amount">${escapeHtml(formatCurrency(registration.amount))}</strong>
+      <strong class="recent-registration-amount">${escapeHtml(formatCurrency(activity.amount))}</strong>
     </div>
   `).join('');
 }

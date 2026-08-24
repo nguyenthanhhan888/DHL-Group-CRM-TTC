@@ -89,7 +89,10 @@ test('dashboard keeps the inclusive RPC expiry result instead of replacing it', 
   assert.deepEqual(calls.filter(([method]) => method === 'rpc').map((call) => call.slice(0, 2)), [
     ['rpc', 'get_dashboard_data'],
   ]);
-  assert.deepEqual(calls.filter(([method]) => method === 'from'), []);
+  assert.deepEqual(calls.filter(([method]) => method === 'from').map((call) => call[1]), [
+    'payments',
+    'registration_requests',
+  ]);
 
   replaceOrganizationSettings({});
 });
@@ -195,6 +198,10 @@ function createQuery(table) {
       calls.push(['eq', ...args]);
       return query;
     },
+    not(...args) {
+      calls.push(['not', ...args]);
+      return query;
+    },
     or(...args) {
       calls.push(['or', ...args]);
       return query;
@@ -205,6 +212,10 @@ function createQuery(table) {
     },
     range(...args) {
       calls.push(['range', ...args]);
+      return query;
+    },
+    limit(...args) {
+      calls.push(['limit', ...args]);
       return query;
     },
     then(resolve) {

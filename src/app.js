@@ -9,10 +9,13 @@ import { AuthService } from './services/AuthService.js';
 import { PermissionService } from './services/PermissionService.js';
 import { settingsService } from './services/SettingsService.js';
 import { WalletService } from './services/WalletService.js';
+import { AdminNotificationService } from './services/AdminNotificationService.js';
 import { formatToday } from './utils/date.js';
 import { escapeHtml } from './utils/html.js';
+import { renderIcon } from './utils/icons.js';
 import { BusinessTypesPage } from './pages/BusinessTypesPage.js';
 import { CategoriesPage } from './pages/CategoriesPage.js';
+import { PromotionsPage } from './pages/PromotionsPage.js';
 import { CustomerDetailPage } from './pages/CustomerDetailPage.js';
 import { CustomersPage } from './pages/CustomersPage.js';
 import { DashboardPage } from './pages/DashboardPage.js';
@@ -46,6 +49,7 @@ const routes = {
   payments: PaymentsPage,
   'payment-detail': PaymentDetailPage,
   categories: CategoriesPage,
+  promotions: PromotionsPage,
   'business-types': BusinessTypesPage,
   logs: LogsPage,
   settings: SettingsPage,
@@ -205,6 +209,7 @@ function renderAuthenticatedApp(root, profile) {
   bindThemeToggle();
   updateSupabaseBadge(supabaseBadge);
   refreshTopbarWallet(profile);
+  if(profile?.role===ROLES.ADMIN)refreshAdminNotifications();
   window.addEventListener('dhl-wallet-updated', (event) => {
     if (profile?.role !== ROLES.USER) return;
     const wallet = event?.detail?.wallet;
@@ -548,6 +553,8 @@ function renderAuthenticatedApp(root, profile) {
     }
   }, 30_000);
 }
+
+async function refreshAdminNotifications(){try{const data=await AdminNotificationService.getActionable();const count=document.querySelector('[data-notification-count]');const navCount=document.querySelector('[data-registration-nav-count]');const summary=document.querySelector('[data-notification-summary]');const list=document.querySelector('[data-notification-list]');if(count){count.textContent=String(data.count);count.classList.toggle('hidden',!data.count);}if(navCount){navCount.textContent=String(data.registrationCount);navCount.classList.toggle('hidden',!data.registrationCount);}if(summary)summary.textContent=data.count?`${data.count} mục đang cần chú ý`:'Không có việc cần xử lý';if(list)list.innerHTML=data.items.length?data.items.map(item=>`<a class="admin-notification-item is-${escapeHtml(item.tone)}" href="${escapeHtml(item.href)}"><span aria-hidden="true">${renderIcon(item.icon)}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.description)}</small></span></a>`).join(''):'<p class="admin-notification-empty">Mọi việc đã được xử lý.</p>';}catch{const summary=document.querySelector('[data-notification-summary]');if(summary)summary.textContent='Không thể tải thông báo';}}
 
 function applySavedTheme() {
   const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);

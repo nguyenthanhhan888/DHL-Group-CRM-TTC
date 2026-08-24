@@ -25,13 +25,14 @@ const state = {
 export function LegacyRegistrationPage() {
   resetState();
   return `
-    <div class="public-form-flow">
+    <div class="public-form-flow legacy-registration-v3">
     ${PageHeader({
       title: 'Bổ sung thông tin khách hàng cũ',
       description: 'Bổ sung thông tin Kiosk đã đăng ký trước đây nhưng hiện chưa có đầy đủ dữ liệu trên hệ thống.',
     })}
     <section class="registration-card legacy-registration-card">
-      <div class="legacy-scope-notice"><p>Vui lòng điền thông tin Kiosk và gửi bill thanh toán trước đây để Ban quản trị kiểm tra và kích hoạt dữ liệu.</p></div>
+      <ol class="registration-stepper legacy-stepper" aria-label="Các bước bổ sung Kiosk"><li class="registration-step active"><span>1</span><strong>Thông tin khách hàng</strong></li><li class="registration-step active"><span>2</span><strong>Kiosk bổ sung</strong></li><li class="registration-step active"><span>3</span><strong>Xác nhận</strong></li></ol>
+      <div class="legacy-scope-notice"><p>Điền thông tin Kiosk và gửi bill cũ để Ban quản trị kiểm tra.</p></div>
       <form id="legacy-registration-form" novalidate>
         <div id="legacy-registration-error" class="form-error hidden" role="alert"></div>
         <div id="legacy-registration-warning" class="legacy-warning hidden" role="status"></div>
@@ -42,14 +43,14 @@ export function LegacyRegistrationPage() {
           <label><input type="radio" name="legacy-kiosk-mode" value="multiple" /> Tôi có nhiều kiosk</label>
         </fieldset>
 
-        <section id="legacy-customer-section"></section>
-        <section id="legacy-kiosk-section"></section>
+        <section id="legacy-customer-section" class="legacy-flow-section" aria-label="Bước 1: Thông tin khách hàng"></section>
+        <section id="legacy-kiosk-section" class="legacy-flow-section" aria-label="Bước 2: Kiosk bổ sung"></section>
         <label class="form-group">
           <span>Ghi chú cho Ban quản trị <small class="field-optional">Không bắt buộc</small></span>
           <textarea class="form-control" id="legacy-customer-note" rows="3"></textarea>
         </label>
 
-        <section class="legacy-confirmations">
+        <section class="legacy-confirmations legacy-flow-section" aria-label="Bước 3: Xác nhận">
           <div class="legacy-payment-proof">
             <strong>Bill thanh toán là bắt buộc để xác minh khách hàng cũ.</strong>
             <p>Vui lòng bấm nút “Gửi bill qua Zalo” và gửi ảnh chuyển khoản, hóa đơn hoặc bằng chứng thanh toán cho Ban quản trị.</p>

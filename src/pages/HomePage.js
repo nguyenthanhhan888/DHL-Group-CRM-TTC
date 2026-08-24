@@ -1,5 +1,6 @@
 import { PublicSupport } from '../components/PublicSupport.js';
 import { PUBLIC_BRAND } from '../config/organization.js';
+import { renderIcon } from '../utils/icons.js';
 
 export function HomePage() {
   return `<div class="portal-home">
@@ -23,10 +24,12 @@ export function HomePage() {
       </ul>
     </section>
     <section class="portal-section"><div class="portal-section-heading"><span>Dịch vụ công khai</span><h2>Mọi thao tác Kiosk tại một nơi</h2><p>Chọn đúng nhu cầu để gửi thông tin nhanh chóng và an toàn.</p></div>
-      <div class="service-grid">${service('01','Đăng ký Kiosk','Đăng ký mới, chọn loại hình và thanh toán tự động qua PayOS.','register','Bắt đầu đăng ký')}${service('02','Bổ sung Kiosk','Hoàn thiện dữ liệu Kiosk đã đăng ký trước đây để quản trị viên kiểm tra.','legacy-registration','Bổ sung thông tin')}${service('03','Tra cứu Kiosk','Kiểm tra trạng thái và thời hạn Kiosk bằng số điện thoại đã đăng ký.','lookup','Tra cứu ngay')}</div>
+      <div class="service-grid">${service('store','Đăng ký Kiosk','Tạo Kiosk mới và thanh toán an toàn qua PayOS.','register','Bắt đầu đăng ký')}${service('user-plus','Bổ sung Kiosk','Thêm Kiosk đã đăng ký trước đây để Ban quản trị kiểm tra.','legacy-registration','Bổ sung Kiosk')}${service('search','Tra cứu Kiosk','Xem trạng thái và thời hạn bằng số điện thoại.','lookup','Tra cứu ngay')}</div>
     </section>
-    <section class="member-banner"><div><span>Khu vực thành viên</span><h2>Quản lý Kiosk và tham gia TTC</h2><p>Đăng nhập để truy cập các tiện ích dành riêng cho thành viên cộng đồng.</p></div><a class="btn-secondary" href="#/login">Đăng nhập tài khoản</a></section>
+    <section class="portal-section kiosk-process"><div class="portal-section-heading"><span>Quy trình</span><h2>Kiosk hoạt động như thế nào?</h2><p>Bốn bước ngắn từ đăng ký đến khi Kiosk được hệ thống nhận diện.</p></div><ol class="kiosk-process-grid">${processStep('link','Đăng ký','Gửi Facebook và ngành nghề.')}${processStep('wallet','Thanh toán','Thanh toán an toàn qua PayOS.')}${processStep('shield','Xác nhận','Hệ thống xác nhận giao dịch.')}${processStep('check-circle','Nhận diện Kiosk','Hỗ trợ nhận diện khi duyệt bài.')}</ol></section>
+    <section class="member-banner"><div><span>Khu vực thành viên</span><h2>Quản lý Kiosk của bạn</h2><p>Đăng nhập để xem Kiosk và các tiện ích thành viên.</p></div><a class="btn-secondary" href="#/login">Đăng nhập tài khoản</a></section>
     <section class="portal-section"><div class="portal-section-heading"><span>Kênh chính thức</span><h2>Kết nối đúng nơi, nhận hỗ trợ đúng lúc</h2></div>${PublicSupport()}</section>
   </div>`;
 }
-function service(number,title,text,route,cta){return `<article class="service-card"><span>${number}</span><h3>${title}</h3><p>${text}</p><a href="#/${route}">${cta} →</a></article>`}
+function service(icon,title,text,route,cta){return `<article class="service-card"><span class="service-card-icon" aria-hidden="true">${renderIcon(icon)}</span><h3>${title}</h3><p>${text}</p><a href="#/${route}">${cta} ${renderIcon('chevron-right')}</a></article>`}
+function processStep(icon,title,text){return `<li><span aria-hidden="true">${renderIcon(icon)}</span><div><strong>${title}</strong><p>${text}</p></div></li>`;}

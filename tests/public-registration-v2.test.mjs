@@ -70,9 +70,10 @@ test('resolver success explicitly clears stale name and ID validity state', asyn
   assert.match(source, /data-facebook-identity-summary/);
 });
 
-test('discount preparation is visibly unavailable and cannot modify totals', async () => {
+test('discount preparation is active while submitted kiosk discounts remain server-owned', async () => {
   const source = await readFile(new URL('../src/pages/RegisterPage.js', import.meta.url), 'utf8');
-  assert.match(source, /Mã giảm giá <small class="field-optional">Sắp có<\/small>/);
-  assert.match(source, /placeholder="Nhập mã giảm giá" disabled/);
+  assert.match(source, /id="register-promotion-code"/);
+  assert.match(source, /applyPromotion/);
+  assert.match(source, /removePromotion/);
   assert.deepEqual([...source.matchAll(/discount:\s*([^,}]+)/g)].map((match) => match[1].trim()), ['0']);
 });

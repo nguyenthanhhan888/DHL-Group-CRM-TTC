@@ -48,16 +48,15 @@ test('dashboard migration uses batch-item amount with registration-request fallb
   assert.doesNotMatch(migratedDashboard, /recentCustomers|cross join recent_customers rc/);
 });
 
-test('recent registration UI is limited to kiosk name, amount, and creation date', async () => {
+test('recent activity UI is limited to completed business events', async () => {
   const source = await readFile(pageUrl, 'utf8');
   const renderer = source.slice(
-    source.indexOf('function renderRecentRegistrations'),
+    source.indexOf('function renderRecentActivity'),
     source.indexOf('function renderDashboardError'),
   );
 
-  assert.match(renderer, /registration\.kioskName/);
-  assert.match(renderer, /formatCurrency\(registration\.amount\)/);
-  assert.match(renderer, /formatDate\(registration\.createdAt\)/);
-  assert.match(renderer, /renderIcon\('store'\)/);
-  assert.doesNotMatch(renderer, /status|categor|btn-|<button|[\u{1F300}-\u{1FAFF}]/u);
+  assert.match(renderer, /activity\.label/);
+  assert.match(renderer, /formatCurrency\(activity\.amount\)/);
+  assert.match(renderer, /formatDate\(activity\.occurredAt\)/);
+  assert.doesNotMatch(renderer, /pending|submitted_at|payment_status/);
 });

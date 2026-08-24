@@ -44,6 +44,7 @@ const state = {
   total: 0,
   requestId: 0,
   items: [],
+  showTechnical: false,
 };
 
 export function LogsPage() {
@@ -82,6 +83,7 @@ export function LogsPage() {
           <span>Từ ngày</span>
           <input id="log-from-date" class="form-control" type="date" />
         </label>
+        <label class="checkbox-field log-technical-toggle"><input id="log-show-technical" type="checkbox" /><span>Hiện thay đổi kỹ thuật</span></label>
         <label class="form-group compact">
           <span>Đến ngày</span>
           <input id="log-to-date" class="form-control" type="date" />
@@ -129,6 +131,7 @@ function syncLogControls() {
   if (fromDate) fromDate.value = state.fromDate;
   if (toDate) toDate.value = state.toDate;
   if (pageSizeSelect) pageSizeSelect.value = String(state.pageSize);
+  const technicalToggle=document.getElementById('log-show-technical');if(technicalToggle)technicalToggle.checked=state.showTechnical;
 }
 
 function bindLogEvents() {
@@ -167,6 +170,7 @@ function bindLogEvents() {
     state.page = 1;
     loadLogs();
   });
+  document.getElementById('log-show-technical')?.addEventListener('change',(event)=>{state.showTechnical=event.target.checked;renderLogs(state.items);});
 
 
   document.getElementById('logs-table-body')?.addEventListener('click', (event) => {
@@ -210,15 +214,16 @@ function renderLogs(logs) {
   const body = document.getElementById('logs-table-body');
   if (!body) return;
 
-  if (!logs.length) {
+  const visibleLogs=state.showTechnical?logs:logs.filter(isBusinessActivity);
+  if (!visibleLogs.length) {
     body.innerHTML = renderTableState(
       'Chưa có lịch sử',
-      'Không có bản ghi log nào khớp với bộ lọc hiện tại.',
+      state.showTechnical?'Không có bản ghi log nào khớp với bộ lọc hiện tại.':'Không có hoạt động nghiệp vụ trong trang này. Bật “Hiện thay đổi kỹ thuật” để xem audit gốc.',
     );
     return;
   }
 
-  body.innerHTML = logs.map((log) => `
+  body.innerHTML = visibleLogs.map((log) => `
     <tr>
       <td>${escapeHtml(log.actor_name || 'Hệ thống')}</td>
       <td><div class="log-primary-action">${renderActionBadge(log.action)}<strong>${escapeHtml(humanLogSummary(log))}</strong></div></td>
@@ -231,6 +236,8 @@ function renderLogs(logs) {
     </tr>
   `).join('');
 }
+
+function isBusinessActivity(log){const action=normalizeAction(log.action);return ['create','delete','confirm','cancel','reject','approve','approved','reset_password','set_active','admin_manual_renewal','confirm_payos','confirm_payos_batch','review_legacy_approve','review_legacy_cancel','create_promotion','update_promotion','pause_promotion','reactivate_promotion','delete_promotion'].includes(action);}
 
 function renderActionBadge(action) {
   const normalized = String(action || 'unknown').toLowerCase();
@@ -358,6 +365,10 @@ function actionLabel(action) {
     approved: 'Phê duyệt',
     review_legacy_approve: 'Duyệt hồ sơ bổ sung',
     review_legacy_cancel: 'Hủy hồ sơ bổ sung',
+    create_promotion: 'Tạo mã giảm giá',
+    update_promotion: 'Cập nhật chương trình',
+    pause_promotion: 'Tạm ngưng mã giảm giá',
+    reactivate_promotion: 'Kích hoạt lại mã giảm giá',
   };
   return labels[normalizeAction(action)] || 'Hoạt động hệ thống';
 }
@@ -448,6 +459,8 @@ function moduleLabel(module) {
     payments: 'Thanh toán',
     registration_batches: 'Đăng ký Kiosk',
     registration_requests: 'Đăng ký Kiosk',
+    promotion: 'Mã giảm giá',
+    promotions: 'Mã giảm giá',
   };
   return labels[String(module || '').toLowerCase()] || 'Nhóm khác';
 }
@@ -468,8 +481,15 @@ function humanLogSummary(log) {
   if (action === 'create' && entityKind(log) === 'Kiosk') {
     return `${actor} đã đăng ký ${entity}.`;
   }
+  if (action === 'create_promotion') return `${actor} đã tạo mã giảm giá ${promotionCode(log)}.`;
+  if (action === 'update_promotion') return `${actor} đã cập nhật chương trình ${promotionName(log)}.`;
+  if (action === 'pause_promotion') return `${actor} đã tạm ngưng mã ${promotionCode(log)}.`;
+  if (action === 'reactivate_promotion') return `${actor} đã kích hoạt lại mã ${promotionCode(log)}.`;
   return `${actor} đã ${actionLabel(log.action).toLocaleLowerCase('vi')} ${entity}.`;
 }
+
+function promotionCode(log) { return firstNestedValue([log.after,log.before].filter(Boolean),['code']) || `#${log.record_id || '—'}`; }
+function promotionName(log) { return firstNestedValue([log.after,log.before].filter(Boolean),['name']) || promotionCode(log); }
 
 function entityKind(log) {
   return moduleLabel(log.entity || log.module);

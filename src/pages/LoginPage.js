@@ -28,7 +28,7 @@ export function LoginPage({ message = '' } = {}) {
               <form id="login-form" class="auth-form-panel" role="tabpanel" aria-labelledby="auth-tab-login" data-auth-panel="login" novalidate>
                 <div class="auth-panel-heading">
                   <h2>Đăng nhập tài khoản</h2>
-                  <p>Vào dashboard quản lý Kiosk và thành viên.</p>
+                <p>Quản lý Kiosk và tiện ích thành viên.</p>
                 </div>
                 <label class="form-group">
                   <span>Email, username hoặc SĐT</span>

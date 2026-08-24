@@ -19,7 +19,7 @@ export function PublicLayout({ route = 'home', content = '' } = {}) {
           <a class="portal-brand" href="#/home" aria-label="${PUBLIC_BRAND.name}">
             ${PublicLogo()}
           </a>
-          <button class="portal-theme-button" type="button" aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối" data-public-theme-toggle><span aria-hidden="true">◐</span></button>
+          <button class="portal-theme-button" type="button" aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối" data-public-theme-toggle><span aria-hidden="true">${renderIcon('moon')}</span></button>
           <button class="portal-menu-button" type="button" aria-label="Mở menu" aria-expanded="false" data-public-menu>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
           </button>
@@ -71,7 +71,7 @@ function updateThemeButton(button) {
   if (!button) return;
   const light = document.documentElement.dataset.theme === 'light';
   button.setAttribute('aria-label', light ? 'Đổi sang giao diện tối' : 'Đổi sang giao diện sáng');
-  button.querySelector('span').textContent = light ? '☾' : '☀';
+  button.querySelector('span').innerHTML = renderIcon(light ? 'moon' : 'sun');
 }
 
 export function PublicFooter() {
