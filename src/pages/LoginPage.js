@@ -27,9 +27,8 @@ export function LoginPage({ message = '' } = {}) {
               </div>
               <form id="login-form" class="auth-form-panel" role="tabpanel" aria-labelledby="auth-tab-login" data-auth-panel="login" novalidate>
                 <div class="auth-panel-heading">
-                  <span class="auth-panel-kicker">Đăng nhập</span>
                   <h2>Đăng nhập tài khoản</h2>
-                  <p>Vào dashboard quản lý Kiosk và TTC.</p>
+                  <p>Vào dashboard quản lý Kiosk và thành viên.</p>
                 </div>
                 <label class="form-group">
                   <span>Email, username hoặc SĐT</span>
@@ -58,9 +57,8 @@ export function LoginPage({ message = '' } = {}) {
               </form>
               <form id="account-register-form" class="auth-form-panel hidden" role="tabpanel" aria-labelledby="auth-tab-register" data-auth-panel="register" hidden novalidate>
                 <div class="auth-panel-heading">
-                  <span class="auth-panel-kicker">Tài khoản web</span>
                   <h2>Đăng ký tài khoản</h2>
-                  <p>Tạo tài khoản để dùng ví chung, Kiosk và các flow Facebook.</p>
+                  <p>Tạo tài khoản để quản lý Kiosk và tham gia cộng đồng.</p>
                 </div>
                 <div class="form-row">
                   <label class="form-group">

@@ -15,7 +15,7 @@ export function StaffPage() {
   return `
     ${PageHeader({
       title: 'Quản lý nhân viên',
-      description: 'Admin tạo tài khoản và đặt lại mật khẩu cho nhân viên kiểm duyệt.',
+      description: 'Tạo tài khoản và quản lý quyền truy cập của nhân viên kiểm duyệt.',
       actions: '<button id="add-staff-button" class="btn-primary" type="button">+ Tạo tài khoản</button>',
     })}
     <div class="toolbar">
@@ -70,7 +70,7 @@ async function loadStaff() {
       Toast.show(`${result.warning} Đang hiển thị danh sách chỉ đọc.`);
     }
   } catch (error) {
-    body.innerHTML = stateRow('Không tải được nhân viên', error?.message || 'Supabase trả về lỗi.');
+    body.innerHTML = stateRow('Không tải được nhân viên', error?.message || 'Vui lòng thử lại sau.');
   }
 }
 

@@ -5,6 +5,8 @@ import { Toolbar } from '../components/Toolbar.js';
 import { LOG_COLUMNS } from '../constants/tables.js';
 import { AuditLogService } from '../services/AuditLogService.js';
 import { debounce } from '../utils/dom.js';
+import { formatCurrency } from '../utils/currency.js';
+import { bindPagination, Pagination, updatePagination } from '../components/Pagination.js';
 import { escapeHtml } from '../utils/html.js';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
@@ -17,6 +19,9 @@ const ACTION_FILTERS = [
   { value: 'reject', label: 'Từ chối' },
   { value: 'reset_password', label: 'Reset mật khẩu' },
   { value: 'set_active', label: 'Kích hoạt/Vô hiệu hóa' },
+  { value: 'admin_manual_renewal', label: 'Gia hạn Kiosk' },
+  { value: 'confirm_payos', label: 'Xác nhận thanh toán PayOS' },
+  { value: 'confirm_payos_batch', label: 'Xác nhận thanh toán PayOS theo đơn' },
 ];
 const MODULE_FILTERS = [
   { value: 'Customer', label: 'Khách hàng' },
@@ -46,7 +51,6 @@ export function LogsPage() {
     <div class="logs-page">
     ${PageHeader({
       title: 'Lịch sử thay đổi',
-      description: 'Theo dõi các hành động quan trọng trong hệ thống.',
     })}
     ${Toolbar({
       children: `
@@ -54,7 +58,7 @@ export function LogsPage() {
           type="search"
           id="log-search"
           class="form-control"
-          placeholder="Tìm theo module, hành động, người thực hiện, lý do"
+          placeholder="Tìm theo nội dung, hành động hoặc người thực hiện"
           aria-label="Tìm lịch sử"
           autocomplete="off"
         />
@@ -71,7 +75,7 @@ export function LogsPage() {
           ${ACTION_FILTERS.map((action) => `<option value="${action.value}">${action.label}</option>`).join('')}
         </select>
         <select id="log-module-filter" class="filter-select" aria-label="Lọc module">
-          <option value="">Tất cả module</option>
+          <option value="">Tất cả nhóm dữ liệu</option>
           ${MODULE_FILTERS.map((table) => `<option value="${table.value}">${table.label}</option>`).join('')}
         </select>
         <label class="form-group compact">
@@ -90,20 +94,11 @@ export function LogsPage() {
           <tr>${LOG_COLUMNS.map((column) => `<th>${escapeHtml(column)}</th>`).join('')}</tr>
         </thead>
         <tbody id="logs-table-body">
-          ${renderTableState('Đang tải lịch sử', 'Đang đọc dữ liệu từ Supabase.')}
+          ${renderTableState('Đang tải lịch sử', 'Đang tải các thay đổi gần đây.')}
         </tbody>
       </table>
     </div>
-    <div class="pagination-bar">
-      <div id="logs-page-summary" class="pagination-summary">—</div>
-      <div class="pagination-controls">
-        <select id="logs-page-size" class="filter-select compact" aria-label="Số log mỗi trang">
-          ${PAGE_SIZE_OPTIONS.map((size) => `<option value="${size}" ${size === state.pageSize ? 'selected' : ''}>${size} / trang</option>`).join('')}
-        </select>
-        <button id="logs-prev-page" class="btn-secondary" type="button">Trước</button>
-        <button id="logs-next-page" class="btn-secondary" type="button">Sau</button>
-      </div>
-    </div>
+    ${Pagination({ id: 'logs', page: state.page, pageSize: state.pageSize, total: state.total, pageSizeOptions: PAGE_SIZE_OPTIONS, noun: 'hoạt động' })}
     </div>
   `;
 }
@@ -111,6 +106,10 @@ export function LogsPage() {
 LogsPage.afterRender = function afterRenderLogs() {
   syncLogControls();
   bindLogEvents();
+  bindPagination('logs', {
+    onPage: (page) => { state.page = page; loadLogs(); },
+    onPageSize: (pageSize) => { state.pageSize = pageSize; state.page = 1; loadLogs(); },
+  });
   loadLogs();
 };
 
@@ -169,23 +168,6 @@ function bindLogEvents() {
     loadLogs();
   });
 
-  document.getElementById('logs-page-size')?.addEventListener('change', (event) => {
-    state.pageSize = Number(event.target.value);
-    state.page = 1;
-    loadLogs();
-  });
-
-  document.getElementById('logs-prev-page')?.addEventListener('click', () => {
-    if (state.page <= 1) return;
-    state.page -= 1;
-    loadLogs();
-  });
-
-  document.getElementById('logs-next-page')?.addEventListener('click', () => {
-    if (state.page >= totalPages()) return;
-    state.page += 1;
-    loadLogs();
-  });
 
   document.getElementById('logs-table-body')?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-log-view]');
@@ -238,11 +220,11 @@ function renderLogs(logs) {
 
   body.innerHTML = logs.map((log) => `
     <tr>
-      <td>${formatDateTime(log.created_at)}</td>
-      <td>${renderActionBadge(log.action)}</td>
-      <td>${escapeHtml(log.module || '—')}</td>
       <td>${escapeHtml(log.actor_name || 'Hệ thống')}</td>
-      <td>${escapeHtml(log.reason || '—')}</td>
+      <td><div class="log-primary-action">${renderActionBadge(log.action)}<strong>${escapeHtml(humanLogSummary(log))}</strong></div></td>
+      <td>${escapeHtml(entityDisplayName(log))}</td>
+      <td>${formatDateTime(log.created_at)}</td>
+      <td>${escapeHtml(importantChange(log))}</td>
       <td class="log-detail-cell">
         <button class="table-action-button" type="button" data-log-view="${escapeHtml(log.id)}">Xem chi tiết</button>
       </td>
@@ -252,19 +234,8 @@ function renderLogs(logs) {
 
 function renderActionBadge(action) {
   const normalized = String(action || 'unknown').toLowerCase();
-  const safeClass = normalized.replace(/[^a-z0-9-]/g, '') || 'unknown';
-  const labels = {
-    create: 'Tạo mới',
-    update: 'Cập nhật',
-    delete: 'Xóa',
-    confirm: 'Xác nhận',
-    cancel: 'Hủy',
-    reject: 'Từ chối',
-    reset_password: 'Reset mật khẩu',
-    set_active: 'Kích hoạt/Vô hiệu hóa',
-  };
-
-  return `<span class="badge badge-${safeClass}">${labels[normalized] || escapeHtml(action || 'Không rõ')}</span>`;
+  const tone = /delete|reject|cancel/.test(normalized) ? 'danger' : /confirm|approve|renewal/.test(normalized) ? 'success' : /update|set_active/.test(normalized) ? 'info' : 'neutral';
+  return `<span class="status-badge status-badge--${tone}"><span class="status-dot" aria-hidden="true"></span>${escapeHtml(actionLabel(action))}</span>`;
 }
 
 function openLogDetail(log) {
@@ -280,26 +251,27 @@ function renderLogModal(log) {
     <div class="log-meta-grid">
       ${metaRow('Thời gian', formatDateTime(log.created_at))}
       ${metaRow('Hành động', actionLabel(log.action))}
-      ${metaRow('Module', log.module || '—')}
+      ${metaRow('Nhóm dữ liệu', moduleLabel(log.module))}
       ${metaRow('Người thực hiện', log.actor_name || 'Hệ thống')}
-      ${metaRow('Loại actor', actorTypeLabel(log.actor_type))}
+      ${metaRow('Nguồn thao tác', actorTypeLabel(log.actor_type))}
       ${metaRow('Vai trò', log.actor_role || '—')}
-      ${metaRow('Entity', log.entity || log.module || '—')}
-      ${metaRow('Record ID', log.record_id || '—')}
-      ${metaRow('Lý do', log.reason || '—')}
+      ${metaRow('Tóm tắt', humanLogSummary(log))}
+      ${metaRow('Thay đổi chính', importantChange(log))}
+      ${metaRow('Lý do ghi nhận', friendlyReason(log.reason))}
     </div>
-    ${renderLogModalBody(log.action, log.before, log.after)}
+    <div class="log-change-section">${renderLogModalBody(log.action, log.before, log.after)}</div>
+    <details class="log-technical-details"><summary>Chi tiết kỹ thuật</summary>${metaRow('Nhóm nội bộ', log.entity || log.module || '—')}${metaRow('Mã bản ghi', log.record_id || '—')}${renderRawJson(log.before, log.after)}</details>
   `;
 }
 
 function renderLogModalBody(action, before, after) {
   action = normalizeAction(action);
   if (action === 'create') {
-    return renderJsonBlock('Dữ liệu mới', after);
+    return renderDiffTable(null, after);
   }
 
   if (action === 'delete') {
-    return renderJsonBlock('Dữ liệu đã xóa', before);
+    return renderDiffTable(before, null);
   }
 
   return renderDiffTable(before, after);
@@ -326,7 +298,7 @@ function renderDiffTable(before, after) {
           <tbody>
             ${fields.map((field) => `
               <tr>
-                <td class="strong-cell">${escapeHtml(field)}</td>
+                <td class="strong-cell">${escapeHtml(fieldLabel(field))}</td>
                 <td class="old-value">${formatJsonValue(before?.[field])}</td>
                 <td class="new-value">${formatJsonValue(after?.[field])}</td>
               </tr>
@@ -338,11 +310,11 @@ function renderDiffTable(before, after) {
   `;
 }
 
-function renderJsonBlock(title, value) {
+function renderRawJson(before, after) {
   return `
     <div class="log-json-section">
-      <h4>${escapeHtml(title)}</h4>
-      <pre class="json-block">${escapeHtml(JSON.stringify(value || {}, null, 2))}</pre>
+      <h4>Dữ liệu gốc</h4>
+      <pre class="json-block">${escapeHtml(JSON.stringify({ before: before || null, after: after || null }, null, 2))}</pre>
     </div>
   `;
 }
@@ -377,10 +349,17 @@ function actionLabel(action) {
     confirm: 'Xác nhận',
     cancel: 'Hủy',
     reject: 'Từ chối',
-    reset_password: 'Reset mật khẩu',
+    reset_password: 'Đặt lại mật khẩu',
     set_active: 'Kích hoạt/Vô hiệu hóa',
+    admin_manual_renewal: 'Gia hạn Kiosk',
+    confirm_payos: 'Xác nhận thanh toán PayOS',
+    confirm_payos_batch: 'Xác nhận thanh toán PayOS',
+    approve: 'Phê duyệt',
+    approved: 'Phê duyệt',
+    review_legacy_approve: 'Duyệt hồ sơ bổ sung',
+    review_legacy_cancel: 'Hủy hồ sơ bổ sung',
   };
-  return labels[normalizeAction(action)] || action || 'Không rõ';
+  return labels[normalizeAction(action)] || 'Hoạt động hệ thống';
 }
 
 function formatJsonValue(value) {
@@ -388,15 +367,14 @@ function formatJsonValue(value) {
     return '<em class="muted-text">(trống)</em>';
   }
 
-  return escapeHtml(typeof value === 'object'
-    ? JSON.stringify(value)
-    : String(value));
+  if (typeof value === 'object') return `<span class="muted-text">${escapeHtml(complexValueSummary(value))}</span>`;
+  return escapeHtml(formatDisplayValue(value));
 }
 
 function setLoadingState() {
   const body = document.getElementById('logs-table-body');
   if (body) {
-    body.innerHTML = renderTableState('Đang tải lịch sử', 'Đang đọc dữ liệu từ Supabase.');
+    body.innerHTML = renderTableState('Đang tải lịch sử', 'Đang tải các thay đổi gần đây.');
   }
 }
 
@@ -408,7 +386,7 @@ function renderError(error) {
   if (body) {
     body.innerHTML = renderTableState(
       'Không thể tải lịch sử',
-      error?.message || 'Supabase trả về lỗi khi đọc bảng logs.',
+      error?.message || 'Không thể tải lịch sử thay đổi. Vui lòng thử lại.',
     );
   }
 
@@ -426,19 +404,7 @@ function renderTableState(title, message) {
 }
 
 function renderPagination() {
-  const summary = document.getElementById('logs-page-summary');
-  const prev = document.getElementById('logs-prev-page');
-  const next = document.getElementById('logs-next-page');
-  const pages = totalPages();
-
-  if (summary) {
-    summary.textContent = state.total
-      ? `Trang ${state.page} / ${pages} · ${state.total} log`
-      : '0 log';
-  }
-
-  if (prev) prev.disabled = state.page <= 1;
-  if (next) next.disabled = state.page >= pages;
+  updatePagination({ id: 'logs', page: state.page, pageSize: state.pageSize, total: state.total, pageSizeOptions: PAGE_SIZE_OPTIONS, noun: 'hoạt động' });
 }
 
 function totalPages() {
@@ -461,9 +427,9 @@ function actorTypeLabel(actorType) {
     staff: 'Nhân viên',
     public: 'Người dùng công khai',
     system: 'Hệ thống',
-    database_trigger: 'Database Trigger',
+    database_trigger: 'Tự động',
   };
-  return labels[String(actorType || '').toLowerCase()] || actorType || 'Hệ thống';
+  return labels[String(actorType || '').toLowerCase()] || 'Nguồn khác';
 }
 
 function dateBoundary(value, exclusiveEnd = false) {
@@ -473,3 +439,154 @@ function dateBoundary(value, exclusiveEnd = false) {
   if (exclusiveEnd) date.setUTCDate(date.getUTCDate() + 1);
   return date;
 }
+
+function moduleLabel(module) {
+  const labels = {
+    ...Object.fromEntries(MODULE_FILTERS.map((item) => [item.value.toLowerCase(), item.label])),
+    customers: 'Khách hàng',
+    kiosks: 'Kiosk',
+    payments: 'Thanh toán',
+    registration_batches: 'Đăng ký Kiosk',
+    registration_requests: 'Đăng ký Kiosk',
+  };
+  return labels[String(module || '').toLowerCase()] || 'Nhóm khác';
+}
+
+function humanLogSummary(log) {
+  const actor = log.actor_name || 'Hệ thống';
+  const entity = entityDisplayName(log);
+  const action = normalizeAction(log.action);
+  const amount = extractValue(log, ['actual_amount', 'total_amount', 'amount']);
+  const months = extractValue(log, ['months', 'service_month_delta']);
+
+  if (action === 'admin_manual_renewal') {
+    return `${actor} đã gia hạn ${entity}${months ? ` thêm ${months} tháng` : ''}.`;
+  }
+  if (action === 'confirm_payos' || action === 'confirm_payos_batch') {
+    return `Thanh toán PayOS${amount !== null ? ` ${formatCurrency(amount)}` : ''} của ${entity} đã được xác nhận.`;
+  }
+  if (action === 'create' && entityKind(log) === 'Kiosk') {
+    return `${actor} đã đăng ký ${entity}.`;
+  }
+  return `${actor} đã ${actionLabel(log.action).toLocaleLowerCase('vi')} ${entity}.`;
+}
+
+function entityKind(log) {
+  return moduleLabel(log.entity || log.module);
+}
+
+function entityDisplayName(log) {
+  const kind = entityKind(log);
+  const source = [log.after, log.before].filter(Boolean);
+  const name = firstNestedValue(source, ['facebook_name', 'name', 'kiosk_name']);
+  if (name) return entityWithKind(kind, name);
+
+  const kioskName = firstNestedValue(source, ['kiosk.facebook_name', 'kiosk.name']);
+  if (kioskName) return entityWithKind('Kiosk', kioskName);
+
+  const kioskId = firstNestedValue(source, ['kiosk_id', 'payment.kiosk_id']);
+  if (kioskId) return `Kiosk #${kioskId}`;
+  return log.record_id ? `${kind} #${log.record_id}` : kind;
+}
+
+function entityWithKind(kind, name) {
+  const text = String(name).trim();
+  return text.toLocaleLowerCase('vi').startsWith(String(kind).toLocaleLowerCase('vi')) ? text : `${kind} ${text}`;
+}
+
+function importantChange(log) {
+  const action = normalizeAction(log.action);
+  const months = extractValue(log, ['months', 'service_month_delta']);
+  const amount = extractValue(log, ['actual_amount', 'total_amount', 'amount']);
+  if (action === 'admin_manual_renewal') {
+    return [months ? `${months} tháng` : '', amount !== null ? formatCurrency(amount) : ''].filter(Boolean).join(' · ') || 'Đã cập nhật thời hạn';
+  }
+  if (action === 'confirm_payos' || action === 'confirm_payos_batch') {
+    const count = extractValue(log, ['kiosk_count']);
+    return [amount !== null ? formatCurrency(amount) : '', count ? `${count} Kiosk` : ''].filter(Boolean).join(' · ') || 'Thanh toán đã xác nhận';
+  }
+  const fields = summarizeChangedFields(log.before, log.after).slice(0, 3).map(fieldLabel);
+  return fields.length ? fields.join(', ') : friendlyReason(log.reason);
+}
+
+function extractValue(log, keys) {
+  const sources = [log.after, log.before].filter(Boolean);
+  for (const key of keys) {
+    const value = firstNestedValue(sources, [key, `payment.${key}`]);
+    if (value !== undefined && value !== null && value !== '') return value;
+  }
+  return null;
+}
+
+function firstNestedValue(sources, paths) {
+  for (const source of sources) {
+    for (const path of paths) {
+      const value = path.split('.').reduce((current, key) => current?.[key], source);
+      if (value !== undefined && value !== null && value !== '') return value;
+    }
+  }
+  return null;
+}
+
+function fieldLabel(field) {
+  const labels = {
+    id: 'Mã',
+    facebook_name: 'Tên Facebook',
+    facebook_id: 'Facebook ID',
+    facebook_link: 'Liên kết Facebook',
+    customer_id: 'Khách hàng',
+    kiosk_id: 'Kiosk',
+    category_id: 'Danh mục',
+    business_type_id: 'Loại hình kinh doanh',
+    start_date: 'Ngày bắt đầu',
+    end_date: 'Ngày hết hạn',
+    status: 'Trạng thái',
+    phone: 'Số điện thoại',
+    note: 'Ghi chú',
+    months: 'Số tháng',
+    total_amount: 'Tổng thanh toán',
+    actual_amount: 'Số tiền thực nhận',
+    discount: 'Giảm giá',
+    payment_status: 'Trạng thái thanh toán',
+    payment_method: 'Phương thức thanh toán',
+    auto_approve: 'Tự động duyệt',
+    created_at: 'Thời gian tạo',
+    updated_at: 'Thời gian cập nhật',
+    confirmed_at: 'Thời gian xác nhận',
+    kiosk_count: 'Số Kiosk',
+  };
+  return labels[field] || humanizeKey(field);
+}
+
+function humanizeKey(value) {
+  return String(value || '').replace(/_/g, ' ').replace(/^./, (letter) => letter.toLocaleUpperCase('vi'));
+}
+
+function formatDisplayValue(value) {
+  const normalized = String(value);
+  const statuses = { active: 'Hoạt động', warning: 'Sắp hết hạn', expired: 'Hết hạn', pending: 'Chờ duyệt', suspended: 'Tạm ngưng', completed: 'Hoàn thành', rejected: 'Từ chối', cancelled: 'Đã hủy' };
+  if (statuses[normalized.toLowerCase()]) return statuses[normalized.toLowerCase()];
+  if (value === true) return 'Có';
+  if (value === false) return 'Không';
+  return normalized;
+}
+
+function complexValueSummary(value) {
+  if (Array.isArray(value)) return `${value.length} mục (xem dữ liệu gốc)`;
+  const name = value?.facebook_name || value?.name;
+  return name ? String(name) : `${Object.keys(value || {}).length} trường (xem dữ liệu gốc)`;
+}
+
+function friendlyReason(reason) {
+  if (!reason || /mirrored from legacy logs/i.test(reason)) return 'Không có ghi chú';
+  return reason;
+}
+
+export const activityLogPresentation = {
+  actionLabel,
+  moduleLabel,
+  humanLogSummary,
+  entityDisplayName,
+  importantChange,
+  fieldLabel,
+};

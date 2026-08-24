@@ -3,6 +3,7 @@ import { bindFacebookIdResolvers, FacebookIdResolverFields } from '../components
 import { Modal } from '../components/Modal.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { Toast } from '../components/Toast.js';
+import { StatusBadge } from '../components/StatusBadge.js';
 import { AnnouncementService } from '../services/AnnouncementService.js';
 import { FacebookIdService } from '../services/FacebookIdService.js';
 import { PayosService } from '../services/PayosService.js';
@@ -49,17 +50,17 @@ const USER_ROUTE_CONFIG = {
   },
   'user-profile': {
     title: 'Hồ sơ cá nhân',
-    description: 'Thông tin tài khoản, ví xu và các thiết lập đang có trong hệ thống.',
+    description: 'Cập nhật thông tin cá nhân và bảo mật tài khoản.',
     sections: ['accountProfile'],
   },
   'user-announcements': {
     title: 'Thông báo',
-    description: 'Theo dõi các cập nhật từ hệ thống và admin.',
+    description: 'Tin tức và cập nhật mới từ ban quản trị.',
     sections: ['announcements'],
   },
   'user-support': {
     title: 'Hỗ trợ',
-    description: 'Thông tin liên hệ hỗ trợ đã được cấu hình trong hệ thống.',
+    description: 'Chọn kênh liên hệ phù hợp khi bạn cần trợ giúp.',
     sections: ['support'],
   },
   'user-kiosks': {
@@ -69,7 +70,7 @@ const USER_ROUTE_CONFIG = {
   },
   'user-register-kiosk': {
     title: 'Đăng ký Kiosk mới',
-    description: 'Mở form đăng ký Kiosk và tạo mã thanh toán theo luồng đăng ký public.',
+    description: 'Gửi thông tin Kiosk và thực hiện thanh toán trực tuyến.',
     sections: ['kioskEntry'],
   },
   'payments-mine': {
@@ -124,14 +125,14 @@ export function UserHomePage({ route = 'user' } = {}) {
         <a class="btn-secondary link-button" href="#/ttc-wallet">Nạp xu</a>
       </div>
       <div id="user-wallet-panel">
-        ${EmptyState({ title: 'Đang tải ví xu', message: 'Đang đọc số dư từ Supabase.' })}
+        ${EmptyState({ title: 'Đang tải ví xu', message: 'Vui lòng chờ trong giây lát.' })}
       </div>
     </section>` : ''}
     ${hasSection('wallet') ? `<section class="dash-card">
       <div class="dash-card-header"><h3>Ví xu</h3></div>
       <div id="user-wallet-return-status"></div>
       <div id="user-wallet-panel">
-        ${EmptyState({ title: 'Đang tải ví xu', message: 'Đang đọc số dư từ Supabase.' })}
+        ${EmptyState({ title: 'Đang tải ví xu', message: 'Vui lòng chờ trong giây lát.' })}
       </div>
       <form id="wallet-topup-form" class="wallet-topup-form wallet-topup-card">
         <div class="wallet-topup-heading">
@@ -265,7 +266,7 @@ function renderUserHomeFeed() {
           <div class="user-social-metric">
             <span>Đang chạy</span>
             <strong>24</strong>
-            <small>flow Facebook</small>
+            <small>tương tác Facebook</small>
           </div>
           <div class="user-social-metric">
             <span>Thưởng hôm nay</span>
@@ -917,7 +918,7 @@ function renderUserMfaError(error) {
       <div class="admin-security-panel">
         <div class="admin-security-state warning">
           <strong>Chưa thể mở Authenticator</strong>
-          <span>${escapeHtml(error?.message || 'Supabase MFA chưa sẵn sàng.')}</span>
+          <span>${escapeHtml(error?.message || 'Xác thực hai lớp chưa sẵn sàng.')}</span>
         </div>
         <div class="modal-actions">
           <button class="btn-primary" type="button" data-user-mfa-close>Đã hiểu</button>
@@ -1026,7 +1027,7 @@ function renderCustomerLinks() {
           <div class="expiring-name">${escapeHtml(link.kiosks?.facebook_name || link.customers?.facebook_name || 'Kiosk')}</div>
           <div class="expiring-date">FB ID: ${escapeHtml(link.kiosks?.facebook_id || '—')} · Khách hàng: ${escapeHtml(link.customers?.facebook_name || '—')}</div>
         </div>
-        <span class="status-pill ${link.kiosks?.status === 'active' ? 'success' : ''}">${escapeHtml(link.kiosks?.status || '—')}</span>
+        ${StatusBadge(link.kiosks?.status)}
       </div>
     `).join('');
 }
@@ -1089,7 +1090,7 @@ function renderMyPayments() {
           <div class="expiring-name">${formatCurrency(payment.total_amount || 0)} · ${escapeHtml(payment.kiosks?.facebook_name || 'Kiosk')}</div>
           <div class="expiring-date">${formatDateTime(payment.created_at)} · ${Number(payment.months || 0)} tháng</div>
         </div>
-        <span class="status-pill ${payment.payment_status === 'completed' ? 'success' : payment.payment_status === 'rejected' ? 'danger' : ''}">${escapeHtml(paymentStatusLabel(payment.payment_status))}</span>
+        ${StatusBadge(payment.payment_status, { label: paymentStatusLabel(payment.payment_status) })}
       </div>
     `).join('');
 }

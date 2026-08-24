@@ -196,7 +196,6 @@ function renderAuthenticatedApp(root, profile) {
 
   const sidebar = document.querySelector('[data-sidebar]');
   const outlet = document.querySelector('[data-route-outlet]');
-  const pageTitle = document.querySelector('[data-page-title]');
   const currentDate = document.querySelector('[data-current-date]');
   const menuToggle = document.querySelector('[data-menu-toggle]');
   const sidebarOverlay = document.querySelector('[data-sidebar-overlay]');
@@ -460,7 +459,7 @@ function renderAuthenticatedApp(root, profile) {
         <div class="admin-security-panel">
           <div class="admin-security-state warning">
             <strong>Chưa thể mở Authenticator</strong>
-            <span>${escapeHtml(error?.message || 'Supabase MFA chưa sẵn sàng.')}</span>
+            <span>${escapeHtml(error?.message || 'Dịch vụ xác minh chưa sẵn sàng.')}</span>
           </div>
           <div class="modal-actions">
             <button class="btn-primary" type="button" data-admin-mfa-close>Đã hiểu</button>
@@ -517,7 +516,7 @@ function renderAuthenticatedApp(root, profile) {
     defaultRoute,
     canAccess,
     onRouteChange(route) {
-      pageTitle.textContent = PAGE_TITLES[route] || PAGE_TITLES.dashboard;
+      document.title = `${PAGE_TITLES[route] || PAGE_TITLES.dashboard} · DHL Group`;
       setActiveNavigation(route);
       if (window.innerWidth < 900) {
         setSidebarOpen(false);
@@ -755,7 +754,9 @@ function setActiveNavigation(route) {
 function updateSupabaseBadge(element) {
   if (!element) return;
   const status = getSupabaseStatus();
-  element.textContent = status.configured ? 'Supabase sẵn sàng' : 'Chưa kết nối Supabase';
+  element.textContent = status.configured
+    ? '● Hệ thống hoạt động bình thường'
+    : '● Không thể kết nối dữ liệu';
   element.classList.toggle('ready', status.configured);
 }
 

@@ -5,18 +5,18 @@ import { Toast } from '../components/Toast.js';
 import { escapeHtml } from '../utils/html.js';
 
 const fields = [
-  { key: 'official_group_name', label: 'Tên nhóm chính thức', required: true },
+  { key: 'official_group_name', label: 'Tên cộng đồng', required: true, help: 'Tên hiển thị trên các trang công khai.' },
   { key: 'group_url', label: 'URL nhóm chính', type: 'url' },
   { key: 'sub_group_url', label: 'URL nhóm cộng đồng / nhóm phụ', type: 'url' },
   { key: 'recruitment_group_url', label: 'URL nhóm tuyển dụng', type: 'url' },
   { key: 'fanpage_url', label: 'URL fanpage chính thức', type: 'url' },
   { key: 'zalo_url', label: 'Zalo hỗ trợ', placeholder: 'Số Zalo hoặc URL Zalo' },
   { key: 'support_phone', label: 'Số điện thoại liên hệ', type: 'tel' },
-  { key: 'facebook_group_id', label: 'Facebook Group ID', inputmode: 'numeric', pattern: '[0-9]+' },
-  { key: 'warning_days', label: 'Số ngày cảnh báo sắp hết hạn', type: 'number', min: '1', max: '365', required: true },
+  { key: 'facebook_group_id', label: 'Mã nhóm Facebook', inputmode: 'numeric', pattern: '[0-9]+', help: 'Dùng để tạo liên kết thành viên Facebook.' },
+  { key: 'warning_days', label: 'Cảnh báo trước khi hết hạn', type: 'number', min: '1', max: '365', required: true, help: 'Số ngày dùng chung cho Dashboard, danh sách Kiosk và báo cáo.' },
   { key: 'company_info', label: 'Thông tin đơn vị', type: 'textarea' },
   { key: 'business_info', label: 'Thông tin kinh doanh', type: 'textarea' },
-  { key: 'system_settings', label: 'Cài đặt hệ thống khác', type: 'textarea' },
+  { key: 'system_settings', label: 'Ghi chú vận hành', type: 'textarea', help: 'Thông tin nội bộ dành cho quản trị viên.' },
 ];
 
 let currentSettings = {};
@@ -44,11 +44,11 @@ async function loadAndRenderSettings(outlet) {
 function renderForm() {
   return `
     <form id="settings-form">
-      <h3>Thông tin & liên kết chính thức</h3>
-      <div class="form-grid">${fields.slice(0, 8).map(renderSettingInput).join('')}</div>
+      <section class="settings-section"><div class="settings-section-head"><h3>Thông tin công khai</h3><p>Tên cộng đồng và các kênh liên hệ chính thức.</p></div>
+      <div class="form-grid">${fields.slice(0, 8).map(renderSettingInput).join('')}</div></section>
 
-      <h3>Cảnh báo & thông tin tổ chức</h3>
-      <div class="form-grid">${fields.slice(8).map(renderSettingInput).join('')}</div>
+      <section class="settings-section"><div class="settings-section-head"><h3>Vận hành</h3><p>Cảnh báo hết hạn và thông tin quản trị.</p></div>
+      <div class="form-grid">${fields.slice(8).map(renderSettingInput).join('')}</div></section>
 
       <label class="form-group">
         <span>Lý do thay đổi</span>
@@ -77,7 +77,7 @@ function renderSettingInput(field) {
     ? `<textarea id="${field.key}" name="${field.key}" rows="3" class="form-control" ${attributes}>${value}</textarea>`
     : `<input type="${field.type || 'text'}" id="${field.key}" name="${field.key}" value="${value}" class="form-control" ${attributes}>`;
 
-  return `<label class="form-group"><span>${field.label}</span>${input}</label>`;
+  return `<label class="form-group"><span>${field.label}</span>${input}${field.help ? `<small class="field-helper">${field.help}</small>` : ''}</label>`;
 }
 
 function attachEventListeners(container) {

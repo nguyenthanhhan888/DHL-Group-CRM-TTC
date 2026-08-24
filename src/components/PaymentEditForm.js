@@ -70,7 +70,7 @@ function renderPaymentEditForm(isCompleted) {
           <span>Phương thức thanh toán</span>
           <input class="form-control" id="payment-edit-method" type="text" value="${escapeHtml(p.payment_method || '')}" />
         </label>
-        <p class="muted-text">Giá, tổng tiền và kỳ hạn dịch vụ được database tính lại. Ngày bắt đầu/kết thúc chỉ được xác lập khi xác nhận.</p>
+        <p class="muted-text">Giá, tổng tiền và kỳ hạn dịch vụ được hệ thống tính lại. Ngày bắt đầu/kết thúc chỉ được xác lập khi xác nhận.</p>
       </fieldset>
 
       <label class="form-group">

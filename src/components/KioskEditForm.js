@@ -1,6 +1,7 @@
 import { Modal } from './Modal.js';
 import { Toast } from './Toast.js';
 import { BusinessTypeService } from '../services/BusinessTypeService.js';
+import { CategoryService } from '../services/CategoryService.js';
 import { CustomerService } from '../services/CustomerService.js';
 import { KioskService } from '../services/KioskService.js';
 import { bindFacebookIdResolvers, FacebookIdResolverFields } from './FacebookIdResolver.js';
@@ -10,13 +11,16 @@ import { escapeHtml } from '../utils/html.js';
 const KIOSK_STATUSES = [
   { value: 'pending', label: 'Chờ duyệt' },
   { value: 'active', label: 'Hoạt động' },
-  { value: 'expired', label: 'Hết hạn' },
   { value: 'suspended', label: 'Tạm ngưng' },
+  { value: 'inactive', label: 'Không hoạt động' },
+  { value: 'warning', label: 'Sắp hết hạn — tự động theo ngày', disabled: true },
+  { value: 'expired', label: 'Hết hạn — tự động theo ngày', disabled: true },
 ];
 
 let state = {
   kiosk: null,
   customers: [],
+  categories: [],
   businessTypes: [],
   isEdit: false,
 };
@@ -25,6 +29,7 @@ export function openKioskEditForm({ kiosk = null, onSaved } = {}) {
   state = {
     kiosk,
     customers: [],
+    categories: [],
     businessTypes: [],
     isEdit: Boolean(kiosk?.id),
   };
@@ -40,13 +45,16 @@ export function openKioskEditForm({ kiosk = null, onSaved } = {}) {
 }
 
 function renderForm() {
+  const editableStatus = state.kiosk?.stored_status || state.kiosk?.status || 'pending';
   return `
     <form id="kiosk-edit-form" class="modal-form" novalidate>
       <div id="kiosk-edit-error" class="form-error hidden"></div>
 
-      <div class="form-section-title">Thông tin Kiosk</div>
+      <section class="kiosk-edit-section" aria-labelledby="kiosk-edit-facebook-title">
+      <div class="form-section-title" id="kiosk-edit-facebook-title">Facebook</div>
+      <p class="field-helper">Thông tin nhận diện của Kiosk trên Facebook.</p>
       <label class="form-group">
-        <span>Tên Facebook *</span>
+        <span>Tên Kiosk / Facebook *</span>
         <input class="form-control" id="kiosk-edit-name" value="${escapeHtml(state.kiosk?.facebook_name || '')}" required />
       </label>
       ${FacebookIdResolverFields({
@@ -55,20 +63,15 @@ function renderForm() {
         urlAttributes: `value="${escapeHtml(state.kiosk?.facebook_link || '')}"`,
         idAttributes: `value="${escapeHtml(state.kiosk?.facebook_id || '')}" required`,
       })}
-      <div class="form-row">
-        <label class="form-group">
-          <span>Trạng thái *</span>
-          <select class="form-control" id="kiosk-edit-status">
-            ${KIOSK_STATUSES.map((s) => `<option value="${s.value}" ${s.value === state.kiosk?.status ? 'selected' : ''}>${s.label}</option>`).join('')}
-          </select>
-        </label>
-      </div>
       <label class="form-group">
         <span>Link nhóm Facebook</span>
         <input class="form-control" id="kiosk-edit-group-link" type="url" value="${escapeHtml(state.kiosk?.facebook_group_link || '')}" />
       </label>
+      </section>
 
-      <div class="form-section-title">Chủ sở hữu</div>
+      <section class="kiosk-edit-section" aria-labelledby="kiosk-edit-customer-title">
+      <div class="form-section-title" id="kiosk-edit-customer-title">Khách hàng</div>
+      <p class="field-helper">Đổi khách hàng sẽ chuyển quan hệ sở hữu Kiosk và cần xác nhận riêng.</p>
       <label class="form-group">
         <span>Tìm khách hàng</span>
         <input class="form-control" id="kiosk-edit-customer-search" type="search" placeholder="Tên Facebook, SĐT..." />
@@ -77,21 +80,26 @@ function renderForm() {
         <span>Khách hàng *</span>
         <select class="form-control" id="kiosk-edit-customer" required disabled><option>Đang tải...</option></select>
       </label>
+      </section>
 
-      <div class="form-section-title">Thông tin dịch vụ</div>
+      <section class="kiosk-edit-section" aria-labelledby="kiosk-edit-classification-title">
+      <div class="form-section-title" id="kiosk-edit-classification-title">Phân loại</div>
+      <p class="field-helper">Chọn Danh mục trước, sau đó chọn Loại hình kinh doanh thuộc danh mục đó.</p>
       <div class="form-row">
         <label class="form-group">
-          <span>Dịch vụ / Ngành hàng *</span>
-          <select class="form-control" id="kiosk-edit-business-type" required disabled><option>Đang tải...</option></select>
+          <span>Danh mục *</span>
+          <select class="form-control" id="kiosk-edit-category" required disabled><option>Đang tải...</option></select>
         </label>
         <label class="form-group">
-          <span>Tự động duyệt</span>
-          <select class="form-control" id="kiosk-edit-auto-approve">
-            <option value="true" ${state.kiosk?.auto_approve ? 'selected' : ''}>Có</option>
-            <option value="false" ${!state.kiosk?.auto_approve ? 'selected' : ''}>Không</option>
-          </select>
+          <span>Loại hình kinh doanh *</span>
+          <select class="form-control" id="kiosk-edit-business-type" required disabled><option>Chọn danh mục trước</option></select>
         </label>
       </div>
+      </section>
+
+      <section class="kiosk-edit-section" aria-labelledby="kiosk-edit-dates-title">
+      <div class="form-section-title" id="kiosk-edit-dates-title">Thời hạn</div>
+      <p class="field-helper">Chỉnh trực tiếp thời hạn Kiosk. Thao tác này không tạo giao dịch hoặc gia hạn.</p>
       <div class="form-row">
         <label class="form-group">
           <span>Ngày bắt đầu</span>
@@ -102,9 +110,32 @@ function renderForm() {
           <input class="form-control" id="kiosk-edit-end-date" type="date" value="${escapeHtml(state.kiosk?.end_date || '')}" />
         </label>
       </div>
+      </section>
 
+      <section class="kiosk-edit-section" aria-labelledby="kiosk-edit-approval-title">
+      <div class="form-section-title" id="kiosk-edit-approval-title">Duyệt và trạng thái</div>
+      <div class="form-row">
+        <label class="form-group">
+          <span>Trạng thái hành chính *</span>
+          <select class="form-control" id="kiosk-edit-status">
+            ${KIOSK_STATUSES.map((s) => `<option value="${s.value}" ${s.value === editableStatus ? 'selected' : ''} ${s.disabled ? 'disabled' : ''}>${s.label}</option>`).join('')}
+          </select>
+          <span class="field-helper">Dùng “Tạm ngưng” để khóa Kiosk mà không thay đổi lịch sử thanh toán.</span>
+        </label>
+        <label class="form-group">
+          <span>Tự động duyệt bài</span>
+          <select class="form-control" id="kiosk-edit-auto-approve">
+            <option value="true" ${state.kiosk?.auto_approve ? 'selected' : ''}>Có</option>
+            <option value="false" ${!state.kiosk?.auto_approve ? 'selected' : ''}>Không</option>
+          </select>
+        </label>
+      </div>
+      </section>
+
+      <section class="kiosk-edit-section" aria-labelledby="kiosk-edit-notes-title">
+      <div class="form-section-title" id="kiosk-edit-notes-title">Ghi chú</div>
       <label class="form-group">
-        <span>Ghi chú</span>
+        <span>Ghi chú nội bộ</span>
         <textarea class="form-control" id="kiosk-edit-note" rows="3">${escapeHtml(state.kiosk?.note || '')}</textarea>
       </label>
       
@@ -114,6 +145,7 @@ function renderForm() {
         <input class="form-control" id="kiosk-reason" type="text" autocomplete="off" />
       </label>
       ` : ''}
+      </section>
 
       <div class="modal-actions">
         <button class="btn-secondary" type="button" data-cancel>Hủy</button>
@@ -129,6 +161,9 @@ function bindFormEvents(onSaved) {
   document.getElementById('kiosk-edit-customer-search')?.addEventListener('input', debounce((event) => {
     loadCustomerOptions(event.target.value);
   }, 300));
+  document.getElementById('kiosk-edit-category')?.addEventListener('change', () => {
+    renderBusinessTypeOptions();
+  });
 
   document.getElementById('kiosk-edit-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -183,8 +218,10 @@ async function loadInitialData() {
   const customerId = state.kiosk?.customer_id;
   await Promise.all([
     loadCustomerOptions('', customerId),
+    loadCategories(),
     loadBusinessTypes(),
   ]);
+  renderBusinessTypeOptions(state.kiosk?.business_type_id);
 }
 
 async function loadCustomerOptions(searchTerm = '', initialId = null) {
@@ -212,27 +249,49 @@ async function loadCustomerOptions(searchTerm = '', initialId = null) {
 }
 
 async function loadBusinessTypes() {
-  const select = document.getElementById('kiosk-edit-business-type');
-  if (!select) return;
-  select.disabled = true;
-
   try {
     const { data } = await BusinessTypeService.listActive();
     state.businessTypes = data || [];
-    select.innerHTML = `<option value="">Chọn dịch vụ</option>${state.businessTypes.map((bt) => `<option value="${bt.id}">${escapeHtml(bt.name)}</option>`).join('')}`;
-    if (state.kiosk?.business_type_id) {
-      select.value = state.kiosk.business_type_id;
+    if (state.kiosk?.business_type_id && !state.businessTypes.some((item) => String(item.id) === String(state.kiosk.business_type_id))) {
+      const { data: current } = await BusinessTypeService.getById(state.kiosk.business_type_id);
+      if (current) state.businessTypes.push(current);
     }
+    renderBusinessTypeOptions(state.kiosk?.business_type_id);
   } catch (error) {
     showError('Không thể tải danh sách dịch vụ.');
-  } finally {
-    select.disabled = false;
   }
+}
+
+async function loadCategories() {
+  const select = document.getElementById('kiosk-edit-category');
+  if (!select) return;
+  try {
+    const { data } = await CategoryService.listActive();
+    state.categories = data || [];
+    if (state.kiosk?.category_id && !state.categories.some((item) => String(item.id) === String(state.kiosk.category_id))) {
+      const { data: current } = await CategoryService.getById(state.kiosk.category_id);
+      if (current) state.categories.push(current);
+    }
+    select.innerHTML = `<option value="">Chọn danh mục</option>${state.categories.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join('')}`;
+    select.value = state.kiosk?.category_id || '';
+    select.disabled = false;
+  } catch {
+    showError('Không thể tải danh sách danh mục.');
+  }
+}
+
+function renderBusinessTypeOptions(selectedId = '') {
+  const select = document.getElementById('kiosk-edit-business-type');
+  const categoryId = document.getElementById('kiosk-edit-category')?.value || '';
+  if (!select) return;
+  const options = state.businessTypes.filter((item) => String(item.category_id) === String(categoryId));
+  select.innerHTML = `<option value="">${categoryId ? 'Chọn loại hình kinh doanh' : 'Chọn danh mục trước'}</option>${options.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join('')}`;
+  select.disabled = !categoryId;
+  if (selectedId && options.some((item) => String(item.id) === String(selectedId))) select.value = selectedId;
 }
 
 function readPayload() {
   const businessTypeId = document.getElementById('kiosk-edit-business-type')?.value;
-  const businessType = state.businessTypes.find((bt) => String(bt.id) === String(businessTypeId));
   return {
     facebook_name: document.getElementById('kiosk-edit-name')?.value.trim(),
     facebook_id: document.getElementById('kiosk-edit-fb-id')?.value.trim() || null,
@@ -240,7 +299,7 @@ function readPayload() {
     facebook_group_link: document.getElementById('kiosk-edit-group-link')?.value.trim() || null,
     customer_id: document.getElementById('kiosk-edit-customer')?.value || null,
     business_type_id: businessTypeId || null,
-    category_id: businessType?.category_id || null,
+    category_id: document.getElementById('kiosk-edit-category')?.value || null,
     status: document.getElementById('kiosk-edit-status')?.value,
     start_date: document.getElementById('kiosk-edit-start-date')?.value || null,
     end_date: document.getElementById('kiosk-edit-end-date')?.value || null,
@@ -254,7 +313,12 @@ async function validateForm(payload) {
   if (!payload.facebook_id) return { valid: false, message: 'Facebook ID là bắt buộc.' };
   if (!/^\d+$/.test(payload.facebook_id)) return { valid: false, message: 'Facebook ID phải là dạng số.' };
   if (!payload.customer_id) return { valid: false, message: 'Khách hàng là bắt buộc.' };
+  if (!payload.category_id) return { valid: false, message: 'Danh mục là bắt buộc.' };
   if (!payload.business_type_id) return { valid: false, message: 'Dịch vụ là bắt buộc.' };
+  const selectedBusinessType = state.businessTypes.find((item) => String(item.id) === String(payload.business_type_id));
+  if (!selectedBusinessType || String(selectedBusinessType.category_id) !== String(payload.category_id)) {
+    return { valid: false, message: 'Loại hình kinh doanh không thuộc danh mục đã chọn.' };
+  }
   if (payload.facebook_link && !isValidUrl(payload.facebook_link)) {
     return { valid: false, message: 'Link Facebook không hợp lệ.' };
   }

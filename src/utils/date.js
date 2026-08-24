@@ -39,6 +39,17 @@ export function startOfToday() {
   return date;
 }
 
+export function startOfVietnamToday(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return new Date(Number(value.year), Number(value.month) - 1, Number(value.day));
+}
+
 export function startOfMonth(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }

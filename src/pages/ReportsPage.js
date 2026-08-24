@@ -1,5 +1,7 @@
 import { EmptyState } from '../components/EmptyState.js';
 import { PageHeader } from '../components/PageHeader.js';
+import { StatusBadge } from '../components/StatusBadge.js';
+import { bindPagination as bindSharedPagination, Pagination } from '../components/Pagination.js';
 import { StatCard } from '../components/StatCard.js';
 import { Toast } from '../components/Toast.js';
 import { Toolbar } from '../components/Toolbar.js';
@@ -38,7 +40,6 @@ export function ReportsPage() {
   return `
     ${PageHeader({
       title: 'Báo cáo',
-      description: 'Báo cáo tổng hợp và phân trang từ Supabase.',
       actions: '<button class="btn-secondary" id="report-export-button" type="button">Xuất CSV (trang hiện tại)</button>',
     })}
     ${Toolbar({
@@ -102,6 +103,7 @@ export function ReportsPage() {
               <option value="pending">Chờ duyệt</option>
               <option value="expired">Hết hạn</option>
               <option value="suspended">Tạm ngưng</option>
+              <option value="inactive">Không hoạt động</option>
               <option value="expiring_soon">Sắp hết hạn</option>
             </select>
           </label>
@@ -409,7 +411,7 @@ function renderReconciliation(report) {
     ])}
     <div class="notice warning reconciliation-note">
       <strong>Đối soát là danh sách gợi ý kiểm tra</strong>
-      <span>Hệ thống đang so dữ liệu tổng hợp với các trường lưu nhanh như total_paid, Facebook ID và ngày hết hạn. Một số dòng có thể là dữ liệu chờ bổ sung, không nhất thiết là lỗi vận hành.</span>
+      <span>Các mục dưới đây có thông tin chưa đồng nhất hoặc còn thiếu và cần được kiểm tra.</span>
     </div>
     ${renderReportCard('Đối soát chỉ đọc', renderTable(reconciliationColumns(), report.rows, 'Không phát hiện mục cần kiểm tra.'))}
     ${renderPagination(report.pagination)}
@@ -438,7 +440,7 @@ function renderSummaryCards(cards) {
 }
 
 function renderReportCard(title, content) {
-  return `<section class="report-card"><div class="dash-card-header"><h3>${escapeHtml(title)}</h3></div>${content}</section>`;
+  return `<section class="report-card report-summary-panel"><div class="dash-card-header"><h3>${escapeHtml(title)}</h3></div><div class="report-summary-scroll">${content}</div></section>`;
 }
 
 function renderTable(columns, rows, emptyMessage) {
@@ -561,7 +563,7 @@ function reconciliationColumns() {
     { label: 'Mục cần kiểm tra', render: (row) => `<span class="old-value">${escapeHtml(friendlyIssue(row.issue))}</span>` },
     { label: 'Giải thích', render: (row) => `<span class="muted-text">${escapeHtml(issueExplanation(row))}</span>` },
     { label: 'Loại', render: (row) => escapeHtml(row.entityType || '—') },
-    { label: 'Bản ghi', render: (row) => escapeHtml(row.recordId || '—') },
+    { label: 'Mã tham chiếu', render: (row) => escapeHtml(row.recordId || '—') },
     { label: 'Khách hàng', render: (row) => customerLink(row.customerId, row.customerName) },
     { label: 'Kiosk', render: (row) => kioskLink(row.kioskId, row.kioskName) },
     { label: 'Trạng thái', render: (row) => statusBadge(row.status) },
@@ -575,21 +577,21 @@ function friendlyIssue(issue) {
     'customers.total_paid không khớp': 'Tổng đã trả cần đối chiếu',
     'Kiosk thiếu Facebook ID': 'Kiosk cần bổ sung Facebook ID',
     'Kiosk thiếu end_date': 'Kiosk cần bổ sung ngày hết hạn',
-  }[issue] || issue || '—';
+  }[issue] || 'Thông tin cần kiểm tra';
 }
 
 function issueExplanation(row) {
   const issue = row.issue || '';
   if (issue === 'customers.total_paid không khớp') {
-    return 'Đang so customers.total_paid với tổng thanh toán hoàn thành trong kỳ. Nếu total_paid không còn là nguồn chính, có thể cần chạy đồng bộ lại.';
+    return 'Tổng tiền đã ghi nhận chưa khớp với các khoản thanh toán hoàn thành trong kỳ.';
   }
   if (issue === 'Kiosk thiếu Facebook ID') {
-    return 'Kiosk đang hoạt động/chờ xác nhận nhưng trường facebook_id trống. Nếu đây là đơn mới chờ bổ sung thì có thể xử lý sau.';
+    return 'Kiosk đang hoạt động hoặc chờ xác nhận nhưng chưa có Facebook ID.';
   }
   if (issue === 'Kiosk thiếu end_date') {
     return 'Kiosk chưa có ngày hết hạn để tính trạng thái hết hạn/sắp hết hạn.';
   }
-  return row.detail || 'Mở bản ghi để kiểm tra trường dữ liệu liên quan.';
+  return 'Mở mục liên quan để kiểm tra và bổ sung thông tin.';
 }
 
 function categoryColumns() {
@@ -609,24 +611,15 @@ function categoryColumns() {
 function renderPagination(pagination) {
   if (!pagination) return '';
   const page = number(pagination.page) || 1;
-  const totalPages = number(pagination.totalPages);
-  return `
-    <div class="toolbar">
-      <button class="btn-secondary" type="button" data-report-page="${page - 1}" ${page <= 1 ? 'disabled' : ''}>Trang trước</button>
-      <span class="muted-text">Trang ${page}/${Math.max(totalPages, 1)} · ${number(pagination.totalRows)} kết quả</span>
-      <button class="btn-secondary" type="button" data-report-page="${page + 1}" ${page >= totalPages ? 'disabled' : ''}>Trang sau</button>
-    </div>
-  `;
+  return Pagination({ id: 'reports', page, pageSize: number(pagination.pageSize) || state.pageSize, total: number(pagination.totalRows), noun: 'kết quả', showPageSize: false });
 }
 
 function bindPagination() {
-  document.querySelectorAll('[data-report-page]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const page = Number(button.dataset.reportPage);
-      if (!Number.isInteger(page) || page < 1) return;
+  bindSharedPagination('reports', {
+    onPage: (page) => {
       state.page = page;
       loadReportData();
-    });
+    },
   });
 }
 
@@ -641,21 +634,7 @@ function kioskLink(id, name) {
 }
 
 function statusBadge(status) {
-  const normalized = String(status || 'unknown').toLowerCase();
-  const safeClass = normalized.replace(/[^a-z0-9-]/g, '') || 'unknown';
-  const labels = {
-    active: 'Hoạt động',
-    warning: 'Sắp hết hạn',
-    expired: 'Hết hạn',
-    pending: 'Chờ xác nhận',
-    completed: 'Hoàn thành',
-    rejected: 'Bị từ chối',
-    cancelled: 'Đã hủy',
-    inactive: 'Không hoạt động',
-    suspended: 'Tạm ngưng',
-    unknown: 'Không rõ',
-  };
-  return `<span class="badge badge-${safeClass}">${escapeHtml(labels[normalized] || status || 'Không rõ')}</span>`;
+  return StatusBadge(status, { labels: { pending: 'Chờ xác nhận', rejected: 'Bị từ chối' } });
 }
 
 function paymentMethodLabel(value) {
@@ -703,7 +682,7 @@ function setReportLoading() {
 }
 
 function renderLoadingState() {
-  return `<section class="report-card">${EmptyState({ title: 'Đang tải báo cáo', message: 'Database đang tổng hợp dữ liệu.' })}</section>`;
+  return `<section class="report-card">${EmptyState({ title: 'Đang tải báo cáo', message: 'Đang tổng hợp dữ liệu báo cáo.' })}</section>`;
 }
 
 function renderReportError(error) {
@@ -711,7 +690,7 @@ function renderReportError(error) {
   if (!content) return;
   content.innerHTML = `<section class="report-card">${EmptyState({
     title: 'Không thể tải báo cáo',
-    message: escapeHtml(error?.message || 'Supabase trả về lỗi khi tổng hợp báo cáo.'),
+    message: escapeHtml(error?.message || 'Không thể tải báo cáo. Vui lòng thử lại.'),
   })}</section>`;
 }
 

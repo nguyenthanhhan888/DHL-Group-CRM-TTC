@@ -2,6 +2,7 @@ import { EmptyState } from '../components/EmptyState.js';
 import { openCustomerForm } from '../components/CustomerForm.js';
 import { openKioskForm } from '../components/KioskForm.js';
 import { PageHeader } from '../components/PageHeader.js';
+import { StatusBadge } from '../components/StatusBadge.js';
 import { Toast } from '../components/Toast.js';
 import { FACEBOOK_PROFILE_BASE_URL } from '../constants/facebook.js';
 import { CustomerService } from '../services/CustomerService.js';
@@ -28,7 +29,7 @@ export function CustomerDetailPage() {
     <div id="customer-detail-header"></div>
     <div id="customer-detail-content">
       <section class="dash-card">
-        ${EmptyState({ title: 'Đang tải khách hàng', message: 'Đang đọc dữ liệu từ Supabase.' })}
+        ${EmptyState({ title: 'Đang tải khách hàng', message: 'Đang tải thông tin khách hàng.' })}
       </section>
     </div>
   `;
@@ -41,11 +42,11 @@ CustomerDetailPage.afterRender = async function afterRenderCustomerDetail({ para
     return;
   }
 
-  renderCustomerDetailState('Đang tải khách hàng', 'Đang đọc dữ liệu từ Supabase.');
+  renderCustomerDetailState('Đang tải khách hàng', 'Đang tải thông tin khách hàng.');
 
   try {
     const [{ data: customer }, { data: kiosks }, { data: payments }] = await Promise.all([
-      CustomerService.getById(id),
+      CustomerService.getStatusById(id),
       KioskService.listByCustomer(id),
       PaymentService.listByCustomer(id),
     ]);
@@ -58,13 +59,14 @@ CustomerDetailPage.afterRender = async function afterRenderCustomerDetail({ para
   } catch (error) {
     renderCustomerDetailState(
       'Không thể tải khách hàng',
-      error?.message || 'Supabase trả về lỗi khi đọc thông tin khách hàng.',
+      error?.message || 'Không thể tải thông tin khách hàng. Vui lòng thử lại.',
     );
   }
 };
 
 function renderCustomerDetail(customer, kiosks, payments) {
-  currentCustomer = customer;
+  const derivedCustomerStatus = customer.status;
+  currentCustomer = { ...customer, status: customer.stored_status || customer.status };
   detailState.kiosks = kiosks || [];
   detailState.payments = payments || [];
   detailState.kioskSearchTerm = '';
@@ -78,11 +80,10 @@ function renderCustomerDetail(customer, kiosks, payments) {
 
   header.innerHTML = PageHeader({
     title: customer.facebook_name,
-    description: 'Thông tin chi tiết khách hàng và các kiosk/thanh toán liên quan.',
     actions: `
       <button class="btn-primary" id="customer-add-kiosk" type="button">+ Thêm Kiosk</button>
       <button class="btn-secondary" id="customer-edit-button" type="button">Sửa</button>
-      ${customer.status === 'active'
+      ${currentCustomer.status === 'active'
         ? '<button class="btn-danger" id="customer-deactivate-button" type="button">Vô hiệu hóa</button>'
         : '<button class="btn-secondary" id="customer-activate-button" type="button">Kích hoạt lại</button>'
       }
@@ -99,7 +100,7 @@ function renderCustomerDetail(customer, kiosks, payments) {
           ${detailRow('Link Facebook', customerFacebookLink(customer), true)}
           ${detailRow('Số điện thoại', customer.phone)}
           ${detailRow('Địa chỉ', customer.address)}
-          ${detailRow('Trạng thái', renderStatusBadge(customer.status), false, true)}
+          ${detailRow('Trạng thái', renderStatusBadge(derivedCustomerStatus), false, true)}
         </div>
       </section>
       <section class="admin-card">
@@ -121,7 +122,7 @@ function renderCustomerDetail(customer, kiosks, payments) {
       <div class="detail-note">${escapeHtml(customer.note || '—')}</div>
     </section>
 
-    <div class="admin-grid">
+    <div class="customer-detail-data-sections">
       <section class="admin-card detail-section">
         <h3>Kiosk liên quan (${kiosks.length})</h3>
         <div class="list-search-bar">
@@ -322,8 +323,6 @@ function getLatestDate(dates = []) {
 }
 
 function renderStatusBadge(status) {
-  const normalized = String(status || 'inactive').toLowerCase();
-  const safeClass = normalized.replace(/[^a-z0-9-]/g, '') || 'inactive';
   const labels = {
     active: 'Hoạt động',
     pending: 'Chờ duyệt',
@@ -333,8 +332,9 @@ function renderStatusBadge(status) {
     cancelled: 'Đã hủy',
     expired: 'Hết hạn',
     warning: 'Sắp hết hạn',
+    suspended: 'Tạm ngưng',
   };
-  return `<span class="badge badge-${safeClass}">${labels[normalized] || escapeHtml(status || 'Không rõ')}</span>`;
+  return StatusBadge(status, { labels });
 }
 
 function renderCustomerDetailState(title, message) {
@@ -345,7 +345,6 @@ function renderCustomerDetailState(title, message) {
   if (header) {
     header.innerHTML = PageHeader({
       title: 'Chi tiết khách hàng',
-      description: 'Thông tin chi tiết khách hàng và các kiosk liên quan.',
       actions: '<a class="btn-secondary link-button" href="#/customers">Quay lại</a>',
     });
   }

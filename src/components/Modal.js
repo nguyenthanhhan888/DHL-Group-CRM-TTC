@@ -6,6 +6,11 @@ export const Modal = {
     document.querySelector('[data-modal-overlay]')?.addEventListener('click', (event) => {
       if (event.target.matches('[data-modal-overlay]')) Modal.close();
     });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !document.querySelector('[data-modal-overlay]')?.classList.contains('hidden')) {
+        Modal.close();
+      }
+    });
   },
 
   open({ title, body, className = '' }) {

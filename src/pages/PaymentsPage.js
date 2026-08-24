@@ -1,6 +1,8 @@
 import { EmptyState } from '../components/EmptyState.js';
 import { Modal } from '../components/Modal.js';
 import { PageHeader } from '../components/PageHeader.js';
+import { StatusBadge } from '../components/StatusBadge.js';
+import { bindPagination, Pagination, updatePagination } from '../components/Pagination.js';
 import { bindPayosCopyButtons, PayosResultCard, watchPayosPaymentStatus } from '../components/PayosResultCard.js';
 import { StatCard } from '../components/StatCard.js';
 import { Toast } from '../components/Toast.js';
@@ -88,26 +90,21 @@ export function PaymentsPage() {
           <tr>${PAYMENT_COLUMNS.map(renderHeaderCell).join('')}</tr>
         </thead>
         <tbody id="payments-table-body">
-          ${renderTableState('Đang tải thanh toán', 'Đang đọc dữ liệu từ Supabase.')}
+          ${renderTableState('Đang tải thanh toán', 'Vui lòng chờ trong giây lát.')}
         </tbody>
       </table>
     </div>
-    <div class="pagination-bar">
-      <div id="payments-page-summary" class="pagination-summary">—</div>
-      <div class="pagination-controls">
-        <select id="payments-page-size" class="filter-select compact" aria-label="Số dòng mỗi trang">
-          ${PAGE_SIZE_OPTIONS.map((size) => `<option value="${size}" ${size === state.pageSize ? 'selected' : ''}>${size} / trang</option>`).join('')}
-        </select>
-        <button id="payments-prev-page" class="btn-secondary" type="button">Trước</button>
-        <button id="payments-next-page" class="btn-secondary" type="button">Sau</button>
-      </div>
-    </div>
+    ${Pagination({ id: 'payments', page: state.page, pageSize: state.pageSize, total: state.total, pageSizeOptions: PAGE_SIZE_OPTIONS, noun: 'thanh toán' })}
   `;
 }
 
 PaymentsPage.afterRender = function afterRenderPayments() {
   syncPaymentControls();
   bindPaymentEvents();
+  bindPagination('payments', {
+    onPage: (page) => { state.page = page; loadPayments(); },
+    onPageSize: (pageSize) => { state.pageSize = pageSize; state.page = 1; loadPayments(); },
+  });
   loadBusinessTypeOptions();
   loadPayments();
 };
@@ -149,23 +146,6 @@ function bindPaymentEvents() {
     loadPayments();
   });
 
-  pageSizeSelect?.addEventListener('change', (event) => {
-    state.pageSize = Number(event.target.value);
-    state.page = 1;
-    loadPayments();
-  });
-
-  document.getElementById('payments-prev-page')?.addEventListener('click', () => {
-    if (state.page <= 1) return;
-    state.page -= 1;
-    loadPayments();
-  });
-
-  document.getElementById('payments-next-page')?.addEventListener('click', () => {
-    if (state.page >= totalPages()) return;
-    state.page += 1;
-    loadPayments();
-  });
 
   document.querySelectorAll('[data-payment-sort-column]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -564,7 +544,7 @@ function openPaymentAdjustment(payment) {
     title: `Điều chỉnh thanh toán #${escapeHtml(payment.id)}`,
     body: `
       <div class="approval-message">
-        <p>Thanh toán Completed gốc sẽ được giữ nguyên. Database sẽ tạo một giao dịch điều chỉnh mới.</p>
+        <p>Thanh toán đã hoàn tất ban đầu sẽ được giữ nguyên. Hệ thống sẽ tạo một giao dịch điều chỉnh mới.</p>
         <div class="form-row">
           <label class="form-group">
             <span>Chênh lệch số tiền *</span>
@@ -654,7 +634,7 @@ function renderHeaderCell(column) {
 function setLoadingState() {
   const body = document.getElementById('payments-table-body');
   if (body) {
-    body.innerHTML = renderTableState('Đang tải thanh toán', 'Đang đọc dữ liệu từ Supabase.');
+    body.innerHTML = renderTableState('Đang tải thanh toán', 'Vui lòng chờ trong giây lát.');
   }
 }
 
@@ -666,7 +646,7 @@ function renderError(error) {
   if (body) {
     body.innerHTML = renderTableState(
       'Không thể tải thanh toán',
-      error?.message || 'Supabase trả về lỗi khi đọc bảng payments.',
+      error?.message || 'Không thể tải danh sách thanh toán. Vui lòng thử lại.',
     );
   }
 
@@ -684,19 +664,7 @@ function renderTableState(title, message) {
 }
 
 function renderPagination() {
-  const summary = document.getElementById('payments-page-summary');
-  const prev = document.getElementById('payments-prev-page');
-  const next = document.getElementById('payments-next-page');
-  const pages = totalPages();
-
-  if (summary) {
-    summary.textContent = state.total
-      ? `Trang ${state.page} / ${pages} · ${state.total} thanh toán`
-      : '0 thanh toán';
-  }
-
-  if (prev) prev.disabled = state.page <= 1;
-  if (next) next.disabled = state.page >= pages;
+  updatePagination({ id: 'payments', page: state.page, pageSize: state.pageSize, total: state.total, pageSizeOptions: PAGE_SIZE_OPTIONS, noun: 'thanh toán' });
 }
 
 function renderPayosHint(summary = {}) {
@@ -724,16 +692,7 @@ function renderSortState() {
 }
 
 function renderPaymentStatusBadge(status) {
-  const normalized = String(status || 'pending').toLowerCase();
-  const safeClass = normalized.replace(/[^a-z0-9-]/g, '') || 'pending';
-  const labels = {
-    pending: 'Chờ xác nhận',
-    completed: 'Hoàn thành',
-    rejected: 'Bị từ chối',
-    cancelled: 'Đã hủy',
-  };
-
-  return `<span class="badge badge-${safeClass}">${labels[normalized] || escapeHtml(status || 'Không rõ')}</span>`;
+  return StatusBadge(status, { labels: { pending: 'Chờ xác nhận', rejected: 'Bị từ chối' } });
 }
 
 function formatDateTime(value) {
