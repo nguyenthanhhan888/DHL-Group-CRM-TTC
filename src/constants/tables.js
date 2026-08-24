@@ -1,8 +1,8 @@
 export const LOG_COLUMNS = [
-  'Thời gian',
-  'Hành động',
-  'Module',
   'Người thực hiện',
-  'Lý do',
+  'Hoạt động',
+  'Đối tượng',
+  'Thời gian',
+  'Thay đổi chính',
   'Chi tiết',
 ];

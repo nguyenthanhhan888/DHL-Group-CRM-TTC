@@ -1,5 +1,6 @@
 import { EmptyState } from '../components/EmptyState.js';
 import { PageHeader } from '../components/PageHeader.js';
+import { StatusBadge } from '../components/StatusBadge.js';
 import { PaymentService } from '../services/PaymentService.js';
 import { formatCurrency } from '../utils/currency.js';
 import { formatDateTime } from '../utils/date.js';
@@ -10,7 +11,7 @@ export function PaymentDetailPage() {
     <div id="payment-detail-header"></div>
     <div id="payment-detail-content">
         <section class="dash-card">
-            ${EmptyState({ title: 'Đang tải thanh toán', message: 'Đang đọc dữ liệu từ Supabase.' })}
+            ${EmptyState({ title: 'Đang tải thanh toán', message: 'Vui lòng chờ trong giây lát.' })}
         </section>
     </div>
   `;
@@ -43,7 +44,6 @@ function renderDetails(payment) {
 
   header.innerHTML = PageHeader({
     title: `Chi tiết thanh toán #${payment.id}`,
-    description: 'Thông tin chi tiết về một giao dịch trong hệ thống.',
     actions: '<a class="btn-secondary link-button" href="#/payments">Quay lại danh sách</a>',
   });
 
@@ -131,13 +131,5 @@ function kioskLink(kiosk) {
 }
 
 function renderPaymentStatusBadge(status) {
-  const normalized = String(status || 'pending').toLowerCase();
-  const safeClass = normalized.replace(/[^a-z0-9-]/g, '') || 'pending';
-  const labels = {
-    pending: 'Chờ xác nhận',
-    completed: 'Hoàn thành',
-    rejected: 'Bị từ chối',
-    cancelled: 'Đã hủy',
-  };
-  return `<span class="badge badge-${safeClass}">${labels[normalized] || escapeHtml(status || 'Không rõ')}</span>`;
+  return StatusBadge(status, { labels: { pending: 'Chờ xác nhận', rejected: 'Bị từ chối' } });
 }

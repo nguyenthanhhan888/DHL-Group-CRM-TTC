@@ -62,6 +62,7 @@ export function bindPublicLayout(root) {
     document.documentElement.dataset.theme = next;
     document.documentElement.style.colorScheme = next;
     localStorage.setItem('dhlThemePreference', next);
+    window.dispatchEvent(new CustomEvent('dhl:themechange', { detail: { theme: next } }));
     updateThemeButton(themeButton);
   });
 }

@@ -1,6 +1,9 @@
 import { EmptyState } from '../components/EmptyState.js';
 import { openCustomerForm } from '../components/CustomerForm.js';
 import { PageHeader } from '../components/PageHeader.js';
+import { StatusBadge } from '../components/StatusBadge.js';
+import { CompactAction } from '../components/CompactAction.js';
+import { bindPagination, Pagination, updatePagination } from '../components/Pagination.js';
 import { getExpiryWarningDays } from '../config/organization.js';
 import { CustomerService } from '../services/CustomerService.js';
 import { debounce } from '../utils/dom.js';
@@ -33,7 +36,6 @@ export function CustomersPage() {
   return `
     ${PageHeader({
       title: 'Khách hàng',
-      description: 'Danh sách khách hàng đọc trực tiếp từ bảng customers.',
       actions: '<button class="btn-primary" id="add-customer-button" type="button">+ Thêm khách hàng</button>',
     })}
     <div class="toolbar">
@@ -48,7 +50,10 @@ export function CustomersPage() {
       <select id="customer-status-filter" class="filter-select" aria-label="Lọc trạng thái">
         <option value="">Tất cả trạng thái</option>
         <option value="active">Hoạt động</option>
+        <option value="warning">Sắp hết hạn</option>
+        <option value="expired">Hết hạn</option>
         <option value="pending">Chờ duyệt</option>
+        <option value="suspended">Tạm ngưng</option>
         <option value="inactive">Không hoạt động</option>
       </select>
       <select id="customer-kiosk-state-filter" class="filter-select" aria-label="Lọc tình trạng kiosk">
@@ -63,26 +68,21 @@ export function CustomersPage() {
           <tr>${CUSTOMER_COLUMNS.map(renderHeaderCell).join('')}</tr>
         </thead>
         <tbody id="customers-table-body">
-          ${renderTableState('Đang tải khách hàng', 'Đang đọc dữ liệu từ Supabase.')}
+          ${renderTableState('Đang tải khách hàng', 'Vui lòng chờ trong giây lát.')}
         </tbody>
       </table>
     </div>
-    <div class="pagination-bar">
-      <div id="customers-page-summary" class="pagination-summary">—</div>
-      <div class="pagination-controls">
-        <select id="customers-page-size" class="filter-select compact" aria-label="Số dòng mỗi trang">
-          ${PAGE_SIZE_OPTIONS.map((size) => `<option value="${size}" ${size === state.pageSize ? 'selected' : ''}>${size} / trang</option>`).join('')}
-        </select>
-        <button id="customers-prev-page" class="btn-secondary" type="button">Trước</button>
-        <button id="customers-next-page" class="btn-secondary" type="button">Sau</button>
-      </div>
-    </div>
+    ${Pagination({ id: 'customers', page: state.page, pageSize: state.pageSize, total: state.total, pageSizeOptions: PAGE_SIZE_OPTIONS, noun: 'khách hàng' })}
   `;
 }
 
 CustomersPage.afterRender = function afterRenderCustomers() {
   syncCustomerControls();
   bindCustomerEvents();
+  bindPagination('customers', {
+    onPage: (page) => { state.page = page; loadCustomers(); },
+    onPageSize: (pageSize) => { state.pageSize = pageSize; state.page = 1; loadCustomers(); },
+  });
   loadCustomers();
 };
 
@@ -132,23 +132,6 @@ function bindCustomerEvents() {
     loadCustomers();
   });
 
-  pageSizeSelect?.addEventListener('change', (event) => {
-    state.pageSize = Number(event.target.value);
-    state.page = 1;
-    loadCustomers();
-  });
-
-  document.getElementById('customers-prev-page')?.addEventListener('click', () => {
-    if (state.page <= 1) return;
-    state.page -= 1;
-    loadCustomers();
-  });
-
-  document.getElementById('customers-next-page')?.addEventListener('click', () => {
-    if (state.page >= totalPages()) return;
-    state.page += 1;
-    loadCustomers();
-  });
 
   document.querySelectorAll('[data-sort-column]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -227,8 +210,8 @@ function renderCustomers(customers) {
       <td>${renderStatusBadge(customer.status)}</td>
       <td>
         <div class="inline-actions">
-          <a class="table-link" href="#/customer-detail?id=${encodeURIComponent(customer.id)}">Xem</a>
-          <button class="table-action-button" type="button" data-customer-edit="${escapeHtml(customer.id)}">Sửa</button>
+          ${CompactAction({ label: 'Xem', icon: 'view', href: `#/customer-detail?id=${encodeURIComponent(customer.id)}` })}
+          ${CompactAction({ label: 'Sửa', icon: 'edit', tone: 'secondary', attrs: `data-customer-edit="${escapeHtml(customer.id)}"` })}
         </div>
       </td>
     </tr>
@@ -236,19 +219,7 @@ function renderCustomers(customers) {
 }
 
 function renderPagination() {
-  const summary = document.getElementById('customers-page-summary');
-  const prev = document.getElementById('customers-prev-page');
-  const next = document.getElementById('customers-next-page');
-  const pages = totalPages();
-
-  if (summary) {
-    summary.textContent = state.total
-      ? `Trang ${state.page} / ${pages} · ${state.total} khách hàng`
-      : '0 khách hàng';
-  }
-
-  if (prev) prev.disabled = state.page <= 1;
-  if (next) next.disabled = state.page >= pages;
+  updatePagination({ id: 'customers', page: state.page, pageSize: state.pageSize, total: state.total, pageSizeOptions: PAGE_SIZE_OPTIONS, noun: 'khách hàng' });
 }
 
 function renderSortState() {
@@ -273,7 +244,7 @@ function renderHeaderCell(column) {
 function setLoadingState() {
   const body = document.getElementById('customers-table-body');
   if (body) {
-    body.innerHTML = renderTableState('Đang tải khách hàng', 'Đang đọc dữ liệu từ Supabase.');
+    body.innerHTML = renderTableState('Đang tải khách hàng', 'Vui lòng chờ trong giây lát.');
   }
 }
 
@@ -283,7 +254,7 @@ function renderError(error) {
   if (body) {
     body.innerHTML = renderTableState(
       'Không thể tải khách hàng',
-      error?.message || 'Supabase trả về lỗi khi đọc bảng customers.',
+      error?.message || 'Không thể tải danh sách khách hàng. Vui lòng thử lại.',
     );
   }
   renderPagination();
@@ -300,14 +271,7 @@ function renderTableState(title, message) {
 }
 
 function renderStatusBadge(status) {
-  const normalized = String(status || 'inactive').toLowerCase();
-  const safeClass = normalized.replace(/[^a-z0-9-]/g, '') || 'inactive';
-  const labels = {
-    active: 'Hoạt động',
-    pending: 'Chờ duyệt',
-    inactive: 'Không hoạt động',
-  };
-  return `<span class="badge badge-${safeClass}">${labels[normalized] || escapeHtml(status || 'Không rõ')}</span>`;
+  return StatusBadge(status);
 }
 
 function totalPages() {

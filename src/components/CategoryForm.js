@@ -35,7 +35,7 @@ export function openCategoryForm({ category = null, onSaved } = {}) {
       Toast.show(isEdit ? 'Đã cập nhật danh mục.' : 'Đã thêm danh mục.');
       await onSaved?.(result.data);
     } catch (error) {
-      showFormError(error?.message || 'Không thể lưu danh mục vào Supabase.');
+      showFormError(error?.message || 'Không thể lưu danh mục. Vui lòng thử lại.');
     } finally {
       setSaving(saveButton, false);
     }

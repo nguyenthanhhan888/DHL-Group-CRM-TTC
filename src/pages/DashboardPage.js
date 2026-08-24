@@ -14,13 +14,12 @@ export function DashboardPage() {
   return `
     ${PageHeader({
       title: 'Tổng quan',
-      description: 'Tổng quan dữ liệu CRM từ Supabase.',
     })}
     ${ConnectionNotice()}
     <div class="stats-grid">
       ${StatCard({ tone: 'blue', icon: renderIcon('users'), value: '—', label: 'Tổng khách hàng', statId: 'stat-total-customers' })}
       ${StatCard({ tone: 'purple', icon: renderIcon('kiosk'), value: '—', label: 'Tổng Kiosk', statId: 'stat-total-kiosks' })}
-      ${StatCard({ tone: 'orange', icon: renderIcon('check-circle'), value: '—', label: 'Kiosk hoạt động', statId: 'stat-active-kiosks' })}
+      ${StatCard({ tone: 'green', icon: renderIcon('check-circle'), value: '—', label: 'Kiosk hoạt động', statId: 'stat-active-kiosks' })}
       ${StatCard({ tone: 'orange', icon: renderIcon('clock'), value: '—', label: 'Kiosk chờ duyệt', statId: 'stat-pending-kiosks' })}
       ${StatCard({ tone: 'red', icon: renderIcon('x-circle'), value: '—', label: 'Kiosk hết hạn', statId: 'stat-expired-kiosks' })}
       ${StatCard({ tone: 'orange', icon: renderIcon('warning'), value: '—', label: 'Kiosk sắp hết hạn', statId: 'stat-expiring-soon' })}
@@ -41,13 +40,13 @@ export function DashboardPage() {
       <section class="dash-card">
         <div class="dash-card-header"><h3>Kiosk sắp hết hạn</h3></div>
         <div id="expiring-list" class="expiring-list">
-          ${EmptyState({ title: 'Đang tải dữ liệu', message: 'Đang đọc danh sách kiosk sắp hết hạn từ Supabase.' })}
+          ${EmptyState({ title: 'Đang tải dữ liệu', message: 'Đang tải danh sách Kiosk sắp hết hạn.' })}
         </div>
       </section>
       <section class="dash-card">
         <div class="dash-card-header"><h3>Đăng ký gần đây</h3></div>
         <div id="recent-list" class="recent-list">
-          ${EmptyState({ title: 'Đang tải dữ liệu', message: 'Đang đọc đăng ký gần đây từ Supabase.' })}
+          ${EmptyState({ title: 'Đang tải dữ liệu', message: 'Đang tải các đăng ký gần đây.' })}
         </div>
       </section>
       <section class="dash-card">

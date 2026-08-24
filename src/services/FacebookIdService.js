@@ -1,10 +1,24 @@
 export const FacebookIdService = {
   async resolve(facebookUrl) {
-    const response = await fetch('/api/facebook-id', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ facebook_url: String(facebookUrl || '').trim() }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    let response;
+    try {
+      response = await fetch('/api/facebook-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ facebook_url: String(facebookUrl || '').trim() }),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      const friendly = new Error(error?.name === 'AbortError'
+        ? 'Hết thời gian lấy thông tin Facebook. Vui lòng thử lại.'
+        : 'Không thể kết nối để lấy thông tin Facebook. Vui lòng kiểm tra mạng và thử lại.');
+      friendly.code = error?.name === 'AbortError' ? 'UPSTREAM_TIMEOUT' : 'NETWORK_ERROR';
+      throw friendly;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     let data;
     try {

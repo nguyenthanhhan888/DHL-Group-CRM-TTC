@@ -6,7 +6,7 @@ export const PUBLIC_BRAND = Object.freeze({
   communityName: 'Diễn Châu - À Đây Rồi',
   shortName: 'DHL',
   assets: Object.freeze({
-    logo: 'logo/dhl-group-logo.jpg',
+    logo: 'logo/dhl-group-transparent.png',
     cover: 'images/cover.PNG',
     avatar: 'images/avatar-1.PNG',
   }),

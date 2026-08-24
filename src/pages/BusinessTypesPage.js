@@ -1,6 +1,9 @@
 import { EmptyState } from '../components/EmptyState.js';
 import { openBusinessTypeForm } from '../components/BusinessTypeForm.js';
 import { PageHeader } from '../components/PageHeader.js';
+import { StatusBadge } from '../components/StatusBadge.js';
+import { CompactAction } from '../components/CompactAction.js';
+import { bindPagination, Pagination, updatePagination } from '../components/Pagination.js';
 import { Toast } from '../components/Toast.js';
 import { Toolbar } from '../components/Toolbar.js';
 import { BusinessTypeService } from '../services/BusinessTypeService.js';
@@ -34,7 +37,7 @@ export function BusinessTypesPage() {
   return `
     ${PageHeader({
       title: 'Loại hình kinh doanh',
-      description: 'Giá theo tháng lấy từ business_types và được lưu lại trên payment tại thời điểm thanh toán.',
+      description: 'Thiết lập mức giá theo tháng cho từng loại hình.',
       actions: '<button class="btn-primary" id="add-business-type-button" type="button">+ Thêm loại hình</button>',
     })}
     ${Toolbar({
@@ -60,26 +63,21 @@ export function BusinessTypesPage() {
           <tr>${BUSINESS_TYPE_COLUMNS.map(renderHeaderCell).join('')}</tr>
         </thead>
         <tbody id="business-types-table-body">
-          ${renderTableState('Đang tải loại hình kinh doanh', 'Đang đọc dữ liệu từ Supabase.')}
+          ${renderTableState('Đang tải loại hình kinh doanh', 'Vui lòng chờ trong giây lát.')}
         </tbody>
       </table>
     </div>
-    <div class="pagination-bar">
-      <div id="business-types-page-summary" class="pagination-summary">—</div>
-      <div class="pagination-controls">
-        <select id="business-types-page-size" class="filter-select compact" aria-label="Số dòng mỗi trang">
-          ${PAGE_SIZE_OPTIONS.map((size) => `<option value="${size}" ${size === state.pageSize ? 'selected' : ''}>${size} / trang</option>`).join('')}
-        </select>
-        <button id="business-types-prev-page" class="btn-secondary" type="button">Trước</button>
-        <button id="business-types-next-page" class="btn-secondary" type="button">Sau</button>
-      </div>
-    </div>
+    ${Pagination({ id: 'business-types', page: state.page, pageSize: state.pageSize, total: state.total, pageSizeOptions: PAGE_SIZE_OPTIONS, noun: 'loại hình' })}
   `;
 }
 
 BusinessTypesPage.afterRender = function afterRenderBusinessTypes() {
   syncBusinessTypeControls();
   bindBusinessTypeEvents();
+  bindPagination('business-types', {
+    onPage: (page) => { state.page = page; loadBusinessTypes(); },
+    onPageSize: (pageSize) => { state.pageSize = pageSize; state.page = 1; loadBusinessTypes(); },
+  });
   loadBusinessTypes();
 };
 
@@ -120,23 +118,6 @@ function bindBusinessTypeEvents() {
     loadBusinessTypes();
   });
 
-  pageSizeSelect?.addEventListener('change', (event) => {
-    state.pageSize = Number(event.target.value);
-    state.page = 1;
-    loadBusinessTypes();
-  });
-
-  document.getElementById('business-types-prev-page')?.addEventListener('click', () => {
-    if (state.page <= 1) return;
-    state.page -= 1;
-    loadBusinessTypes();
-  });
-
-  document.getElementById('business-types-next-page')?.addEventListener('click', () => {
-    if (state.page >= totalPages()) return;
-    state.page += 1;
-    loadBusinessTypes();
-  });
 
   document.querySelectorAll('[data-business-type-sort-column]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -219,8 +200,8 @@ function renderBusinessTypes(businessTypes) {
       <td>${escapeHtml(businessType.description || '—')}</td>
       <td>
         <div class="inline-actions">
-          <button class="table-action-button" type="button" data-business-type-edit="${escapeHtml(businessType.id)}">Sửa</button>
-          <button class="table-action-button" type="button" data-business-type-toggle="${escapeHtml(businessType.id)}">${businessType.is_active ? 'Ngưng' : 'Kích hoạt'}</button>
+          ${CompactAction({ label: 'Sửa', icon: 'edit', tone: 'secondary', attrs: `data-business-type-edit="${escapeHtml(businessType.id)}"` })}
+          ${CompactAction({ label: businessType.is_active ? 'Ngừng' : 'Kích hoạt', icon: businessType.is_active ? 'pause' : 'check-circle', tone: businessType.is_active ? 'warning' : 'positive', attrs: `data-business-type-toggle="${escapeHtml(businessType.id)}"` })}
         </div>
       </td>
     </tr>
@@ -253,19 +234,7 @@ function categoryName(businessType) {
 }
 
 function renderPagination() {
-  const summary = document.getElementById('business-types-page-summary');
-  const prev = document.getElementById('business-types-prev-page');
-  const next = document.getElementById('business-types-next-page');
-  const pages = totalPages();
-
-  if (summary) {
-    summary.textContent = state.total
-      ? `Trang ${state.page} / ${pages} · ${state.total} loại hình`
-      : '0 loại hình';
-  }
-
-  if (prev) prev.disabled = state.page <= 1;
-  if (next) next.disabled = state.page >= pages;
+  updatePagination({ id: 'business-types', page: state.page, pageSize: state.pageSize, total: state.total, pageSizeOptions: PAGE_SIZE_OPTIONS, noun: 'loại hình' });
 }
 
 function renderSortState() {
@@ -290,7 +259,7 @@ function renderHeaderCell(column) {
 function setLoadingState() {
   const body = document.getElementById('business-types-table-body');
   if (body) {
-    body.innerHTML = renderTableState('Đang tải loại hình kinh doanh', 'Đang đọc dữ liệu từ Supabase.');
+    body.innerHTML = renderTableState('Đang tải loại hình kinh doanh', 'Vui lòng chờ trong giây lát.');
   }
 }
 
@@ -301,7 +270,7 @@ function renderError(error) {
   if (body) {
     body.innerHTML = renderTableState(
       'Không thể tải loại hình kinh doanh',
-      error?.message || 'Supabase trả về lỗi khi đọc bảng business_types.',
+      error?.message || 'Không thể tải loại hình kinh doanh. Vui lòng thử lại.',
     );
   }
 
@@ -319,9 +288,7 @@ function renderTableState(title, message) {
 }
 
 function renderStatusBadge(isActive) {
-  return isActive
-    ? '<span class="badge badge-active">Hoạt động</span>'
-    : '<span class="badge badge-inactive">Không hoạt động</span>';
+  return StatusBadge(isActive ? 'active' : 'inactive');
 }
 
 function setButtonBusy(button, isBusy, label) {

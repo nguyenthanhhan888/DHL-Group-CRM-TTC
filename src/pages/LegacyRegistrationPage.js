@@ -31,7 +31,7 @@ export function LegacyRegistrationPage() {
       description: 'Bổ sung thông tin Kiosk đã đăng ký trước đây nhưng hiện chưa có đầy đủ dữ liệu trên hệ thống.',
     })}
     <section class="registration-card legacy-registration-card">
-      <div class="legacy-scope-notice"><p>Bổ sung thông tin Kiosk đã đăng ký trước đây nhưng hiện chưa có đầy đủ dữ liệu trên hệ thống.</p></div>
+      <div class="legacy-scope-notice"><p>Vui lòng điền thông tin Kiosk và gửi bill thanh toán trước đây để Ban quản trị kiểm tra và kích hoạt dữ liệu.</p></div>
       <form id="legacy-registration-form" novalidate>
         <div id="legacy-registration-error" class="form-error hidden" role="alert"></div>
         <div id="legacy-registration-warning" class="legacy-warning hidden" role="status"></div>
@@ -62,7 +62,7 @@ export function LegacyRegistrationPage() {
               <p id="legacy-zalo-unavailable" class="muted-text hidden">Thông tin Zalo hỗ trợ đang được cập nhật.</p>
             </div>
             <div class="legacy-zalo-actions">
-              <a id="legacy-zalo-button" class="legacy-zalo-button" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">💬 Gửi bill qua Zalo</a>
+              <a id="legacy-zalo-button" class="legacy-zalo-button" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">Gửi bill qua Zalo</a>
               <button id="legacy-copy-zalo" class="btn-secondary" type="button" disabled>Sao chép số Zalo</button>
             </div>
           </section>
@@ -145,14 +145,16 @@ function renderFlow() {
 function renderSingleCustomer() {
   return `
     <div class="form-section-title">Thông tin khách hàng</div>
-    ${field('Tên Facebook', 'legacy-customer-name', { required: true, autocomplete: 'name' })}
     ${FacebookIdResolverFields({
       urlId: 'legacy-customer-link',
       idId: 'legacy-customer-id',
       requiredUrl: true,
       requiredId: true,
       manualFallback: 'always',
+      autoResolve: true,
+      nameTarget: '#legacy-customer-name',
     })}
+    ${field('Tên Facebook', 'legacy-customer-name', { required: true, autocomplete: 'name' })}
     ${field('Số điện thoại', 'legacy-customer-phone', { type: 'tel', required: true, inputmode: 'tel', autocomplete: 'tel' })}
     <label class="checkbox-field legacy-copy-toggle">
       <input id="legacy-copy-customer" type="checkbox" checked />
@@ -164,17 +166,19 @@ function renderSingleCustomer() {
 function renderMultipleCustomer() {
   return `
     <div class="form-section-title">Thông tin khách hàng / Người liên hệ</div>
-    <div class="form-row">
-      ${field('Tên Facebook chính / Người liên hệ', 'legacy-customer-name', { required: true, autocomplete: 'name' })}
-      ${field('Số điện thoại', 'legacy-customer-phone', { type: 'tel', required: true, inputmode: 'tel', autocomplete: 'tel' })}
-    </div>
     ${FacebookIdResolverFields({
       urlId: 'legacy-customer-link',
       idId: 'legacy-customer-id',
       requiredUrl: true,
       requiredId: true,
       manualFallback: 'always',
+      autoResolve: true,
+      nameTarget: '#legacy-customer-name',
     })}
+    <div class="form-row">
+      ${field('Tên Facebook chính / Người liên hệ', 'legacy-customer-name', { required: true, autocomplete: 'name' })}
+      ${field('Số điện thoại', 'legacy-customer-phone', { type: 'tel', required: true, inputmode: 'tel', autocomplete: 'tel' })}
+    </div>
   `;
 }
 
@@ -188,15 +192,17 @@ function renderKioskCard({ copyCustomer = false } = {}) {
         ${state.mode === 'multiple' ? '<button class="btn-secondary" type="button" data-remove-kiosk>Xóa kiosk này</button>' : ''}
       </div>
       <div data-kiosk-facebook-fields class="${copyCustomer ? 'hidden' : ''}">
-        ${nestedField('Tên Facebook', 'name', { required: !copyCustomer })}
         ${FacebookIdResolverFields({
           urlAttributes: 'data-kiosk-field="link"',
           idAttributes: 'data-kiosk-field="facebook-id"',
           requiredUrl: !copyCustomer,
           requiredId: !copyCustomer,
           manualFallback: 'always',
+          autoResolve: true,
+          nameTarget: '[data-kiosk-field="name"]',
           prefix: `legacy-kiosk-${kioskId}`,
         })}
+        ${nestedField('Tên Facebook', 'name', { required: !copyCustomer })}
       </div>
       <div class="form-row">
         <label class="form-group">

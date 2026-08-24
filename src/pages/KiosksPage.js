@@ -1,6 +1,9 @@
 import { EmptyState } from '../components/EmptyState.js';
 import { openKioskEditForm } from '../components/KioskEditForm.js';
 import { PageHeader } from '../components/PageHeader.js';
+import { StatusBadge } from '../components/StatusBadge.js';
+import { CompactAction } from '../components/CompactAction.js';
+import { bindPagination, Pagination, updatePagination } from '../components/Pagination.js';
 import { openRenewKioskForm } from '../components/RenewKioskForm.js';
 import { Toolbar } from '../components/Toolbar.js';
 import { getExpiryWarningDays } from '../config/organization.js';
@@ -19,6 +22,8 @@ function kioskStatusOptions() {
     { value: 'warning', label: `Sắp hết hạn (≤${getExpiryWarningDays()} ngày)` },
     { value: 'expired', label: 'Đã hết hạn' },
     { value: 'pending', label: 'Chờ duyệt' },
+    { value: 'suspended', label: 'Tạm ngưng' },
+    { value: 'inactive', label: 'Không hoạt động' },
   ];
 }
 
@@ -60,24 +65,19 @@ export function KiosksPage() {
       `,
     })}
     <div class="kiosk-grid" id="kiosk-grid">
-      ${EmptyState({ title: 'Đang tải Kiosk', message: 'Đang đọc dữ liệu từ Supabase.' })}
+      ${EmptyState({ title: 'Đang tải Kiosk', message: 'Vui lòng chờ trong giây lát.' })}
     </div>
-    <div class="pagination-bar">
-      <div id="kiosks-page-summary" class="pagination-summary">—</div>
-      <div class="pagination-controls">
-        <select id="kiosks-page-size" class="filter-select compact" aria-label="Số kiosk mỗi trang">
-          ${PAGE_SIZE_OPTIONS.map((size) => `<option value="${size}" ${size === state.pageSize ? 'selected' : ''}>${size} / trang</option>`).join('')}
-        </select>
-        <button id="kiosks-prev-page" class="btn-secondary" type="button">Trước</button>
-        <button id="kiosks-next-page" class="btn-secondary" type="button">Sau</button>
-      </div>
-    </div>
+    ${Pagination({ id: 'kiosks', page: state.page, pageSize: state.pageSize, total: state.total, pageSizeOptions: PAGE_SIZE_OPTIONS, noun: 'Kiosk' })}
   `;
 }
 
 KiosksPage.afterRender = function afterRenderKiosks() {
   syncKioskControls();
   bindKioskEvents();
+  bindPagination('kiosks', {
+    onPage: (page) => { state.page = page; loadKiosks(); },
+    onPageSize: (pageSize) => { state.pageSize = pageSize; state.page = 1; loadKiosks(); },
+  });
   loadBusinessTypeOptions();
   loadKiosks();
 };
@@ -130,23 +130,6 @@ function bindKioskEvents() {
     loadKiosks();
   });
 
-  pageSizeSelect?.addEventListener('change', (event) => {
-    state.pageSize = Number(event.target.value);
-    state.page = 1;
-    loadKiosks();
-  });
-
-  document.getElementById('kiosks-prev-page')?.addEventListener('click', () => {
-    if (state.page <= 1) return;
-    state.page -= 1;
-    loadKiosks();
-  });
-
-  document.getElementById('kiosks-next-page')?.addEventListener('click', () => {
-    if (state.page >= totalPages()) return;
-    state.page += 1;
-    loadKiosks();
-  });
 
   grid?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-kiosk-renew]');
@@ -255,8 +238,8 @@ function renderKioskCard(kiosk) {
       </div>
       <div class="kiosk-card-footer">
         <div class="inline-actions">
-          <a class="table-link" href="#/kiosk-detail?id=${encodeURIComponent(kiosk.id)}">Xem chi tiết</a>
-          <button class="table-action-button" type="button" data-kiosk-renew="${escapeHtml(kiosk.id)}">Gia hạn</button>
+          ${CompactAction({ label: 'Xem', icon: 'view', href: `#/kiosk-detail?id=${encodeURIComponent(kiosk.id)}` })}
+          ${CompactAction({ label: 'Gia hạn', icon: 'refresh', tone: 'positive', attrs: `data-kiosk-renew="${escapeHtml(kiosk.id)}"` })}
         </div>
         <span class="kiosk-id">ID: ${escapeHtml(kiosk.id || '—')}</span>
       </div>
@@ -279,7 +262,7 @@ function setLoadingState() {
   if (grid) {
     grid.innerHTML = EmptyState({
       title: 'Đang tải Kiosk',
-      message: 'Đang đọc dữ liệu từ Supabase.',
+      message: 'Vui lòng chờ trong giây lát.',
     });
   }
 }
@@ -290,41 +273,18 @@ function renderError(error) {
   if (grid) {
     grid.innerHTML = EmptyState({
       title: 'Không thể tải Kiosk',
-      message: escapeHtml(error?.message || 'Supabase trả về lỗi khi đọc bảng kiosks.'),
+      message: escapeHtml(error?.message || 'Không thể tải danh sách Kiosk. Vui lòng thử lại.'),
     });
   }
   renderPagination();
 }
 
 function renderPagination() {
-  const summary = document.getElementById('kiosks-page-summary');
-  const prev = document.getElementById('kiosks-prev-page');
-  const next = document.getElementById('kiosks-next-page');
-  const pages = totalPages();
-
-  if (summary) {
-    summary.textContent = state.total
-      ? `Trang ${state.page} / ${pages} · ${state.total} kiosk`
-      : '0 kiosk';
-  }
-
-  if (prev) prev.disabled = state.page <= 1;
-  if (next) next.disabled = state.page >= pages;
+  updatePagination({ id: 'kiosks', page: state.page, pageSize: state.pageSize, total: state.total, pageSizeOptions: PAGE_SIZE_OPTIONS, noun: 'Kiosk' });
 }
 
 function renderStatusBadge(status) {
-  const normalized = String(status || 'inactive').toLowerCase();
-  const safeClass = normalized.replace(/[^a-z0-9-]/g, '') || 'inactive';
-  const labels = {
-    active: 'Hoạt động',
-    inactive: 'Không hoạt động',
-    expired: 'Đã hết hạn',
-    warning: 'Sắp hết hạn',
-    pending: 'Chờ duyệt',
-    suspended: 'Tạm ngưng',
-  };
-
-  return `<span class="badge badge-${safeClass}">${labels[normalized] || escapeHtml(status || 'Không rõ')}</span>`;
+  return StatusBadge(status);
 }
 
 function totalPages() {

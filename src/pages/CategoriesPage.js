@@ -2,6 +2,9 @@ import { EmptyState } from '../components/EmptyState.js';
 import { openCategoryForm } from '../components/CategoryForm.js';
 import { Modal } from '../components/Modal.js';
 import { PageHeader } from '../components/PageHeader.js';
+import { StatusBadge } from '../components/StatusBadge.js';
+import { CompactAction } from '../components/CompactAction.js';
+import { bindPagination, Pagination, updatePagination } from '../components/Pagination.js';
 import { Toast } from '../components/Toast.js';
 import { Toolbar } from '../components/Toolbar.js';
 import { CategoryService } from '../services/CategoryService.js';
@@ -32,7 +35,6 @@ export function CategoriesPage() {
   return `
     ${PageHeader({
       title: 'Danh mục',
-      description: 'Danh mục dịch vụ đọc trực tiếp từ bảng categories.',
       actions: '<button class="btn-primary" id="add-category-button" type="button">+ Thêm danh mục</button>',
     })}
     ${Toolbar({
@@ -58,26 +60,21 @@ export function CategoriesPage() {
           <tr>${CATEGORY_COLUMNS.map(renderHeaderCell).join('')}</tr>
         </thead>
         <tbody id="categories-table-body">
-          ${renderTableState('Đang tải danh mục', 'Đang đọc dữ liệu từ Supabase.')}
+          ${renderTableState('Đang tải danh mục', 'Vui lòng chờ trong giây lát.')}
         </tbody>
       </table>
     </div>
-    <div class="pagination-bar">
-      <div id="categories-page-summary" class="pagination-summary">—</div>
-      <div class="pagination-controls">
-        <select id="categories-page-size" class="filter-select compact" aria-label="Số dòng mỗi trang">
-          ${PAGE_SIZE_OPTIONS.map((size) => `<option value="${size}" ${size === state.pageSize ? 'selected' : ''}>${size} / trang</option>`).join('')}
-        </select>
-        <button id="categories-prev-page" class="btn-secondary" type="button">Trước</button>
-        <button id="categories-next-page" class="btn-secondary" type="button">Sau</button>
-      </div>
-    </div>
+    ${Pagination({ id: 'categories', page: state.page, pageSize: state.pageSize, total: state.total, pageSizeOptions: PAGE_SIZE_OPTIONS, noun: 'danh mục' })}
   `;
 }
 
 CategoriesPage.afterRender = function afterRenderCategories() {
   syncCategoryControls();
   bindCategoryEvents();
+  bindPagination('categories', {
+    onPage: (page) => { state.page = page; loadCategories(); },
+    onPageSize: (pageSize) => { state.pageSize = pageSize; state.page = 1; loadCategories(); },
+  });
   loadCategories();
 };
 
@@ -118,23 +115,6 @@ function bindCategoryEvents() {
     loadCategories();
   });
 
-  pageSizeSelect?.addEventListener('change', (event) => {
-    state.pageSize = Number(event.target.value);
-    state.page = 1;
-    loadCategories();
-  });
-
-  document.getElementById('categories-prev-page')?.addEventListener('click', () => {
-    if (state.page <= 1) return;
-    state.page -= 1;
-    loadCategories();
-  });
-
-  document.getElementById('categories-next-page')?.addEventListener('click', () => {
-    if (state.page >= totalPages()) return;
-    state.page += 1;
-    loadCategories();
-  });
 
   document.querySelectorAll('[data-category-sort-column]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -218,8 +198,8 @@ function renderCategories(categories) {
       <td>${renderStatusBadge(category.is_active)}</td>
       <td>
         <div class="inline-actions">
-          <button class="table-action-button" type="button" data-category-edit="${escapeHtml(category.id)}">Sửa</button>
-          <button class="table-action-button danger-action" type="button" data-category-delete="${escapeHtml(category.id)}">Xóa</button>
+          ${CompactAction({ label: 'Sửa', icon: 'edit', tone: 'secondary', attrs: `data-category-edit="${escapeHtml(category.id)}"` })}
+          ${CompactAction({ label: 'Xóa', icon: 'trash', tone: 'danger', attrs: `data-category-delete="${escapeHtml(category.id)}"` })}
         </div>
       </td>
     </tr>
@@ -255,7 +235,7 @@ function openDeleteCategoryDialog(category) {
       if (state.items.length === 1 && state.page > 1) state.page -= 1;
       await loadCategories();
     } catch (error) {
-      showDeleteError(error?.message || 'Không thể xóa danh mục trong Supabase.');
+      showDeleteError(error?.message || 'Không thể xóa danh mục. Vui lòng thử lại.');
     } finally {
       setDeleting(deleteButton, false);
     }
@@ -267,19 +247,7 @@ function findCategory(id) {
 }
 
 function renderPagination() {
-  const summary = document.getElementById('categories-page-summary');
-  const prev = document.getElementById('categories-prev-page');
-  const next = document.getElementById('categories-next-page');
-  const pages = totalPages();
-
-  if (summary) {
-    summary.textContent = state.total
-      ? `Trang ${state.page} / ${pages} · ${state.total} danh mục`
-      : '0 danh mục';
-  }
-
-  if (prev) prev.disabled = state.page <= 1;
-  if (next) next.disabled = state.page >= pages;
+  updatePagination({ id: 'categories', page: state.page, pageSize: state.pageSize, total: state.total, pageSizeOptions: PAGE_SIZE_OPTIONS, noun: 'danh mục' });
 }
 
 function renderSortState() {
@@ -304,7 +272,7 @@ function renderHeaderCell(column) {
 function setLoadingState() {
   const body = document.getElementById('categories-table-body');
   if (body) {
-    body.innerHTML = renderTableState('Đang tải danh mục', 'Đang đọc dữ liệu từ Supabase.');
+    body.innerHTML = renderTableState('Đang tải danh mục', 'Vui lòng chờ trong giây lát.');
   }
 }
 
@@ -315,7 +283,7 @@ function renderError(error) {
   if (body) {
     body.innerHTML = renderTableState(
       'Không thể tải danh mục',
-      error?.message || 'Supabase trả về lỗi khi đọc bảng categories.',
+      error?.message || 'Không thể tải danh mục. Vui lòng thử lại.',
     );
   }
 
@@ -333,9 +301,7 @@ function renderTableState(title, message) {
 }
 
 function renderStatusBadge(isActive) {
-  return isActive
-    ? '<span class="badge badge-active">Hoạt động</span>'
-    : '<span class="badge badge-inactive">Không hoạt động</span>';
+  return StatusBadge(isActive ? 'active' : 'inactive');
 }
 
 function showDeleteError(message) {

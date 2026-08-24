@@ -1,7 +1,5 @@
-import { applyPagination, applySort, requireSupabaseClient, runQuery } from './BaseService.js';
+import { requireSupabaseClient, runQuery } from './BaseService.js';
 import { AuditLogService } from './AuditLogService.js';
-import { startOfToday, toDateOnly } from '../utils/date.js';
-import { expiryDateRange } from '../utils/kioskStatus.js';
 
 const CUSTOMER_MUTABLE_FIELDS = [
   'facebook_name',
@@ -23,44 +21,18 @@ export const CustomerService = {
     pagination,
   } = {}) {
     const supabase = requireSupabaseClient();
-    const kioskCustomerMatches = await findCustomerMatchesByKioskState(supabase, kioskState);
-    const kioskCustomerIds = kioskCustomerMatches?.map((match) => match.customerId) || null;
-    let query = supabase
-      .from('customers')
-      .select('*', { count: 'exact' });
-
-    if (searchTerm) {
-      const pattern = `%${searchTerm}%`;
-      query = query.or(`phone.ilike.${pattern},facebook_id.ilike.${pattern},facebook_name.ilike.${pattern}`);
-    }
-
-    if (status) query = query.eq('status', status);
-    if (kioskCustomerIds) {
-      if (!kioskCustomerIds.length) {
-        return { data: [], count: 0 };
-      }
-
-      query = query.in('id', kioskCustomerIds);
-    }
-
-    if (kioskCustomerMatches) {
-      const result = await runQuery(applySort(query, resolveCustomerSort(kioskState, sort)));
-      const customerOrder = new Map(kioskCustomerMatches.map((match, index) => [String(match.customerId), index]));
-      const data = (result.data || [])
-        .slice()
-        .sort((a, b) => {
-          const aOrder = customerOrder.get(String(a.id)) ?? Number.MAX_SAFE_INTEGER;
-          const bOrder = customerOrder.get(String(b.id)) ?? Number.MAX_SAFE_INTEGER;
-          if (aOrder !== bOrder) return aOrder - bOrder;
-          return String(a.facebook_name || '').localeCompare(String(b.facebook_name || ''), 'vi');
-        });
-      return {
-        data: paginateRows(data, pagination),
-        count: data.length,
-      };
-    }
-
-    return runQuery(applyPagination(applySort(query, sort), pagination));
+    const { data, error } = await runQuery(supabase.rpc('get_customer_status_data', {
+      p_search: String(searchTerm || '').trim() || null,
+      p_customer_status: String(status || '').trim().toLowerCase() || null,
+      p_kiosk_status: String(kioskState || '').trim().toLowerCase() || null,
+      p_customer_id: null,
+      p_sort_by: sort?.column || 'created_at',
+      p_sort_direction: sort?.ascending ? 'asc' : 'desc',
+      p_page: positiveInteger(pagination?.page, 1),
+      p_page_size: positiveInteger(pagination?.pageSize, 10),
+    }));
+    if (error) return { data: [], count: 0, error };
+    return { data: Array.isArray(data?.rows) ? data.rows : [], count: Number(data?.totalRows || 0) };
   },
 
   async search({ facebookId = '', phone = '' }) {
@@ -86,6 +58,21 @@ export const CustomerService = {
         .eq('id', id)
         .single(),
     );
+  },
+
+  async getStatusById(id) {
+    const supabase = requireSupabaseClient();
+    const { data } = await runQuery(supabase.rpc('get_customer_status_data', {
+      p_search: null,
+      p_customer_status: null,
+      p_kiosk_status: null,
+      p_customer_id: positiveInteger(id, null),
+      p_sort_by: 'created_at',
+      p_sort_direction: 'desc',
+      p_page: 1,
+      p_page_size: 10,
+    }));
+    return { data: Array.isArray(data?.rows) ? data.rows[0] || null : null };
   },
 
   async getByFacebookId(facebookId) {
@@ -166,57 +153,9 @@ export const CustomerService = {
   },
 };
 
-async function findCustomerMatchesByKioskState(supabase, kioskState) {
-  if (!kioskState) return null;
-
-  const today = startOfToday();
-  const todayDate = toDateOnly(today);
-  let query = supabase
-    .from('kiosks')
-    .select('customer_id,end_date');
-
-  if (kioskState === 'expired') {
-    query = query.or(`status.eq.expired,end_date.lt.${todayDate}`);
-  } else if (kioskState === 'warning') {
-    const warningRange = expiryDateRange({ today });
-    query = query
-      .in('status', ['active', 'warning'])
-      .gte('end_date', warningRange.startDate)
-      .lte('end_date', warningRange.endDate);
-  } else {
-    return null;
-  }
-
-  query = query.order('end_date', { ascending: kioskState !== 'expired' });
-
-  const { data, error } = await query;
-  if (error) throw error;
-
-  const seen = new Set();
-  return (data || []).reduce((matches, kiosk) => {
-    if (!kiosk.customer_id) return matches;
-    const key = String(kiosk.customer_id);
-    if (seen.has(key)) return matches;
-    seen.add(key);
-    matches.push({ customerId: kiosk.customer_id, endDate: kiosk.end_date || null });
-    return matches;
-  }, []);
-}
-
-function resolveCustomerSort(kioskState, sort) {
-  if (kioskState === 'warning' || kioskState === 'expired') return {};
-  return sort;
-}
-
-function paginateRows(rows, pagination = {}) {
-  const page = Number(pagination.page || 1);
-  const pageSize = Number(pagination.pageSize || rows.length);
-  if (!Number.isFinite(page) || !Number.isFinite(pageSize) || page < 1 || pageSize < 1) {
-    return rows;
-  }
-
-  const start = (page - 1) * pageSize;
-  return rows.slice(start, start + pageSize);
+function positiveInteger(value, fallback) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : fallback;
 }
 
 async function findDuplicates(supabase, { phone, name, excludeId = null }) {

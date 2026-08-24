@@ -153,15 +153,17 @@ function renderKioskCard(id) {
         <strong data-kiosk-title>Kiosk</strong>
         <button class="btn-secondary" type="button" data-remove-kiosk>Xóa Kiosk</button>
       </div>
-      ${field('Tên Facebook hiển thị', '', { required: true, data: 'data-kiosk-name' })}
       ${FacebookIdResolverFields({
         urlAttributes: 'data-kiosk-link',
         idAttributes: 'data-kiosk-id',
         requiredUrl: true,
         requiredId: false,
-        manualFallback: 'always',
+        manualFallback: 'on-error',
+        autoResolve: true,
+        nameTarget: '[data-kiosk-name]',
         prefix: `register-kiosk-${id}`,
       })}
+      ${field('Tên Facebook hiển thị', '', { required: true, data: 'data-kiosk-name' })}
       <div class="form-row">
         ${selectField('Danh mục', 'data-kiosk-category', 'Đang tải danh mục...')}
         ${selectField('Loại hình kinh doanh', 'data-kiosk-business-type', 'Chọn danh mục trước', true)}

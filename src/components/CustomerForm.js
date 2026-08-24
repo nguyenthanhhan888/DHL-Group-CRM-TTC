@@ -51,7 +51,7 @@ export function openCustomerForm({ customer = null, onSaved } = {}) {
         await onSaved(result.data);
       }
     } catch (error) {
-      showFormError(error?.message || 'Không thể lưu khách hàng vào Supabase.');
+      showFormError(error?.message || 'Không thể lưu khách hàng. Vui lòng thử lại.');
       setSaving(saveButton, false);
     }
   });

@@ -5,7 +5,14 @@ import { CustomersPage } from '../src/pages/CustomersPage.js';
 import { expiringKiosksEmptyMessage } from '../src/pages/DashboardPage.js';
 import { KiosksPage } from '../src/pages/KiosksPage.js';
 import { publicKioskStatusLabel } from '../src/pages/LookupPage.js';
+import { startOfVietnamToday, toDateOnly } from '../src/utils/date.js';
 import { deriveKioskStatus, expiryDateRange, isExpiringSoon } from '../src/utils/kioskStatus.js';
+
+function dateOnlyFromVietnamToday(offsetDays) {
+  const date = startOfVietnamToday();
+  date.setDate(date.getDate() + offsetDays);
+  return toDateOnly(date);
+}
 
 test('expiry warning days follows organization settings with a safe fallback', () => {
   replaceOrganizationSettings({ warning_days: '45' });
@@ -34,17 +41,7 @@ test('expiry warning labels render from organization settings', () => {
 
 test('kiosk status label is derived from end date before stored status', () => {
   replaceOrganizationSettings({ warning_days: '20' });
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dateOnly = (offsetDays) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() + offsetDays);
-    return [
-      date.getFullYear(),
-      String(date.getMonth() + 1).padStart(2, '0'),
-      String(date.getDate()).padStart(2, '0'),
-    ].join('-');
-  };
+  const dateOnly = dateOnlyFromVietnamToday;
 
   assert.equal(deriveKioskStatus({ status: 'warning', end_date: dateOnly(-1) }), 'expired');
   assert.equal(deriveKioskStatus({ status: 'active', end_date: dateOnly(5) }), 'warning');
@@ -57,17 +54,8 @@ test('kiosk status label is derived from end date before stored status', () => {
 for (const warningDays of [5, 10]) {
   test(`inclusive expiry contract uses every boundary for warning_days = ${warningDays}`, () => {
     replaceOrganizationSettings({ warning_days: String(warningDays) });
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dateOnly = (offsetDays) => {
-      const date = new Date(today);
-      date.setDate(today.getDate() + offsetDays);
-      return [
-        date.getFullYear(),
-        String(date.getMonth() + 1).padStart(2, '0'),
-        String(date.getDate()).padStart(2, '0'),
-      ].join('-');
-    };
+    const today = startOfVietnamToday();
+    const dateOnly = dateOnlyFromVietnamToday;
     const kiosk = (offsetDays) => ({ status: 'active', end_date: dateOnly(offsetDays) });
 
     assert.equal(deriveKioskStatus(kiosk(warningDays + 1)), 'active');

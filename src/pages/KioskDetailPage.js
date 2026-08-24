@@ -1,10 +1,12 @@
 import { EmptyState } from '../components/EmptyState.js';
 import { PageHeader } from '../components/PageHeader.js';
+import { StatusBadge } from '../components/StatusBadge.js';
 import { openRenewKioskForm } from '../components/RenewKioskForm.js';
 import { openKioskEditForm } from '../components/KioskEditForm.js';
 import { Toast } from '../components/Toast.js';
 import { FACEBOOK_GROUP_MEMBER_BASE_URL, FACEBOOK_PROFILE_BASE_URL } from '../constants/facebook.js';
 import { KioskService } from '../services/KioskService.js';
+import { CustomerService } from '../services/CustomerService.js';
 import { PaymentService } from '../services/PaymentService.js';
 import { formatCurrency } from '../utils/currency.js';
 import { formatDate } from '../utils/date.js';
@@ -23,7 +25,7 @@ export function KioskDetailPage() {
     <div id="kiosk-detail-header"></div>
     <div id="kiosk-detail-content">
       <section class="dash-card">
-        ${EmptyState({ title: 'Đang tải Kiosk', message: 'Đang đọc dữ liệu từ Supabase.' })}
+        ${EmptyState({ title: 'Đang tải Kiosk', message: 'Vui lòng chờ trong giây lát.' })}
       </section>
     </div>
   `;
@@ -36,7 +38,7 @@ KioskDetailPage.afterRender = async function afterRenderKioskDetail({ params }) 
     return;
   }
 
-  renderKioskDetailState('Đang tải Kiosk', 'Đang đọc dữ liệu từ Supabase.');
+  renderKioskDetailState('Đang tải Kiosk', 'Vui lòng chờ trong giây lát.');
 
   try {
     const [{ data: kiosk }, { data: payments }] = await Promise.all([
@@ -44,16 +46,19 @@ KioskDetailPage.afterRender = async function afterRenderKioskDetail({ params }) 
       PaymentService.listByKiosk(id),
     ]);
 
-    renderKioskDetail(kiosk, payments || []);
+    const { data: customerStatus } = kiosk?.customer_id
+      ? await CustomerService.getStatusById(kiosk.customer_id)
+      : { data: null };
+    renderKioskDetail(kiosk, payments || [], customerStatus);
   } catch (error) {
     renderKioskDetailState(
       'Không thể tải Kiosk',
-      error?.message || 'Supabase trả về lỗi khi đọc thông tin kiosk.',
+      error?.message || 'Không thể tải thông tin Kiosk. Vui lòng thử lại.',
     );
   }
 };
 
-function renderKioskDetail(kiosk, payments) {
+function renderKioskDetail(kiosk, payments, customerStatus = null) {
   currentKiosk = kiosk;
   detailState.payments = payments || [];
   detailState.paymentSearchTerm = '';
@@ -61,10 +66,9 @@ function renderKioskDetail(kiosk, payments) {
   const header = document.getElementById('kiosk-detail-header');
   if (!content || !header) return;
 
-  const customer = kiosk.customers || {};
+  const customer = { ...(kiosk.customers || {}), ...(customerStatus || {}) };
   header.innerHTML = PageHeader({
     title: `Kiosk: ${kiosk.facebook_name}`,
-    description: 'Thông tin chi tiết kiosk, khách hàng và lịch sử thanh toán.',
     actions: `
       <button class="btn-secondary" id="edit-kiosk-detail-button" type="button">Sửa kiosk</button>
       <button class="btn-primary" id="renew-kiosk-detail-button" type="button">Gia hạn</button>
@@ -311,6 +315,10 @@ function renderKioskStatusBadge(status) {
 function renderCustomerStatusBadge(status) {
   return renderStatusBadge(status, {
     active: 'Hoạt động',
+    warning: 'Sắp hết hạn',
+    expired: 'Hết hạn',
+    pending: 'Chờ duyệt',
+    suspended: 'Tạm ngưng',
     inactive: 'Không hoạt động',
     potential: 'Tiềm năng',
   });
@@ -326,9 +334,7 @@ function renderPaymentStatusBadge(status) {
 }
 
 function renderStatusBadge(status, labels) {
-  const normalized = String(status || 'inactive').toLowerCase();
-  const safeClass = normalized.replace(/[^a-z0-9-]/g, '') || 'inactive';
-  return `<span class="badge badge-${safeClass}">${labels[normalized] || escapeHtml(status || 'Không rõ')}</span>`;
+  return StatusBadge(status, { labels });
 }
 
 function renderKioskDetailState(title, message) {
@@ -336,7 +342,6 @@ function renderKioskDetailState(title, message) {
   if (header) {
     header.innerHTML = PageHeader({
       title: 'Chi tiết Kiosk',
-      description: 'Thông tin chi tiết kiosk, khách hàng và lịch sử thanh toán.',
       actions: '<a class="btn-secondary link-button" href="#/kiosks">Quay lại</a>',
     });
   }

@@ -1,5 +1,6 @@
 import { EmptyState } from '../components/EmptyState.js';
 import { PageHeader } from '../components/PageHeader.js';
+import { StatusBadge } from '../components/StatusBadge.js';
 import { RegistrationRequestService } from '../services/RegistrationRequestService.js';
 import { Toast } from '../components/Toast.js';
 import { formatCurrency } from '../utils/currency.js';
@@ -76,7 +77,7 @@ async function loadRequests() {
     state.rows = data || [];
     renderRows(state.rows);
   } catch (error) {
-    body.innerHTML = stateRow('Không tải được đơn đăng ký', error?.message || 'Supabase trả về lỗi.');
+    body.innerHTML = stateRow('Không tải được đơn đăng ký', error?.message || 'Vui lòng thử lại sau.');
   }
 }
 
@@ -208,7 +209,7 @@ function formatDateOnly(value) {
 
 function statusBadge(status, reason) {
   const labels = { pending: 'Chờ duyệt', approved: 'Đã duyệt', rejected: 'Từ chối' };
-  const badge = `<span class="badge badge-${escapeHtml(status || 'pending')}">${labels[status] || 'Không rõ'}</span>`;
+  const badge = StatusBadge(status || 'pending', { labels });
   return reason ? `${badge}<br><span class="muted-text">${escapeHtml(reason)}</span>` : badge;
 }
 
@@ -238,7 +239,7 @@ function normalizeSearch(value) {
 }
 
 function loadingRow() {
-  return stateRow('Đang tải đơn đăng ký', 'Đang đọc dữ liệu từ Supabase.');
+  return stateRow('Đang tải đơn đăng ký', 'Vui lòng chờ trong giây lát.');
 }
 
 function stateRow(title, message) {

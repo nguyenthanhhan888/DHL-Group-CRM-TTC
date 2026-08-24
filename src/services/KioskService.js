@@ -1,9 +1,12 @@
-import { applyPagination, applySort, requireSupabaseClient, runQuery } from './BaseService.js';
+import { requireSupabaseClient, runQuery } from './BaseService.js';
 import { AuditLogService } from './AuditLogService.js';
-import { startOfToday, toDateOnly } from '../utils/date.js';
-import { expiryDateRange } from '../utils/kioskStatus.js';
 
 const KIOSK_SELECT = '*, customers(id, facebook_name, facebook_id, phone, address, status, total_paid, total_kiosks, note), categories(name), business_types(name, price_per_month)';
+const KIOSK_ADMIN_MUTABLE_FIELDS = [
+  'facebook_name', 'facebook_id', 'facebook_link', 'facebook_group_link',
+  'category_id', 'business_type_id', 'status', 'start_date', 'end_date',
+  'auto_approve', 'note',
+];
 
 export const KioskService = {
   async list({
@@ -14,20 +17,18 @@ export const KioskService = {
     pagination,
   } = {}) {
     const supabase = requireSupabaseClient();
-    const normalizedSearch = normalizeSearchTerm(searchTerm);
-    let query = supabase
-      .from('kiosks')
-      .select(KIOSK_SELECT, { count: 'exact' });
-
-    if (normalizedSearch) {
-      const businessTypeIds = await findBusinessTypeIds(supabase, normalizedSearch);
-      query = query.or(buildSearchFilter(normalizedSearch, businessTypeIds));
-    }
-
-    query = applyStatusFilter(query, status);
-    if (businessTypeId) query = query.eq('business_type_id', businessTypeId);
-
-    return runQuery(applyPagination(applySort(query, resolveKioskSort(status, sort)), pagination));
+    const resolvedSort = resolveKioskSort(status, sort);
+    const { data, error } = await runQuery(supabase.rpc('get_kiosk_status_data', {
+      p_search: normalizeSearchTerm(searchTerm) || null,
+      p_status: String(status || '').trim().toLowerCase() || null,
+      p_business_type_id: positiveIntegerOrNull(businessTypeId),
+      p_sort_by: resolvedSort.column,
+      p_sort_direction: resolvedSort.ascending ? 'asc' : 'desc',
+      p_page: positiveInteger(pagination?.page, 1),
+      p_page_size: positiveInteger(pagination?.pageSize, 12),
+    }));
+    if (error) return { data: [], count: 0, error };
+    return { data: Array.isArray(data?.rows) ? data.rows : [], count: Number(data?.totalRows || 0) };
   },
 
   async getById(id) {
@@ -81,8 +82,7 @@ export const KioskService = {
 
     const hasCustomerChange = Object.prototype.hasOwnProperty.call(kiosk, 'customer_id')
       && String(kiosk.customer_id) !== String(before.customer_id);
-    const mutablePayload = { ...kiosk };
-    delete mutablePayload.customer_id;
+    const mutablePayload = pickAdminMutableFields(kiosk);
 
     let data = before;
     if (Object.keys(mutablePayload).length) {
@@ -173,54 +173,26 @@ function normalizeSearchTerm(value) {
     .trim();
 }
 
-function applyStatusFilter(query, status) {
-  if (!status) return query;
-
-  const today = startOfToday();
-  const todayDate = toDateOnly(today);
-
-  if (status === 'expired') {
-    return query.or(`status.eq.expired,end_date.lt.${todayDate}`);
-  }
-
-  if (status !== 'warning') return query.eq('status', status);
-
-  const warningRange = expiryDateRange({ today });
-
-  return query
-    .in('status', ['active', 'warning'])
-    .gte('end_date', warningRange.startDate)
-    .lte('end_date', warningRange.endDate);
-}
-
 function resolveKioskSort(status, sort) {
   if (sort?.column) return sort;
   if (status === 'warning') return { column: 'end_date', ascending: true };
   return { column: 'created_at', ascending: false };
 }
 
-async function findBusinessTypeIds(supabase, searchTerm) {
-  const { data, error } = await supabase
-    .from('business_types')
-    .select('id')
-    .ilike('name', `%${searchTerm}%`)
-    .limit(50);
-
-  if (error) throw error;
-  return (data || []).map((item) => item.id).filter(Boolean);
+function positiveInteger(value, fallback) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : fallback;
 }
 
-function buildSearchFilter(searchTerm, businessTypeIds = []) {
-  const pattern = `%${searchTerm}%`;
-  const conditions = [
-    `facebook_id.ilike.${pattern}`,
-    `facebook_name.ilike.${pattern}`,
-    `status.ilike.${pattern}`,
-  ];
+function positiveIntegerOrNull(value) {
+  if (value === '' || value === null || value === undefined) return null;
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
 
-  if (businessTypeIds.length) {
-    conditions.push(`business_type_id.in.(${businessTypeIds.join(',')})`);
-  }
-
-  return conditions.join(',');
+export function pickAdminMutableFields(kiosk = {}) {
+  return KIOSK_ADMIN_MUTABLE_FIELDS.reduce((payload, field) => {
+    if (Object.prototype.hasOwnProperty.call(kiosk, field)) payload[field] = kiosk[field] ?? null;
+    return payload;
+  }, {});
 }

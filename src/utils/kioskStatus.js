@@ -1,5 +1,5 @@
 import { getExpiryWarningDays, normalizeExpiryWarningDays } from '../config/organization.js';
-import { startOfToday, toDateOnly } from './date.js';
+import { startOfVietnamToday, toDateOnly } from './date.js';
 
 const DATE_DRIVEN_STATUSES = new Set(['active', 'warning', 'expired']);
 
@@ -12,7 +12,7 @@ export function deriveKioskStatus(kioskOrStatus, endDateValue = null) {
 
   const endDate = parseDateOnly(source.end_date);
   if (!endDate) return normalized;
-  const today = startOfToday();
+  const today = startOfVietnamToday();
   if (endDate < today) return 'expired';
   if (isExpiringSoon(source, { today })) return 'warning';
   return 'active';
@@ -20,7 +20,7 @@ export function deriveKioskStatus(kioskOrStatus, endDateValue = null) {
 
 export function isExpiringSoon(kiosk, {
   warningDays = getExpiryWarningDays(),
-  today = startOfToday(),
+  today = startOfVietnamToday(),
 } = {}) {
   const endDate = parseDateOnly(kiosk?.end_date);
   if (!endDate) return false;
@@ -30,7 +30,7 @@ export function isExpiringSoon(kiosk, {
 
 export function expiryDateRange({
   warningDays = getExpiryWarningDays(),
-  today = startOfToday(),
+  today = startOfVietnamToday(),
 } = {}) {
   const start = new Date(today);
   start.setHours(0, 0, 0, 0);

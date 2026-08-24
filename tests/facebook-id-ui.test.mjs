@@ -2,9 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { bindFacebookIdResolvers, FacebookIdResolverFields } from '../src/components/FacebookIdResolver.js';
 
-function createResolverFixture({ manualFallback = 'always' } = {}) {
+function createResolverFixture({ manualFallback = 'always', autoResolve = false } = {}) {
   const listeners = {};
-  const urlInput = { value: 'https://facebook.com/example', focus() {} };
+  const urlListeners = {};
+  const urlInput = {
+    value: 'https://facebook.com/example',
+    focus() {},
+    addEventListener(type, listener) { urlListeners[type] = listener; },
+  };
   const idInput = {
     value: '',
     readOnly: manualFallback === 'never' || manualFallback === 'on-error',
@@ -24,14 +29,14 @@ function createResolverFixture({ manualFallback = 'always' } = {}) {
     '[data-facebook-id-status]': status,
   };
   const root = {
-    dataset: { manualFallback },
+    dataset: { manualFallback, autoResolve: String(autoResolve) },
     querySelector(selector) { return elements[selector] || null; },
   };
   const container = {
     querySelectorAll() { return [root]; },
   };
   bindFacebookIdResolvers(container);
-  return { button, idInput, listeners, status };
+  return { button, idInput, listeners, status, urlInput, urlListeners };
 }
 
 test('manual fallback never hides manual copy and keeps ID readonly after resolve', async () => {
@@ -100,4 +105,37 @@ test('failed request exposes retry state and keeps manual ID editable', async ()
   assert.equal(fixture.button.disabled, false);
   assert.equal(fixture.idInput.value, '9988');
   assert.match(fixture.status.className, /error/);
+});
+
+test('URL changed during a request is resolved after debounce and stale data cannot overwrite it', async () => {
+  const pending = [];
+  globalThis.fetch = async (_url, options) => new Promise((resolve) => {
+    pending.push({ requestUrl: JSON.parse(options.body).facebook_url, resolve });
+  });
+
+  const fixture = createResolverFixture({ manualFallback: 'on-error', autoResolve: true });
+  const firstRequest = fixture.listeners.click();
+  fixture.urlInput.value = 'https://facebook.com/newer';
+  fixture.urlListeners.input();
+  await new Promise((resolve) => setTimeout(resolve, 700));
+
+  assert.equal(pending.length, 1);
+  pending[0].resolve({
+    ok: true,
+    json: async () => ({ success: true, facebook_id: '111', facebook_url: 'https://facebook.com/example' }),
+  });
+  await firstRequest;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(pending.length, 2);
+  assert.equal(pending[1].requestUrl, 'https://facebook.com/newer');
+  assert.equal(fixture.idInput.value, '');
+
+  pending[1].resolve({
+    ok: true,
+    json: async () => ({ success: true, facebook_id: '222', facebook_url: 'https://facebook.com/newer' }),
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(fixture.idInput.value, '222');
+  assert.equal(fixture.urlInput.value, 'https://facebook.com/newer');
 });

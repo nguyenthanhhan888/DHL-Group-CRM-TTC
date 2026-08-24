@@ -50,7 +50,7 @@ export function AppLayout({ navSections, user }) {
               <span class="nav-icon bare-icon" aria-hidden="true">${renderIcon('menu')}</span>
             </button>
             <img class="top-brand-mark" src="logo/photo_2026-08-03_06-31-15.jpg" alt="DHL Group" loading="lazy">
-            <div class="page-title" data-page-title>Tổng quan</div>
+            <span class="top-bar-context">DHL Group</span>
           </div>
           ${isAdmin
             ? renderAdminTopbar({ displayName, username, roleLabel, avatarPath })
@@ -92,7 +92,7 @@ function getAccountUsername(user) {
 function renderAdminTopbar({ displayName, username, roleLabel, avatarPath }) {
   return `
         <div class="top-bar-right top-bar-user-actions">
-          <span class="connection-badge" data-supabase-badge>Chưa kết nối Supabase</span>
+          <span class="connection-badge" data-supabase-badge>Chưa kết nối dữ liệu</span>
           <span class="current-date" data-current-date></span>
           <button class="top-icon-link theme-toggle-button" type="button" data-theme-toggle aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
             ${renderIcon('moon')}
@@ -104,10 +104,8 @@ function renderAdminTopbar({ displayName, username, roleLabel, avatarPath }) {
         </summary>
         <div class="top-user-dropdown">
           <div class="top-user-dropdown-head">
-            <strong>Admin</strong>
-            <span>${escapeHtml(displayName)}</span>
-            <span>${escapeHtml(username)}</span>
-            <span>${escapeHtml(roleLabel)}</span>
+            <strong>${escapeHtml(displayName || username)}</strong>
+            <span class="user-role-badge">${escapeHtml(roleLabel)}</span>
           </div>
           <button type="button" data-admin-change-password><span class="nav-icon" aria-hidden="true">${renderIcon('shield')}</span>Đổi mật khẩu</button>
           <button type="button" data-admin-mfa><span class="nav-icon" aria-hidden="true">${renderIcon('settings')}</span>Authenticator</button>
@@ -121,6 +119,7 @@ function renderAdminTopbar({ displayName, username, roleLabel, avatarPath }) {
 function renderUserTopbar({ displayName, username, roleLabel, avatarPath }) {
   return `
     <div class="top-bar-right top-bar-user-actions">
+      <span class="current-date" data-current-date></span>
       <button class="top-icon-link theme-toggle-button" type="button" data-theme-toggle aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
         ${renderIcon('moon')}
       </button>
@@ -141,9 +140,8 @@ function renderUserTopbar({ displayName, username, roleLabel, avatarPath }) {
         </summary>
         <div class="top-user-dropdown">
           <div class="top-user-dropdown-head">
-            <strong>${escapeHtml(username)}</strong>
-            <span>${escapeHtml(displayName)}</span>
-            <span>${escapeHtml(roleLabel)}</span>
+            <strong>${escapeHtml(displayName || username)}</strong>
+            <span class="user-role-badge">${escapeHtml(roleLabel)}</span>
           </div>
           <a href="#/user-profile"><span class="nav-icon" aria-hidden="true">${renderIcon('settings')}</span>Cài đặt</a>
           <a href="#/ttc-wallet"><span class="nav-icon" aria-hidden="true">${renderIcon('wallet')}</span>Ví xu</a>
