@@ -10,7 +10,7 @@ test('Facebook help uses a dedicated responsive modal and readable step hierarch
     read('src/styles/app.css'),
   ]);
   assert.match(resolver, /className: 'modal-facebook-help'/);
-  assert.equal((resolver.match(/class="fb-help-step"/g) || []).length, 3);
+  assert.equal((resolver.match(/class="fb-help-step"/g) || []).length, 5);
   assert.match(resolver, /fb-help-intro/);
   assert.match(css, /\.modal-facebook-help\s*\{\s*width:min\(620px,100%\)/);
   assert.match(css, /@media\(max-width:640px\)[\s\S]*\.modal-facebook-help\s*\{\s*width:calc\(100% - 8px\)/);

@@ -24,7 +24,9 @@ export const FacebookIdService = {
     try {
       data = await response.json();
     } catch {
-      throw new Error('Backend trả về dữ liệu không hợp lệ.');
+      const error = new Error('Không thể xác thực Link Facebook. Vui lòng thử lại.');
+      error.code = 'INVALID_RESPONSE';
+      throw error;
     }
 
     if (!response.ok || !data?.success || !/^\d+$/.test(String(data.facebook_id || ''))) {

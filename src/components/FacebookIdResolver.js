@@ -1,5 +1,6 @@
 import { FacebookIdService } from '../services/FacebookIdService.js';
 import { Modal } from './Modal.js';
+import { renderIcon } from '../utils/icons.js';
 
 export function FacebookIdResolverFields({
   urlId = '',
@@ -52,6 +53,7 @@ export function FacebookIdResolverFields({
         </button>
       </div>
       <div class="facebook-id-resolver-status muted-text" data-facebook-id-status aria-live="polite"></div>
+      <div class="facebook-identity-summary hidden" data-facebook-identity-summary aria-live="polite"></div>
       <div class="field-helper">${helperText}</div>
     </div>
   `;
@@ -69,26 +71,40 @@ export function bindFacebookIdResolvers(container = document) {
         className: 'modal-facebook-help',
         body: `
           <div class="fb-help-modal-flow">
-            <p class="fb-help-intro">Thực hiện 3 bước sau trên trang Facebook bạn muốn đăng ký.</p>
+            <p class="fb-help-intro">Thực hiện các bước sau trên trang Facebook bạn muốn đăng ký.</p>
             <div class="fb-help-step">
               <span class="fb-step-badge">1</span>
               <div class="fb-step-body">
-                <strong>Mở trang cá nhân hoặc Fanpage</strong>
-                <p>Mở Facebook và truy cập trang cá nhân hoặc Fanpage của Kiosk.</p>
+                <strong>Mở Facebook</strong>
+                <p>Mở ứng dụng Facebook hoặc website Facebook trên thiết bị của bạn.</p>
               </div>
             </div>
             <div class="fb-help-step">
               <span class="fb-step-badge">2</span>
               <div class="fb-step-body">
-                <strong>Sao chép liên kết</strong>
-                <p>Chọn <strong>Ba chấm</strong> hoặc <strong>Chia sẻ</strong>, sau đó chọn <strong>Sao chép liên kết</strong>.</p>
+                <strong>Mở trang cá nhân hoặc Fanpage</strong>
+                <p>Truy cập đúng trang Facebook của Kiosk cần đăng ký.</p>
               </div>
             </div>
             <div class="fb-help-step">
               <span class="fb-step-badge">3</span>
               <div class="fb-step-body">
-                <strong>Dán vào ô Link Facebook</strong>
-                <p>Dán liên kết vào biểu mẫu. Facebook ID sẽ được nhận diện tự động.</p>
+                <strong>Nhấn dấu ba chấm hoặc Chia sẻ</strong>
+                <p>Mở menu của trang cá nhân hoặc Fanpage.</p>
+              </div>
+            </div>
+            <div class="fb-help-step">
+              <span class="fb-step-badge">4</span>
+              <div class="fb-step-body">
+                <strong>Chọn Sao chép liên kết</strong>
+                <p>Ưu tiên sao chép link trang cá nhân hoặc Fanpage chính thức, không dùng link bài viết.</p>
+              </div>
+            </div>
+            <div class="fb-help-step">
+              <span class="fb-step-badge">5</span>
+              <div class="fb-step-body">
+                <strong>Quay lại và dán Link Facebook</strong>
+                <p>Facebook Name và Facebook ID sẽ được nhận diện tự động.</p>
               </div>
             </div>
             <div class="notice info fb-help-example">
@@ -106,6 +122,7 @@ export function bindFacebookIdResolvers(container = document) {
     const button = root.querySelector('[data-facebook-id-resolve]');
     const status = root.querySelector('[data-facebook-id-status]');
     const errorElement = root.querySelector('[data-facebook-id-error]');
+    const identitySummary = root.querySelector('[data-facebook-identity-summary]');
     if (!urlInput || !idInput || !button || !status) return;
     if (!idInput.dataset) idInput.dataset = {};
 
@@ -124,11 +141,23 @@ export function bindFacebookIdResolvers(container = document) {
         ? 'URL đã thay đổi. Vui lòng lấy lại ID hoặc xác nhận bằng cách nhập ID thủ công.'
         : 'URL đã thay đổi. Vui lòng lấy lại ID từ link mới.',
     ) => {
+      const previousResolvedName = root.dataset.resolvedName;
       root.dataset.resolverState = 'idle';
       root.dataset.resolvedUrl = '';
       root.dataset.resolvedName = '';
       idInput.dataset.verifiedUrl = '';
+      identitySummary?.classList.add('hidden');
+      if (identitySummary) identitySummary.innerHTML = '';
       if (idInput.value === root.dataset.resolvedId) idInput.value = '';
+      const nameInput = root.dataset.nameTarget
+        ? (root.closest('[data-register-kiosk], [data-legacy-kiosk], form') || document).querySelector(root.dataset.nameTarget)
+        : null;
+      if (nameInput) {
+        if (previousResolvedName && nameInput.value === previousResolvedName) nameInput.value = '';
+        nameInput.readOnly = false;
+        nameInput.setCustomValidity?.('');
+        nameInput.removeAttribute?.('aria-invalid');
+      }
       if (manualFallback === 'never' || manualFallback === 'on-error') idInput.readOnly = true;
       setStatus(status, 'warning', message);
       button.textContent = originalLabel;
@@ -180,6 +209,12 @@ export function bindFacebookIdResolvers(container = document) {
       button.dataset.loading = 'true';
       root.dataset.resolverState = 'loading';
       root.dataset.resolvedName = '';
+      idInput.setCustomValidity?.('');
+      if (errorElement) {
+        errorElement.textContent = '';
+        errorElement.classList.add('hidden');
+      }
+      identitySummary?.classList.add('hidden');
       button.disabled = true;
       button.textContent = 'Đang lấy ID...';
       setStatus(status, 'loading', 'Đang kiểm tra Facebook URL...');
@@ -199,23 +234,41 @@ export function bindFacebookIdResolvers(container = document) {
           : null;
         if (nameInput && result.facebookName) {
           nameInput.value = result.facebookName;
+          nameInput.readOnly = true;
+          nameInput.setCustomValidity?.('');
+          nameInput.removeAttribute?.('aria-invalid');
+          const nameError = nameInput.closest?.('.form-group')?.querySelector?.('.field-error');
+          if (nameError) {
+            nameError.textContent = '';
+            nameError.classList.add('hidden');
+          }
           nameInput.dispatchEvent(new Event('input', { bubbles: true }));
         }
         if (typeof CustomEvent === 'function') {
           root.dispatchEvent?.(new CustomEvent('facebook-id-resolved', { bubbles: true, detail: result }));
         }
         idInput.dataset.verifiedUrl = result.facebookUrl || facebookUrl;
+        idInput.setCustomValidity?.('');
         idInput.dispatchEvent(new Event('input', { bubbles: true }));
+        if (identitySummary) {
+          identitySummary.classList.remove('hidden');
+          identitySummary.innerHTML = `<span class="facebook-identity-icon">${renderIcon('check-circle')}</span><div><strong>Đã xác thực Facebook</strong>${result.facebookName ? `<b>${escapeIdentity(result.facebookName)}</b>` : ''}<small>Facebook ID: ${escapeIdentity(result.facebookId)}</small><small>${escapeIdentity(result.facebookUrl || facebookUrl)}</small></div>`;
+        }
         setStatus(status, 'success', result.facebookName
-          ? `Đã lấy ID: ${result.facebookName} * ${result.facebookId}. Vui lòng kiểm tra link rồi tiếp tục lưu.`
-          : `Đã lấy ID: ${result.facebookId}. Vui lòng kiểm tra link rồi tiếp tục lưu.`);
+          ? `Đã nhận diện Facebook: ${result.facebookName} · ID ${result.facebookId}`
+          : `Đã nhận diện Facebook ID: ${result.facebookId}`);
         button.textContent = 'Lấy lại Facebook ID';
       } catch (error) {
         if (currentRequest !== requestId) return;
         const state = resolverErrorState(error?.code);
         root.dataset.resolverState = state;
         allowManual();
-        setStatus(status, 'error', error?.message || 'Không thể lấy Facebook ID.');
+        const nameInput = root.dataset.nameTarget
+          ? (root.closest('[data-register-kiosk], [data-legacy-kiosk], form') || document).querySelector(root.dataset.nameTarget)
+          : null;
+        if (nameInput) nameInput.readOnly = false;
+        identitySummary?.classList.add('hidden');
+        setStatus(status, 'error', friendlyResolverMessage(error));
         button.textContent = 'Thử lại';
       } finally {
         button.dataset.loading = 'false';
@@ -227,6 +280,19 @@ export function bindFacebookIdResolvers(container = document) {
       }
     }
   });
+}
+
+function escapeIdentity(value) {
+  return String(value || '').replace(/[&<>'"]/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
+  })[character]);
+}
+
+function friendlyResolverMessage(error) {
+  if (['INVALID_URL', 'INVALID_FACEBOOK_DOMAIN'].includes(error?.code)) return 'Link này chưa được hỗ trợ. Hãy sao chép link trang cá nhân hoặc Fanpage.';
+  if (error?.code === 'FACEBOOK_ID_NOT_FOUND') return 'Không thể nhận diện link này. Hãy thử link trang cá nhân hoặc Fanpage chính thức, hoặc nhập ID thủ công.';
+  if (error?.code === 'UPSTREAM_TIMEOUT') return 'Quá trình xác thực mất quá nhiều thời gian. Vui lòng thử lại.';
+  return 'Không thể xác thực Link Facebook. Vui lòng thử lại.';
 }
 
 function setStatus(element, state, message) {
@@ -275,6 +341,10 @@ export function validateFacebookResolver(root, { requireVerifiedOrManual = true,
   if (error) {
     error.textContent = message;
     error.classList.toggle('hidden', !message);
+  }
+  if (!message) {
+    idInput?.setCustomValidity?.('');
+    urlInput?.setCustomValidity?.('');
   }
   (message ? (idInput || urlInput) : null)?.setCustomValidity?.(message);
   return !message;
