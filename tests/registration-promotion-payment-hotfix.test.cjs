@@ -44,8 +44,8 @@ test('percentage, fixed and bonus-month promotions retain payment preparation co
 
 test('invalid promotions reject before PayOS and transactionally roll back preparation', () => {
   assert.match(hotfix, /if not coalesce\(\(evaluation->>'valid'\)::boolean, false\) then\s*raise exception/s);
-  assert.match(api, /diagnostic\.stage = 'prepare_registration_batch'/);
-  assert.ok(api.indexOf("prepare_registration_batch") < api.indexOf("create_payos_order"));
+  assert.match(api, /diagnostic\.stage = 'PREPARE_BATCH'/);
+  assert.ok(api.indexOf("PREPARE_BATCH") < api.indexOf("CREATE_PAYOS_ORDER"));
 });
 
 test('duplicate and failed-attempt retries preserve one financial intent', () => {
