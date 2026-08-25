@@ -8,7 +8,8 @@ const migrations = path.join(root, 'supabase/migrations');
 const finalHotfixPath = path.join(migrations, '20260819000200_fix_payos_sql_builtin_qualifications.sql');
 
 const callableOrRelation = new Set([
-  'array_length', 'btrim', 'floor', 'hashtextextended', 'lower', 'make_interval', 'now', 'upper',
+  'array_length', 'btrim', 'count', 'floor', 'hashtextextended', 'jsonb_agg', 'jsonb_build_array',
+  'jsonb_build_object', 'lower', 'make_interval', 'now', 'to_jsonb', 'upper',
   'pg_advisory_xact_lock', 'pg_get_functiondef', 'pg_trigger', 'regexp_replace',
   'replace', 'set_config', 'string_agg', 'strpos', 'unnest',
 ]);

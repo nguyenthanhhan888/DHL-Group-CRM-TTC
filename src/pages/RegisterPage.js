@@ -14,7 +14,7 @@ import { duplicateValues, isValidPhone, setInlineError } from '../utils/formVali
 import { escapeHtml } from '../utils/html.js';
 import { renderIcon } from '../utils/icons.js';
 
-const state = { categories: [], businessTypes: [], sequence: 0, step: 1, submitting: false, promotion: null };
+const state = { categories: [], businessTypes: [], sequence: 0, step: 1, submitting: false };
 
 export function RegisterPage() {
   resetState();
@@ -40,10 +40,8 @@ export function RegisterPage() {
           <div id="register-kiosk-list"></div>
           <button class="btn-secondary register-add-kiosk-bottom" id="register-add-kiosk-button" type="button">${renderIcon('plus')} Thêm Kiosk mới</button>
           <section class="registration-order-summary">
-            <label class="form-group"><span>Mã giảm giá</span><div class="discount-row"><input class="form-control" id="register-promotion-code" placeholder="Nhập mã giảm giá" maxlength="64" autocomplete="off" /><button class="btn-secondary" id="register-apply-promotion" type="button">Áp dụng</button></div><span id="register-promotion-message" class="promotion-message hidden" role="status"></span><button class="btn-link hidden" id="register-remove-promotion" type="button">Xóa mã</button></label>
+            <label class="form-group"><span>Mã giảm giá <small class="field-optional">Đang bảo trì</small></span><div class="discount-row"><input class="form-control" placeholder="Mã giảm giá đang được bảo trì" disabled /><button class="btn-secondary" type="button" disabled>Áp dụng</button></div><span class="promotion-message">Mã giảm giá đang được bảo trì và sẽ sớm hoạt động trở lại.</span></label>
             <div><span>Tạm tính (<strong id="register-kiosk-count">1</strong> Kiosk)</span><strong id="register-total-amount">0 VNĐ</strong></div>
-            <div id="register-discount-row" class="hidden"><span>Ưu đãi</span><strong id="register-discount-amount">0 VNĐ</strong></div>
-            <div id="register-bonus-row" class="hidden"><span>Thời hạn ưu đãi</span><strong id="register-bonus-summary"></strong></div>
             <div class="registration-grand-total"><span>TỔNG THANH TOÁN</span><strong id="register-grand-total">0 VNĐ</strong></div>
           </section>
           <div class="registration-actions"><button class="btn-secondary" type="button" data-previous-step>${renderIcon('chevron-left')} Quay lại</button><button class="btn-primary registration-cta" type="button" data-next-step>Kiểm tra thông tin ${renderIcon('chevron-right')}</button></div>
@@ -81,8 +79,6 @@ function bindEvents() {
   });
   document.getElementById('register-facebook-name')?.addEventListener('input', syncCustomerIdentityPreview);
   document.getElementById('register-add-kiosk-button')?.addEventListener('click', () => addKiosk());
-  document.getElementById('register-apply-promotion')?.addEventListener('click', applyPromotion);
-  document.getElementById('register-remove-promotion')?.addEventListener('click', removePromotion);
   document.getElementById('register-kiosk-list')?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-remove-kiosk]');
     if (!button) return;
@@ -229,35 +225,10 @@ function calculateCard(card) {
 function calculateTotal() {
   const cards = [...document.querySelectorAll('[data-register-kiosk]')];
   const total = cards.reduce((sum, card) => sum + Number(card.dataset.subtotal || 0), 0);
-  if (state.promotion && state.promotion.subtotal !== total) clearPromotion(false);
-  const discount = Number(state.promotion?.discountAmount || 0);
-  const bonus=state.promotion?.discountType==='bonus_months'||state.promotion?.discountType==='bonusMonths';const bonusMonths=(state.promotion?.items||[]).reduce((sum,item)=>sum+Number(item.bonusMonths||0),0);setText('register-kiosk-count',cards.length);setText('register-total-amount',formatCurrency(total));setText('register-discount-amount',`-${formatCurrency(discount)}`);setText('register-grand-total',formatCurrency(total-discount));setText('register-bonus-summary',`+${bonusMonths} tháng sử dụng`);document.getElementById('register-discount-row')?.classList.toggle('hidden',discount<=0);document.getElementById('register-bonus-row')?.classList.toggle('hidden',!bonus||bonusMonths<=0);
+  setText('register-kiosk-count', cards.length);
+  setText('register-total-amount', formatCurrency(total));
+  setText('register-grand-total', formatCurrency(total));
 }
-
-async function applyPromotion() {
-  const input = document.getElementById('register-promotion-code');
-  const button = document.getElementById('register-apply-promotion');
-  const code = input?.value.trim().toUpperCase();
-  if (!code) return showPromotionMessage('Vui lòng nhập mã giảm giá.', false);
-  const cards = [...document.querySelectorAll('[data-register-kiosk]')];
-  const items = cards.map((card) => { const type=findBusinessType(card); return { months:Number(value(card,'months')), pricePerMonth:Number(type?.price_per_month||0), categoryId:Number(type?.category_id||0), businessTypeId:Number(type?.id||0) }; });
-  if (items.some((item) => !item.businessTypeId || !item.months)) return showPromotionMessage('Vui lòng chọn đủ gói đăng ký trước khi áp dụng mã.', false);
-  button.disabled=true; button.textContent='Đang kiểm tra...';
-  try {
-    const response=await fetch('/api/public/evaluate-promotion',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,phone:read('register-phone'),items})});
-    const data=await response.json().catch(()=>null);
-    if (!response.ok || !data?.valid) throw new Error(data?.message || 'Không thể áp dụng mã giảm giá.');
-    state.promotion=data; input.value=data.code; input.disabled=true;
-    document.getElementById('register-remove-promotion')?.classList.remove('hidden');
-    showPromotionMessage(`✓ ${data.message}`,true); renderPromotionBonuses(); calculateTotal();
-  } catch(error) { clearPromotion(false); showPromotionMessage(error?.message || 'Không thể áp dụng mã giảm giá.',false); }
-  finally { button.disabled=false; button.textContent='Áp dụng'; }
-}
-
-function removePromotion() { clearPromotion(true); calculateTotal(); }
-function clearPromotion(announce=false) { state.promotion=null; const input=document.getElementById('register-promotion-code'); if(input){input.disabled=false;if(announce)input.value='';} document.getElementById('register-remove-promotion')?.classList.add('hidden'); document.querySelectorAll('[data-promotion-bonus]').forEach((node)=>node.remove()); if(announce)showPromotionMessage('Đã xóa mã giảm giá.',true); }
-function showPromotionMessage(message,valid) { const target=document.getElementById('register-promotion-message'); if(!target)return; target.textContent=message; target.classList.remove('hidden','promotion-valid','promotion-invalid'); target.classList.add(valid?'promotion-valid':'promotion-invalid'); }
-function renderPromotionBonuses() { document.querySelectorAll('[data-promotion-bonus]').forEach((node)=>node.remove()); if(state.promotion?.discountType!=='bonus_months'&&state.promotion?.discountType!=='bonusMonths')return; [...document.querySelectorAll('[data-register-kiosk]')].forEach((card,index)=>{const item=state.promotion.items?.[index];if(!item?.bonusMonths)return;card.querySelector('.registration-month-control')?.insertAdjacentHTML('beforeend',`<p class="promotion-bonus" data-promotion-bonus>Ưu đãi: +${Number(item.bonusMonths)} tháng · Thời hạn sử dụng: ${Number(item.effectiveMonths)} tháng</p>`);}); }
 
 function usesCustomerFacebook(card) {
   const checkbox = card.querySelector('[data-use-customer-facebook]');
@@ -376,11 +347,11 @@ function renderReview() {
     const type = findBusinessType(card);
     const category = state.categories.find((item) => String(item.id) === String(type?.category_id));
     const identity = kioskFacebookIdentity(card);
-    const promoItem=state.promotion?.items?.[index];const bonus=Number(promoItem?.bonusMonths||0);const effective=Number(promoItem?.effectiveMonths||value(card,'months'));return `<article class="review-kiosk"><strong>Kiosk ${index + 1}: ${escapeHtml(identity.facebook_name)}</strong><span>${escapeHtml(type?.name||'')} · ${escapeHtml(category?.name||'')}</span><span>${value(card,'months')} tháng${bonus?` + ${bonus} tháng ưu đãi = ${effective} tháng sử dụng`:''}</span><b>${formatCurrency(card.dataset.subtotal||0)}</b></article>`;
+    return `<article class="review-kiosk"><strong>Kiosk ${index + 1}: ${escapeHtml(identity.facebook_name)}</strong><span>${escapeHtml(type?.name || '')} · ${escapeHtml(category?.name || '')}</span><span>${value(card, 'months')} tháng</span><b>${formatCurrency(card.dataset.subtotal || 0)}</b></article>`;
   }).join('')}</section>
-    <section class="review-total" aria-label="Thanh toán"><h3><span class="registration-section-icon">${renderIcon('wallet')}</span>Thanh toán</h3><div><span>Tạm tính</span><strong>${formatCurrency(total)}</strong></div>${Number(state.promotion?.discountAmount||0)>0?`<div><span>Ưu đãi</span><strong>-${formatCurrency(state.promotion.discountAmount)}</strong></div>`:''}<div><span>Tổng thanh toán</span><strong>${formatCurrency(total-Number(state.promotion?.discountAmount||0))}</strong></div></section>`;
+    <section class="review-total" aria-label="Thanh toán"><h3><span class="registration-section-icon">${renderIcon('wallet')}</span>Thanh toán</h3><div><span>Tạm tính</span><strong>${formatCurrency(total)}</strong></div><div><span>Tổng thanh toán</span><strong>${formatCurrency(total)}</strong></div></section>`;
   const button = document.getElementById('register-submit-button');
-  if (button) button.innerHTML = `${renderIcon('shield')} Thanh toán ${formatCurrency(total-Number(state.promotion?.discountAmount||0))}`;
+  if (button) button.innerHTML = `${renderIcon('shield')} Thanh toán ${formatCurrency(total)}`;
 }
 
 async function submitRegistration(event) {
@@ -396,7 +367,6 @@ async function submitRegistration(event) {
     const { data } = await RegistrationService.submitWithPayos({
       customer: { contact_name: read('register-facebook-name'), facebook_name: read('register-facebook-name'), facebook_id: read('register-customer-id'), facebook_link: read('register-customer-link'), phone: read('register-phone'), address: read('register-address') },
       kiosks: [...document.querySelectorAll('[data-register-kiosk]')].map(readKiosk),
-      promotionCode: state.promotion?.code || null,
     });
     const payment = data?.payosPayment;
     if (!payment?.checkoutUrl) throw new Error(data?.payosError || 'Chưa tạo được link thanh toán PayOS.');
@@ -472,5 +442,5 @@ function renumberKiosks() { const cards = document.querySelectorAll('[data-regis
 function showFormError(message) { const error = document.getElementById('registration-form-error'); if (error) { error.textContent = message; error.classList.remove('hidden'); } }
 function clearFormError() { const error = document.getElementById('registration-form-error'); if (error) { error.textContent = ''; error.classList.add('hidden'); } }
 function setText(id, text) { const element = document.getElementById(id); if (element) element.textContent = text; }
-function resetState() { state.categories = []; state.businessTypes = []; state.sequence = 0; state.step = 1; state.submitting = false; state.promotion = null; }
+function resetState() { state.categories = []; state.businessTypes = []; state.sequence = 0; state.step = 1; state.submitting = false; }
 function sortVietnamese(items) { return [...items].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'vi', { sensitivity: 'base' })); }

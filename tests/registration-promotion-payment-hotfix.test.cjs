@@ -9,6 +9,7 @@ const hotfix = read('supabase/migrations/20260825130000_fix_registration_payment
 const engine = read('supabase/migrations/20260824170000_create_discount_promotion_engine_v1.sql');
 const batch = read('supabase/migrations/20260818235900_create_public_registration_batches.sql');
 const intent = read('supabase/migrations/20260815120000_harden_payos_payment_intents.sql');
+const stabilization = read('supabase/migrations/20260825150000_stabilize_public_registration_payment_v2.sql');
 const api = read('api/payos/create-registration-payment.js');
 
 test('production hotfix leaves exactly one public payment-preparation signature', () => {
@@ -27,30 +28,30 @@ test('production hotfix leaves exactly one public payment-preparation signature'
   assert.match(hotfix, /grant execute on function public\.prepare_registration_batch_for_payos\(bigint\[\], text, text\)\s+to service_role/);
 });
 
-test('normal checkout without promotion remains valid and server-authoritative', () => {
-  assert.match(api, /promotion_code_input: promotionCode \|\| null/);
-  assert.match(engine, /if normalized_code = '' then[\s\S]*'valid',true[\s\S]*'discountAmount',0[\s\S]*'finalAmount',subtotal/);
-  assert.match(batch, /package_record\.price_per_month\*request_record\.months/);
-  assert.match(batch, /request_record\.total_amount is distinct from item_total/);
+test('normal checkout bypasses promotion and remains server-authoritative', () => {
+  assert.match(api, /prepare_registration_payment_v2/);
+  assert.doesNotMatch(api, /promotionCode|promotion_code_input|prepare_registration_batch_for_payos/);
+  assert.match(stabilization, /item_total := package_record\.price_per_month \* request_record\.months/);
+  assert.match(stabilization, /request_record\.total_amount is distinct from item_total/);
 });
 
-test('percentage, fixed and bonus-month promotions retain payment preparation contracts', () => {
+test('percentage, fixed and bonus-month promotion infrastructure remains installed', () => {
   for (const type of ['percentage', 'fixed_amount', 'bonus_months']) assert.match(engine, new RegExp(`'${type}'`));
   assert.match(engine, /discount_total := pg_catalog\.floor\(eligible_total \* promotion_record\.discount_value \/ 100\.0\)::bigint/);
   assert.match(engine, /discount_total := least\(eligible_total,promotion_record\.discount_value\)/);
   assert.match(engine, /'effectiveMonths',item_months \+ case when eligible and promotion_record\.discount_type='bonus_months'/);
-  assert.match(hotfix, /update public\.payments[\s\S]*total_amount = \(evaluation->>'finalAmount'\)::bigint/);
+  assert.doesNotMatch(stabilization, /evaluate_registration_promotion|promotion_code_input|promotion_snapshot/);
 });
 
-test('invalid promotions reject before PayOS and transactionally roll back preparation', () => {
-  assert.match(hotfix, /if not coalesce\(\(evaluation->>'valid'\)::boolean, false\) then\s*raise exception/s);
+test('promotion input cannot enter the stabilized PayOS path', () => {
+  assert.doesNotMatch(api, /promotionCode|promotion_code_input/);
   assert.match(api, /diagnostic\.stage = 'PREPARE_BATCH'/);
   assert.ok(api.indexOf("PREPARE_BATCH") < api.indexOf("CREATE_PAYOS_ORDER"));
 });
 
 test('duplicate and failed-attempt retries preserve one financial intent', () => {
-  assert.match(batch, /pg_advisory_xact_lock/);
-  assert.match(batch, /'reused',true/);
+  assert.match(stabilization, /pg_advisory_xact_lock/);
+  assert.match(stabilization, /'reused', true/);
   assert.match(batch, /payments_registration_batch_uidx/);
   assert.match(intent, /payos_orders_one_active_payment_uidx/);
   assert.match(api, /fetchExistingPayosOrder\(payment\.id\)/);
@@ -58,10 +59,9 @@ test('duplicate and failed-attempt retries preserve one financial intent', () =>
 });
 
 test('multi-Kiosk payment remains one authoritative sum', () => {
-  assert.match(batch, /request_count<1 or request_count>20/);
-  assert.match(batch, /authoritative_total:=authoritative_total\+item_total/);
-  assert.equal((batch.match(/insert into public\.payments/g) || []).length, 1);
-  assert.match(hotfix, /sum\(e\.base_discount\) over \(\)/);
+  assert.match(stabilization, /request_count < 1 or request_count > 20/);
+  assert.match(stabilization, /authoritative_total := authoritative_total \+ item_total/);
+  assert.equal((stabilization.match(/insert into public\.payments/g) || []).length, 1);
 });
 
 test('PayOS failure diagnostics identify the recoverable stage without leaking secrets', () => {

@@ -15,7 +15,7 @@ test('single and multi-Kiosk registration use the same one-batch one-payment arc
   assert.match(sql, /insert into public\.payments[\s\S]*registration_batch_id[\s\S]*values\(/);
   assert.match(sql, /payments_registration_batch_uidx/);
   assert.match(sql, /registration_batches_payment_uidx/);
-  assert.match(api, /prepare_registration_batch_for_payos/);
+  assert.match(api, /prepare_registration_payment_v2/);
   assert.doesNotMatch(api, /for\s*\(const requestId|prepare_registration_payment_for_payos|payments\s*:/);
 });
 

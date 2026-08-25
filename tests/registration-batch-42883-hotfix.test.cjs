@@ -45,7 +45,7 @@ test('registration API preserves safe PostgreSQL code, message, details, and hin
 test('failure remains before every PayOS network request and batch ownership is unchanged', async () => {
   const api = await source('api/payos/create-registration-payment.js');
   assert.ok(api.indexOf('await prepareBatch(requestIds, phone)') < api.indexOf('await fetch(`${PAYOS_API_BASE_URL'));
-  assert.match(api, /prepare_registration_batch_for_payos/);
+  assert.match(api, /prepare_registration_payment_v2/);
   assert.match(api, /recordOrder\(payment\.id/);
   assert.doesNotMatch(api, /prepare_registration_payment_for_payos|for\s*\(const requestId/);
 });

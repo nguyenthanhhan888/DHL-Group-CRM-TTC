@@ -70,10 +70,9 @@ test('resolver success explicitly clears stale name and ID validity state', asyn
   assert.match(source, /data-facebook-identity-summary/);
 });
 
-test('discount preparation is active while submitted kiosk discounts remain server-owned', async () => {
+test('discount checkout is visibly in maintenance while submitted kiosk discounts remain zero', async () => {
   const source = await readFile(new URL('../src/pages/RegisterPage.js', import.meta.url), 'utf8');
-  assert.match(source, /id="register-promotion-code"/);
-  assert.match(source, /applyPromotion/);
-  assert.match(source, /removePromotion/);
+  assert.match(source, /Mã giảm giá đang được bảo trì và sẽ sớm hoạt động trở lại\./);
+  assert.doesNotMatch(source, /applyPromotion|evaluate-promotion|state\.promotion/);
   assert.deepEqual([...source.matchAll(/discount:\s*([^,}]+)/g)].map((match) => match[1].trim()), ['0']);
 });

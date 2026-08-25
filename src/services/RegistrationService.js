@@ -51,7 +51,6 @@ export const RegistrationService = {
           phone: submitted.data?.customer?.phone || options.customer?.phone,
           returnUrl: buildPublicRouteUrl('#/register'),
           cancelUrl: buildPublicRouteUrl('#/register'),
-          promotionCode: options.promotionCode || null,
         }),
       });
       const data = await safeJson(response);

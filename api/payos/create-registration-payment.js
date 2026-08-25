@@ -19,11 +19,10 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
     const requestIds = normalizeRequestIds(parsed.value.requestIds || parsed.value.request_ids);
     diagnostic.requestIds = requestIds;
     const phone = normalizePhone(parsed.value.phone);
-    const promotionCode = normalizePromotionCode(parsed.value.promotionCode || parsed.value.promotion_code);
     const returnUrl = normalizeUrl(parsed.value.returnUrl || parsed.value.return_url || `${originFromRequest(req)}/#/register`);
     const cancelUrl = normalizeUrl(parsed.value.cancelUrl || parsed.value.cancel_url || returnUrl);
     diagnostic.stage = 'PREPARE_BATCH';
-    const prepared = await prepareBatch(requestIds, phone, promotionCode);
+    const prepared = await prepareBatch(requestIds, phone);
     const payment = prepared?.payment;
     const batch = prepared?.batch;
     const amount = Number(payment?.total_amount);
@@ -91,9 +90,9 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
   }
 };
 
-async function prepareBatch(requestIds, phone, promotionCode) {
+async function prepareBatch(requestIds, phone) {
   const config = getSupabaseServiceConfig();
-  const response = await fetch(`${config.url}/rest/v1/rpc/prepare_registration_batch_for_payos`, { method: 'POST', headers: { apikey: config.key, Authorization: `Bearer ${config.key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ request_ids_input: requestIds, phone_input: phone, promotion_code_input: promotionCode || null }) });
+  const response = await fetch(`${config.url}/rest/v1/rpc/prepare_registration_payment_v2`, { method: 'POST', headers: { apikey: config.key, Authorization: `Bearer ${config.key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ request_ids_input: requestIds, phone_input: phone }) });
   const data = await safeJson(response);
   if (!response.ok) {
     const error = new Error(data?.message || 'Không chuẩn bị được lô đăng ký.');
@@ -155,11 +154,10 @@ async function recordOrder(paymentId, request, providerPayload, values = {}) {
   return Array.isArray(data) ? data[0] : data;
 }
 
-function formatBatch(prepared) { return { id: Number(prepared.batch.id), status: prepared.batch.status, amount: Number(prepared.batch.total_amount), subtotal: Number(prepared.batch.subtotal_before_discount || prepared.batch.total_amount), discountAmount: Number(prepared.batch.discount_amount || 0), promotion: prepared.promotion || null, kiosks: prepared.items || [], reused: Boolean(prepared.reused) }; }
+function formatBatch(prepared) { return { id: Number(prepared.batch.id), status: prepared.batch.status, amount: Number(prepared.batch.total_amount), kiosks: prepared.items || [], reused: Boolean(prepared.reused) }; }
 function formatPayment(order, amount, reused, expiresAt = null) { return { paymentId: Number(order.payment_id), amount, orderCode: Number(order.order_code), checkoutUrl: order.checkout_url || null, paymentLinkId: order.payment_link_id || null, expiresAt: expiresAt || toUnixSeconds(order.expires_at), reused }; }
 function normalizeRequestIds(value) { const ids = (Array.isArray(value) ? value : [value]).map(Number).filter((id) => Number.isSafeInteger(id) && id > 0); if (!ids.length || ids.length > 20 || new Set(ids).size !== ids.length) throw new Error('Danh sách yêu cầu đăng ký không hợp lệ.'); return ids; }
 function normalizePhone(value) { const phone = String(value || '').replace(/[\s().-]/g, '').trim(); if (!/^\+?\d{9,15}$/.test(phone)) throw new Error('Số điện thoại xác nhận không hợp lệ.'); return phone; }
-function normalizePromotionCode(value) { const code = String(value || '').trim().toUpperCase(); if (code.length > 64) throw new Error('Mã giảm giá không hợp lệ.'); return code; }
 function normalizeUrl(value) { const url = new URL(String(value || '').trim()); if (!['http:', 'https:'].includes(url.protocol)) throw new Error('URL chuyển hướng PayOS không hợp lệ.'); return url.toString(); }
 function enforceRateLimit(req) { const key = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown'; const now = Date.now(); const bucket = rateBuckets.get(key) || { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS }; if (bucket.resetAt <= now) { bucket.count = 0; bucket.resetAt = now + RATE_LIMIT_WINDOW_MS; } bucket.count += 1; rateBuckets.set(key, bucket); if (bucket.count > RATE_LIMIT_MAX) { const error = new Error('Bạn thao tác quá nhanh.'); error.status = 429; throw error; } }
 function publicRegistrationError(error) { if (error?.status === 429) return 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.'; if (error?.code === 'P0001' && error?.message) return String(error.message).slice(0, 180); if (error?.code === '42501') return 'Số điện thoại không khớp lô đăng ký.'; if (error?.code === 'CHECKOUT_IN_PROGRESS' || error?.code === '23505') return 'Link thanh toán đang được tạo. Vui lòng bấm Thanh toán lại sau vài giây.'; if (error?.code === 'MISSING_ENV') return 'Hệ thống thanh toán chưa được cấu hình đầy đủ.'; return 'Không tạo được thanh toán PayOS cho lô đăng ký. Vui lòng thử lại hoặc liên hệ hỗ trợ.'; }
