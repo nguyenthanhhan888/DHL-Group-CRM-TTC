@@ -13,19 +13,26 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return sendError(res, 405, 'METHOD_NOT_ALLOWED', 'Chỉ hỗ trợ phương thức POST.'); }
   const parsed = parseJsonBody(req.body);
   if (!parsed.ok) return sendError(res, 400, 'INVALID_JSON', 'Nội dung JSON không hợp lệ.');
+  const diagnostic = { stage: 'validate_request', requestIds: [], batchId: null, paymentId: null, payosReached: false };
   try {
     enforceRateLimit(req);
     const requestIds = normalizeRequestIds(parsed.value.requestIds || parsed.value.request_ids);
+    diagnostic.requestIds = requestIds;
     const phone = normalizePhone(parsed.value.phone);
     const promotionCode = normalizePromotionCode(parsed.value.promotionCode || parsed.value.promotion_code);
     const returnUrl = normalizeUrl(parsed.value.returnUrl || parsed.value.return_url || `${originFromRequest(req)}/#/register`);
     const cancelUrl = normalizeUrl(parsed.value.cancelUrl || parsed.value.cancel_url || returnUrl);
+    diagnostic.stage = 'prepare_registration_batch';
     const prepared = await prepareBatch(requestIds, phone, promotionCode);
     const payment = prepared?.payment;
     const batch = prepared?.batch;
     const amount = Number(payment?.total_amount);
+    diagnostic.batchId = batch?.id || null;
+    diagnostic.paymentId = payment?.id || null;
+    diagnostic.stage = 'validate_prepared_payment';
     if (!batch?.id || !payment?.id || !Number.isSafeInteger(amount) || amount <= 0 || amount !== Number(batch.total_amount)) throw new Error('Tổng tiền lô đăng ký không hợp lệ.');
 
+    diagnostic.stage = 'find_existing_payos_order';
     const existingOrder = await fetchExistingPayosOrder(payment.id);
     if (existingOrder) {
       const readyOrder = existingOrder.checkout_url ? existingOrder : await waitForCheckout(payment.id, existingOrder.order_code);
@@ -36,16 +43,30 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
     const orderCode = createOrderCode();
     const request = { orderCode, amount, description: normalizePayosDescription(`DHL${payment.id}`, orderCode), returnUrl, cancelUrl, expiredAt: createPaymentExpiredAt() };
     request.signature = signPaymentRequest(request, requireEnv('PAYOS_CHECKSUM_KEY'));
+    diagnostic.stage = 'reserve_payos_order';
     await recordOrder(payment.id, request, { stage: 'reserved', batchId: batch.id, expiresAt: request.expiredAt });
+    diagnostic.stage = 'create_payos_order';
+    diagnostic.payosReached = true;
     const response = await fetch(`${PAYOS_API_BASE_URL}${PAYOS_CREATE_PAYMENT_PATH}`, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'x-client-id': requireEnv('PAYOS_CLIENT_ID'), 'x-api-key': requireEnv('PAYOS_API_KEY') }, body: JSON.stringify(request) });
     const provider = await safeJson(response);
-    if (!response.ok || provider?.code !== '00') throw new Error(provider?.desc || 'Không tạo được link PayOS cho lô đăng ký.');
+    if (!response.ok || provider?.code !== '00') {
+      const providerError = new Error(provider?.desc || 'Không tạo được link PayOS cho lô đăng ký.');
+      providerError.code = 'PAYOS_CREATE_FAILED';
+      providerError.details = `HTTP ${response.status}; provider code ${safeDiagnostic(provider?.code) || 'unknown'}`;
+      throw providerError;
+    }
     const data = provider.data || {};
+    diagnostic.stage = 'save_payos_order';
     const saved = await recordOrder(payment.id, request, { ...provider, batchId: batch.id, expiresAt: request.expiredAt }, data);
     return res.status(200).json({ success: true, batch: formatBatch(prepared), payment: formatPayment(saved, amount, false, request.expiredAt) });
   } catch (error) {
     const status = error?.status || (error?.code === 'MISSING_ENV' ? 500 : 400);
     console.error('REGISTRATION_BATCH_PAYOS_FAILED', {
+      stage: diagnostic.stage,
+      requestIds: diagnostic.requestIds,
+      batchId: diagnostic.batchId,
+      paymentId: diagnostic.paymentId,
+      payosReached: diagnostic.payosReached,
       code: safeDiagnostic(error?.code),
       message: safeDiagnostic(error?.message),
       details: safeDiagnostic(error?.details),
@@ -93,7 +114,14 @@ async function recordOrder(paymentId, request, providerPayload, values = {}) {
   const config = getSupabaseServiceConfig();
   const response = await fetch(`${config.url}/rest/v1/rpc/record_registration_payos_order`, { method: 'POST', headers: { apikey: config.key, Authorization: `Bearer ${config.key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ payment_id_input: paymentId, order_code_input: request.orderCode, amount_input: request.amount, description_input: request.description, checkout_url_input: values.checkoutUrl || null, qr_code_input: values.qrCode || null, payment_link_id_input: values.paymentLinkId || null, provider_payload_input: providerPayload }) });
   const data = await safeJson(response);
-  if (!response.ok) throw new Error(data?.message || 'Không lưu được PayOS order của lô đăng ký.');
+  if (!response.ok) {
+    const error = new Error(data?.message || 'Không lưu được PayOS order của lô đăng ký.');
+    error.status = response.status;
+    error.code = data?.code;
+    error.details = data?.details;
+    error.hint = data?.hint;
+    throw error;
+  }
   return Array.isArray(data) ? data[0] : data;
 }
 
