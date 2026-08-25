@@ -23,7 +23,7 @@ test('manual renewal summary uses stored actor, Kiosk name, months and amount', 
     after: { months: 1, actual_amount: 300000 },
   };
   assert.equal(logUi.entityDisplayName(log), 'Kiosk ABC');
-  assert.equal(logUi.humanLogSummary(log), 'Nguyễn Thanh Hân đã gia hạn Kiosk ABC thêm 1 tháng.');
+  assert.equal(logUi.humanLogSummary(log), 'Kiosk ABC · thêm 1 tháng');
   assert.match(logUi.importantChange(log), /1 tháng.*300\.000/);
 });
 
@@ -35,7 +35,7 @@ test('missing entity name falls back to a real stored identifier without fabrica
     after: { payment_id: 99, amount: 450000, kiosk_count: 2 },
   };
   assert.equal(logUi.entityDisplayName(log), 'Thanh toán #42');
-  assert.match(logUi.humanLogSummary(log), /450\.000.*Thanh toán #42/);
+  assert.equal(logUi.humanLogSummary(log), 'Thanh toán #42 · thanh toán PayOS đã xác nhận');
 });
 
 test('common audit fields have human-readable labels', () => {
@@ -52,7 +52,7 @@ test('resolved Kiosk name replaces its database id in primary activity copy', ()
     resolved_entity: { kind: 'Kiosk', name: 'Khánh Ly', id: '277', missing: false },
   };
   assert.equal(logUi.entityDisplayName(log), 'Kiosk Khánh Ly');
-  assert.equal(logUi.humanLogSummary(log), 'Nguyễn Thanh Hân đã duyệt hồ sơ bổ sung Kiosk Khánh Ly.');
+  assert.equal(logUi.humanLogSummary(log), 'Kiosk Khánh Ly · duyệt hồ sơ bổ sung');
   assert.doesNotMatch(logUi.humanLogSummary(log), /#277/);
 });
 
@@ -67,7 +67,7 @@ test('deleted historical Kiosk and resolved promotion use safe business labels',
   };
   assert.equal(logUi.entityDisplayName(promotion), 'Mã giảm giá TANG1THANG');
   assert.match(logUi.humanLogSummary(promotion), /TANG1THANG/);
-  assert.equal(logUi.humanLogSummary({ ...promotion, action: 'delete_promotion' }), 'Admin đã xóa mã giảm giá TANG1THANG.');
+  assert.equal(logUi.humanLogSummary({ ...promotion, action: 'delete_promotion' }), 'TANG1THANG · đã xóa mã giảm giá');
 });
 
 test('main activity result hides technical field names while raw detail support remains', () => {

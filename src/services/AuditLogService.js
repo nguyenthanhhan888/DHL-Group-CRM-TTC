@@ -1,6 +1,6 @@
 import { requireSupabaseClient, runQuery } from './BaseService.js';
 
-const PAGE_SIZES = new Set([10, 25, 50]);
+const PAGE_SIZES = new Set([10, 20, 50]);
 
 export const AuditLogService = {
   async log(entry = {}) {
@@ -31,6 +31,7 @@ export const AuditLogService = {
     module = '',
     fromTime = null,
     toTime = null,
+    showTechnical = false,
     pagination = {},
   } = {}) {
     const page = positiveInteger(pagination.page, 1);
@@ -43,6 +44,7 @@ export const AuditLogService = {
       from_time: normalizeDateTime(fromTime),
       to_time: normalizeDateTime(toTime),
       search_term: normalizeOptional(searchTerm),
+      show_technical: Boolean(showTechnical),
       page_number: page,
       page_size: pageSize,
     }));

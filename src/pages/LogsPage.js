@@ -9,7 +9,7 @@ import { formatCurrency } from '../utils/currency.js';
 import { bindPagination, Pagination, updatePagination } from '../components/Pagination.js';
 import { escapeHtml } from '../utils/html.js';
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50];
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const ACTION_FILTERS = [
   { value: 'create', label: 'Tạo mới' },
   { value: 'update', label: 'Cập nhật' },
@@ -100,6 +100,7 @@ export function LogsPage() {
         </tbody>
       </table>
     </div>
+    <div id="logs-mobile-list" class="logs-mobile-list" aria-live="polite"></div>
     ${Pagination({ id: 'logs', page: state.page, pageSize: state.pageSize, total: state.total, pageSizeOptions: PAGE_SIZE_OPTIONS, noun: 'hoạt động' })}
     </div>
   `;
@@ -170,10 +171,14 @@ function bindLogEvents() {
     state.page = 1;
     loadLogs();
   });
-  document.getElementById('log-show-technical')?.addEventListener('change',(event)=>{state.showTechnical=event.target.checked;renderLogs(state.items);});
+  document.getElementById('log-show-technical')?.addEventListener('change', (event) => {
+    state.showTechnical = event.target.checked;
+    state.page = 1;
+    loadLogs();
+  });
 
 
-  document.getElementById('logs-table-body')?.addEventListener('click', (event) => {
+  document.querySelector('.logs-page')?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-log-view]');
     if (!button) return;
 
@@ -188,13 +193,14 @@ async function loadLogs() {
   setLoadingState();
 
   try {
-    const { data, count } = await AuditLogService.list({
+    const { data, count, page: responsePage } = await AuditLogService.list({
       searchTerm: state.searchTerm,
       actor: state.actor,
       action: state.action,
       module: state.module,
       fromTime: dateBoundary(state.fromDate),
       toTime: dateBoundary(state.toDate, true),
+      showTechnical: state.showTechnical,
       pagination: { page: state.page, pageSize: state.pageSize },
     });
 
@@ -202,6 +208,13 @@ async function loadLogs() {
 
     state.total = count || 0;
     state.items = data || [];
+    state.page = responsePage || 1;
+    const lastPage = Math.max(1, Math.ceil(state.total / state.pageSize));
+    if (state.page > lastPage) {
+      state.page = lastPage;
+      loadLogs();
+      return;
+    }
     renderLogs(data || []);
     renderPagination();
   } catch (error) {
@@ -212,32 +225,40 @@ async function loadLogs() {
 
 function renderLogs(logs) {
   const body = document.getElementById('logs-table-body');
-  if (!body) return;
+  const mobileList = document.getElementById('logs-mobile-list');
+  if (!body || !mobileList) return;
 
-  const visibleLogs=state.showTechnical?logs:logs.filter(isBusinessActivity);
-  if (!visibleLogs.length) {
+  if (!logs.length) {
     body.innerHTML = renderTableState(
       'Chưa có lịch sử',
-      state.showTechnical?'Không có bản ghi log nào khớp với bộ lọc hiện tại.':'Không có hoạt động nghiệp vụ trong trang này. Bật “Hiện thay đổi kỹ thuật” để xem audit gốc.',
+      state.showTechnical ? 'Không có bản ghi log nào khớp với bộ lọc hiện tại.' : 'Không có hoạt động nghiệp vụ khớp với bộ lọc hiện tại.',
     );
+    mobileList.innerHTML = EmptyState({ title: 'Chưa có lịch sử', message: 'Không có hoạt động khớp với bộ lọc hiện tại.' });
     return;
   }
 
-  body.innerHTML = visibleLogs.map((log) => `
+  body.innerHTML = logs.map((log) => `
     <tr>
       <td>${escapeHtml(log.actor_name || 'Hệ thống')}</td>
       <td><div class="log-primary-action">${renderActionBadge(log.action)}<strong>${escapeHtml(humanLogSummary(log))}</strong></div></td>
       <td>${escapeHtml(entityDisplayName(log))}</td>
-      <td>${formatDateTime(log.created_at)}</td>
+      <td>${renderDateTime(log.created_at)}</td>
       <td>${escapeHtml(importantChange(log))}</td>
       <td class="log-detail-cell">
         <button class="table-action-button" type="button" data-log-view="${escapeHtml(log.id)}">Xem chi tiết</button>
       </td>
     </tr>
   `).join('');
-}
 
-function isBusinessActivity(log){const action=normalizeAction(log.action);return ['create','delete','confirm','cancel','reject','approve','approved','reset_password','set_active','admin_manual_renewal','confirm_payos','confirm_payos_batch','review_legacy_approve','review_legacy_cancel','create_promotion','update_promotion','pause_promotion','reactivate_promotion','delete_promotion'].includes(action);}
+  mobileList.innerHTML = logs.map((log) => `
+    <article class="log-mobile-card">
+      <div class="log-mobile-card-head">${renderActionBadge(log.action)}${renderCompactDateTime(log.created_at)}</div>
+      <strong class="log-mobile-target">${escapeHtml(entityDisplayName(log))}</strong>
+      <span class="log-mobile-change">${escapeHtml(importantChange(log))}</span>
+      <button class="table-action-button" type="button" data-log-view="${escapeHtml(log.id)}">Xem chi tiết</button>
+    </article>
+  `).join('');
+}
 
 function renderActionBadge(action) {
   const normalized = String(action || 'unknown').toLowerCase();
@@ -434,6 +455,25 @@ function formatDateTime(value) {
   }).format(new Date(value));
 }
 
+function dateTimeParts(value) {
+  if (!value) return { date: '—', time: '' };
+  const date = new Date(value);
+  return {
+    date: new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date),
+    time: new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit' }).format(date),
+  };
+}
+
+function renderDateTime(value) {
+  const parts = dateTimeParts(value);
+  return `<time class="log-time" datetime="${escapeHtml(value || '')}"><span>${parts.date}</span><span>${parts.time}</span></time>`;
+}
+
+function renderCompactDateTime(value) {
+  const parts = dateTimeParts(value);
+  return `<time class="log-mobile-time" datetime="${escapeHtml(value || '')}">${escapeHtml(parts.date.replace(/\/\d{4}$/, ''))} · ${escapeHtml(parts.time)}</time>`;
+}
+
 function actorTypeLabel(actorType) {
   const labels = {
     staff: 'Nhân viên',
@@ -467,27 +507,25 @@ function moduleLabel(module) {
 }
 
 function humanLogSummary(log) {
-  const actor = log.actor_name || 'Hệ thống';
   const entity = entityDisplayName(log);
   const action = normalizeAction(log.action);
-  const amount = extractValue(log, ['actual_amount', 'total_amount', 'amount']);
   const months = extractValue(log, ['months', 'service_month_delta']);
 
   if (action === 'admin_manual_renewal') {
-    return `${actor} đã gia hạn ${entity}${months ? ` thêm ${months} tháng` : ''}.`;
+    return `${entity}${months ? ` · thêm ${months} tháng` : ' · đã gia hạn'}`;
   }
   if (action === 'confirm_payos' || action === 'confirm_payos_batch') {
-    return `Thanh toán PayOS${amount !== null ? ` ${formatCurrency(amount)}` : ''} của ${entity} đã được xác nhận.`;
+    return `${entity} · thanh toán PayOS đã xác nhận`;
   }
   if (action === 'create' && entityKind(log) === 'Kiosk') {
-    return `${actor} đã đăng ký ${entity}.`;
+    return `${entity} · đăng ký mới`;
   }
-  if (action === 'create_promotion') return `${actor} đã tạo mã giảm giá ${promotionCode(log)}.`;
-  if (action === 'update_promotion') return `${actor} đã cập nhật chương trình ${promotionName(log)}.`;
-  if (action === 'pause_promotion') return `${actor} đã tạm ngưng mã ${promotionCode(log)}.`;
-  if (action === 'reactivate_promotion') return `${actor} đã kích hoạt lại mã ${promotionCode(log)}.`;
-  if (action === 'delete_promotion') return `${actor} đã xóa mã giảm giá ${promotionCode(log)}.`;
-  return `${actor} đã ${actionLabel(log.action).toLocaleLowerCase('vi')} ${entity}.`;
+  if (action === 'create_promotion') return `${promotionCode(log)} · đã tạo mã giảm giá`;
+  if (action === 'update_promotion') return `${promotionName(log)} · đã cập nhật chương trình`;
+  if (action === 'pause_promotion') return `${promotionCode(log)} · đã tạm ngưng`;
+  if (action === 'reactivate_promotion') return `${promotionCode(log)} · đã kích hoạt lại mã`;
+  if (action === 'delete_promotion') return `${promotionCode(log)} · đã xóa mã giảm giá`;
+  return `${entity} · ${actionLabel(log.action).toLocaleLowerCase('vi')}`;
 }
 
 function promotionCode(log) { return log.resolved_entity?.name || firstNestedValue([log.after,log.before].filter(Boolean),['code']) || `#${log.record_id || '—'}`; }

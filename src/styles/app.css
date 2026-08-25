@@ -7041,6 +7041,33 @@ body { color:var(--text-primary); background:var(--bg-page); }
 .log-change-section { margin-top:16px; }
 .log-diff-table td { vertical-align:top; }
 .log-diff-table .old-value,.log-diff-table .new-value { max-width:320px; white-space:normal; overflow-wrap:anywhere; }
+.logs-table { table-layout:fixed; min-width:1000px; }
+.logs-table th,.logs-table td { vertical-align:top; }
+.logs-table th:nth-child(1) { width:14%; }
+.logs-table th:nth-child(2) { width:29%; }
+.logs-table th:nth-child(3) { width:19%; }
+.logs-table th:nth-child(4) { width:12%; }
+.logs-table th:nth-child(5) { width:17%; }
+.logs-table th:nth-child(6) { width:9%; }
+.logs-table td:nth-child(3) { overflow-wrap:break-word; }
+.log-detail-cell { min-width:0; }
+.log-primary-action { min-width:0; gap:6px; }
+.log-primary-action strong { font-weight:650; }
+.log-time { display:grid; gap:2px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.log-time span:last-child { color:var(--text-muted); }
+.logs-mobile-list { display:none; }
+
+@media(max-width:700px) {
+  .logs-table-card { display:none; }
+  .logs-mobile-list { display:grid; gap:10px; }
+  .log-mobile-card { display:grid; min-width:0; gap:9px; padding:14px; border:1px solid var(--border-default); border-radius:12px; background:var(--bg-card); box-shadow:var(--shadow-card); }
+  .log-mobile-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .log-mobile-card-head .status-badge { flex-shrink:0; }
+  .log-mobile-time { color:var(--text-muted); font-size:12px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .log-mobile-target { min-width:0; color:var(--text-primary); overflow-wrap:break-word; }
+  .log-mobile-change { color:var(--text-secondary); font-size:13px; }
+  .log-mobile-card .table-action-button { justify-self:start; min-height:40px; }
+}
 
 /* Shared layout rhythm: page sections -> cards -> headings -> form fields. */
 .page-content > .page-header { margin-bottom:var(--space-major); }
@@ -7102,10 +7129,10 @@ body { color:var(--text-primary); background:var(--bg-page); }
 .facebook-identity-summary small { color:var(--text-secondary); overflow-wrap:anywhere; }
 .facebook-id-resolver[data-resolver-state="success"] input[readonly] { color:var(--text-primary); background:var(--bg-surface); border-color:var(--success-border); opacity:1; }
 .public-kiosk-card { display:grid; gap:22px; margin-bottom:20px; padding:24px; background:var(--bg-surface); border:1px solid var(--border-default); border-radius:16px; box-shadow:var(--shadow-surface); }
-.kiosk-card-header { display:flex; align-items:center; justify-content:space-between; gap:16px; }
-.kiosk-card-header>div { display:grid; gap:2px; }
+.kiosk-card-header { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:16px; }
+.kiosk-card-header>div { display:grid; min-width:0; gap:2px; }
 .public-kiosk-card .kiosk-card-header span { color:var(--text-primary); font-size:19px; font-weight:800; }
-.kiosk-card > .kiosk-card-header > .status-badge { flex:0 0 auto; padding:3px 7px; border-radius:7px; font-size:11px; font-weight:600; line-height:1.15; }
+.kiosk-card > .kiosk-card-header > .status-badge { align-self:start; flex:0 0 auto; flex-shrink:0; min-height:19px; padding:3px 7px; border-radius:7px; font-size:11px; font-weight:600; line-height:1.15; }
 .kiosk-card > .kiosk-card-header > .status-badge .status-dot { width:5px; height:5px; }
 .kiosk-card-header small { color:var(--text-muted); }
 .kiosk-facebook-section { display:grid; gap:14px; padding:15px; background:var(--primary-soft); border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border-default)); border-radius:13px; }
