@@ -44,3 +44,34 @@ test('common audit fields have human-readable labels', () => {
   assert.equal(logUi.fieldLabel('status'), 'Trạng thái');
   assert.equal(logUi.fieldLabel('phone'), 'Số điện thoại');
 });
+
+test('resolved Kiosk name replaces its database id in primary activity copy', () => {
+  const log = {
+    action: 'review_legacy_approve', module: 'Registration', record_id: '88',
+    actor_name: 'Nguyễn Thanh Hân', after: { kiosk_id: 277 },
+    resolved_entity: { kind: 'Kiosk', name: 'Khánh Ly', id: '277', missing: false },
+  };
+  assert.equal(logUi.entityDisplayName(log), 'Kiosk Khánh Ly');
+  assert.equal(logUi.humanLogSummary(log), 'Nguyễn Thanh Hân đã duyệt hồ sơ bổ sung Kiosk Khánh Ly.');
+  assert.doesNotMatch(logUi.humanLogSummary(log), /#277/);
+});
+
+test('deleted historical Kiosk and resolved promotion use safe business labels', () => {
+  assert.equal(logUi.entityDisplayName({
+    action: 'update', module: 'Kiosk', record_id: '277',
+    resolved_entity: { kind: 'Kiosk', name: null, id: '277', missing: true },
+  }), 'Kiosk đã xóa');
+  const promotion = {
+    action: 'pause_promotion', module: 'Promotion', record_id: '9', actor_name: 'Admin',
+    resolved_entity: { kind: 'Mã giảm giá', name: 'TANG1THANG', id: '9', missing: false },
+  };
+  assert.equal(logUi.entityDisplayName(promotion), 'Mã giảm giá TANG1THANG');
+  assert.match(logUi.humanLogSummary(promotion), /TANG1THANG/);
+  assert.equal(logUi.humanLogSummary({ ...promotion, action: 'delete_promotion' }), 'Admin đã xóa mã giảm giá TANG1THANG.');
+});
+
+test('main activity result hides technical field names while raw detail support remains', () => {
+  const log = { action: 'update', module: 'Kiosk', before: { total_paid: 0 }, after: { total_paid: 100000, payment_id: 4 } };
+  assert.equal(logUi.importantChange(log), 'Đã cập nhật thông tin');
+  assert.doesNotMatch(logUi.importantChange(log), /total paid|payment id|kiosk total paid/i);
+});

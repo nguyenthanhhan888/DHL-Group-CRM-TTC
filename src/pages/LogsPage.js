@@ -369,6 +369,7 @@ function actionLabel(action) {
     update_promotion: 'Cập nhật chương trình',
     pause_promotion: 'Tạm ngưng mã giảm giá',
     reactivate_promotion: 'Kích hoạt lại mã giảm giá',
+    delete_promotion: 'Xóa mã giảm giá',
   };
   return labels[normalizeAction(action)] || 'Hoạt động hệ thống';
 }
@@ -485,17 +486,19 @@ function humanLogSummary(log) {
   if (action === 'update_promotion') return `${actor} đã cập nhật chương trình ${promotionName(log)}.`;
   if (action === 'pause_promotion') return `${actor} đã tạm ngưng mã ${promotionCode(log)}.`;
   if (action === 'reactivate_promotion') return `${actor} đã kích hoạt lại mã ${promotionCode(log)}.`;
+  if (action === 'delete_promotion') return `${actor} đã xóa mã giảm giá ${promotionCode(log)}.`;
   return `${actor} đã ${actionLabel(log.action).toLocaleLowerCase('vi')} ${entity}.`;
 }
 
-function promotionCode(log) { return firstNestedValue([log.after,log.before].filter(Boolean),['code']) || `#${log.record_id || '—'}`; }
-function promotionName(log) { return firstNestedValue([log.after,log.before].filter(Boolean),['name']) || promotionCode(log); }
+function promotionCode(log) { return log.resolved_entity?.name || firstNestedValue([log.after,log.before].filter(Boolean),['code']) || `#${log.record_id || '—'}`; }
+function promotionName(log) { return firstNestedValue([log.after,log.before].filter(Boolean),['name']) || log.resolved_entity?.name || promotionCode(log); }
 
 function entityKind(log) {
   return moduleLabel(log.entity || log.module);
 }
 
 function entityDisplayName(log) {
+  if (log.resolved_entity?.name) return entityWithKind(log.resolved_entity.kind, log.resolved_entity.name);
   const kind = entityKind(log);
   const source = [log.after, log.before].filter(Boolean);
   const name = firstNestedValue(source, ['facebook_name', 'name', 'kiosk_name']);
@@ -505,6 +508,7 @@ function entityDisplayName(log) {
   if (kioskName) return entityWithKind('Kiosk', kioskName);
 
   const kioskId = firstNestedValue(source, ['kiosk_id', 'payment.kiosk_id']);
+  if (log.resolved_entity?.missing) return `${log.resolved_entity.kind} đã xóa`;
   if (kioskId) return `Kiosk #${kioskId}`;
   return log.record_id ? `${kind} #${log.record_id}` : kind;
 }
@@ -525,8 +529,14 @@ function importantChange(log) {
     const count = extractValue(log, ['kiosk_count']);
     return [amount !== null ? formatCurrency(amount) : '', count ? `${count} Kiosk` : ''].filter(Boolean).join(' · ') || 'Thanh toán đã xác nhận';
   }
-  const fields = summarizeChangedFields(log.before, log.after).slice(0, 3).map(fieldLabel);
-  return fields.length ? fields.join(', ') : friendlyReason(log.reason);
+  const businessResults = {
+    create: 'Đã tạo mới', update: 'Đã cập nhật thông tin', delete: 'Đã xóa',
+    approve: 'Đã duyệt', approved: 'Đã duyệt', review_legacy_approve: 'Đã duyệt hồ sơ',
+    review_legacy_cancel: 'Đã hủy hồ sơ', create_promotion: 'Đã tạo mã',
+    update_promotion: 'Đã cập nhật chương trình', pause_promotion: 'Đã tạm ngưng',
+    reactivate_promotion: 'Đã kích hoạt', delete_promotion: 'Đã xóa mã',
+  };
+  return businessResults[action] || friendlyReason(log.reason);
 }
 
 function extractValue(log, keys) {

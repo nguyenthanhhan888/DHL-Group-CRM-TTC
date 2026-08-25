@@ -7104,7 +7104,9 @@ body { color:var(--text-primary); background:var(--bg-page); }
 .public-kiosk-card { display:grid; gap:22px; margin-bottom:20px; padding:24px; background:var(--bg-surface); border:1px solid var(--border-default); border-radius:16px; box-shadow:var(--shadow-surface); }
 .kiosk-card-header { display:flex; align-items:center; justify-content:space-between; gap:16px; }
 .kiosk-card-header>div { display:grid; gap:2px; }
-.kiosk-card-header span { color:var(--text-primary); font-size:19px; font-weight:800; }
+.public-kiosk-card .kiosk-card-header span { color:var(--text-primary); font-size:19px; font-weight:800; }
+.kiosk-card > .kiosk-card-header > .status-badge { flex:0 0 auto; padding:3px 7px; border-radius:7px; font-size:11px; font-weight:600; line-height:1.15; }
+.kiosk-card > .kiosk-card-header > .status-badge .status-dot { width:5px; height:5px; }
 .kiosk-card-header small { color:var(--text-muted); }
 .kiosk-facebook-section { display:grid; gap:14px; padding:15px; background:var(--primary-soft); border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border-default)); border-radius:13px; }
 .reuse-customer-toggle { display:flex; align-items:flex-start; gap:11px; cursor:pointer; }

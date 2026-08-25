@@ -47,8 +47,9 @@ export const AuditLogService = {
       page_size: pageSize,
     }));
 
+    const rows = Array.isArray(data?.rows) ? data.rows : [];
     return {
-      data: Array.isArray(data?.rows) ? data.rows : [],
+      data: await enrichBusinessEntities(requireSupabaseClient(), rows),
       count: Number(data?.total || 0),
       page: Number(data?.page || page),
       pageSize: Number(data?.pageSize || pageSize),
@@ -62,6 +63,51 @@ export const AuditLogService = {
     return { data };
   },
 };
+
+async function enrichBusinessEntities(supabase, rows) {
+  if (!rows.length) return rows;
+  const requestIds = uniqueIds(rows.filter(isRegistrationLog).map((log) => log.record_id));
+  const requests = requestIds.length
+    ? (await runQuery(supabase.from('registration_requests').select('id,kiosk_id,customer_id,facebook_name').in('id', requestIds))).data || []
+    : [];
+  const requestsById = new Map(requests.map((item) => [String(item.id), item]));
+  const kioskIds = uniqueIds(rows.flatMap((log) => [nestedId(log, 'kiosk_id'), nestedId(log, 'payment.kiosk_id'), entityRecordId(log, 'kiosk'), requestsById.get(String(log.record_id))?.kiosk_id]));
+  const customerIds = uniqueIds(rows.flatMap((log) => [nestedId(log, 'customer_id'), nestedId(log, 'payment.customer_id'), entityRecordId(log, 'customer'), requestsById.get(String(log.record_id))?.customer_id]));
+  const promotionIds = uniqueIds(rows.flatMap((log) => [nestedId(log, 'promotion_id'), entityRecordId(log, 'promotion')]));
+  const [kiosks, customers, promotions] = await Promise.all([
+    batchSelect(supabase, 'kiosks', 'id,facebook_name', kioskIds),
+    batchSelect(supabase, 'customers', 'id,facebook_name', customerIds),
+    batchSelect(supabase, 'promotions', 'id,code,name', promotionIds),
+  ]);
+  const kioskById = new Map(kiosks.map((item) => [String(item.id), item]));
+  const customerById = new Map(customers.map((item) => [String(item.id), item]));
+  const promotionById = new Map(promotions.map((item) => [String(item.id), item]));
+  return rows.map((log) => {
+    const request = requestsById.get(String(log.record_id));
+    const promotionId = nestedId(log, 'promotion_id') || entityRecordId(log, 'promotion');
+    const kioskId = nestedId(log, 'kiosk_id') || nestedId(log, 'payment.kiosk_id') || entityRecordId(log, 'kiosk') || request?.kiosk_id;
+    const customerId = nestedId(log, 'customer_id') || nestedId(log, 'payment.customer_id') || entityRecordId(log, 'customer') || request?.customer_id;
+    if (promotionId) return withResolved(log, 'Mã giảm giá', promotionById.get(String(promotionId))?.code || null, promotionId);
+    if (kioskId || isRegistrationLog(log)) return withResolved(log, 'Kiosk', kioskById.get(String(kioskId))?.facebook_name || request?.facebook_name || null, kioskId);
+    if (customerId) return withResolved(log, 'Khách hàng', customerById.get(String(customerId))?.facebook_name || null, customerId);
+    return log;
+  });
+}
+
+function batchSelect(supabase, table, columns, ids) {
+  return ids.length ? runQuery(supabase.from(table).select(columns).in('id', ids)).then(({ data }) => data || []) : Promise.resolve([]);
+}
+function withResolved(log, kind, name, id) { return { ...log, resolved_entity: { kind, name, id, missing: !name } }; }
+function uniqueIds(values) { return [...new Set(values.filter((value) => value !== null && value !== undefined && value !== '').map(String))]; }
+function isRegistrationLog(log) { return /registration/i.test(String(log.entity || log.module || '')) || /review_legacy/i.test(String(log.action || '')); }
+function entityRecordId(log, kind) { return String(log.entity || log.module || '').toLowerCase().includes(kind) ? log.record_id : null; }
+function nestedId(log, path) {
+  for (const source of [log.after, log.before]) {
+    const value = path.split('.').reduce((current, key) => current?.[key], source);
+    if (value !== undefined && value !== null && value !== '') return value;
+  }
+  return null;
+}
 
 function normalizeRequired(value, label) {
   const normalized = normalizeOptional(value);
