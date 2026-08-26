@@ -48,11 +48,12 @@ test('public PayOS requests use a separate waiting-for-payment state', () => {
   assert.match(migration, /not in \('awaiting_payment',\s*'pending',\s*'approved'\)/);
 });
 
-test('Admin queue and badge remain limited to Admin-review pending', () => {
-  assert.match(requestService, /\.eq\('status', status\)/);
-  assert.match(notifications, /\.eq\('status','pending'\)/);
-  assert.doesNotMatch(requestService, /awaiting_payment/);
-  assert.doesNotMatch(notifications, /awaiting_payment/);
+test('Admin queue exposes awaiting-payment separately from Admin-review pending', () => {
+  assert.match(requestService, /admin_list_registration_requests/);
+  assert.match(notifications, /\.eq\('status', 'pending'\)/);
+  assert.match(notifications, /\.eq\('status', 'awaiting_payment'\)/);
+  assert.match(notifications, /registrationCount: pendingCount/);
+  assert.match(notifications, /awaitingPaymentCount: awaitingCount/);
 });
 
 test('identical retry reuses request, batch, payment, and active provider order', () => {
@@ -70,7 +71,7 @@ test('failed provider creation releases only an unpaid empty reservation', () =>
 });
 
 test('safe server diagnostics expose every registration payment stage', () => {
-  for (const stage of ['SUBMIT_REQUEST', 'PREPARE_BATCH', 'PREPARE_PAYMENT', 'CREATE_PAYOS_ORDER', 'RECORD_PAYOS_ORDER', 'RETURN_CHECKOUT']) {
+  for (const stage of ['SUBMIT_REQUEST', 'PREPARE_BASE_PRICING', 'PREPARE_PAYMENT', 'CREATE_PAYOS_ORDER', 'RECORD_PAYOS_ORDER', 'RETURN_CHECKOUT']) {
     assert.match(api, new RegExp(`['"]${stage}['"]`));
   }
   for (const field of ['requestIds', 'batchId', 'paymentId', 'payosReached']) assert.match(api, new RegExp(`${field}:`));

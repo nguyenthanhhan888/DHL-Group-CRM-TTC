@@ -113,6 +113,7 @@ test('kiosk reports use only the authoritative report RPC result', async () => {
   assert.equal(report.pagination.totalRows, 3);
   assert.deepEqual(calls.filter(([method]) => method === 'rpc').map((call) => call.slice(0, 2)), [
     ['rpc', 'get_reports_data'],
+    ['rpc', 'get_registration_operations_summary'],
   ]);
   assert.deepEqual(calls.filter(([method]) => method === 'from'), []);
 

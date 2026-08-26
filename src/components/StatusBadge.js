@@ -11,6 +11,7 @@ const DEFAULT_LABELS = {
   approved: 'Đã duyệt',
   rejected: 'Từ chối',
   cancelled: 'Đã hủy',
+  awaiting_payment: 'Chờ thanh toán',
   unknown: 'Không rõ',
 };
 
@@ -23,6 +24,7 @@ const TONES = {
   rejected: 'danger',
   cancelled: 'danger',
   pending: 'pending',
+  awaiting_payment: 'warning',
   suspended: 'neutral',
   inactive: 'neutral',
   unknown: 'neutral',

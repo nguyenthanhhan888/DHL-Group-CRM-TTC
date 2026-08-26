@@ -11,6 +11,7 @@ const batch = read('supabase/migrations/20260818235900_create_public_registratio
 const intent = read('supabase/migrations/20260815120000_harden_payos_payment_intents.sql');
 const stabilization = read('supabase/migrations/20260825150000_stabilize_public_registration_payment_v2.sql');
 const api = read('api/payos/create-registration-payment.js');
+const completion = read('supabase/migrations/20260825160000_complete_registration_checkout_v3.sql');
 
 test('production hotfix leaves exactly one public payment-preparation signature', () => {
   assert.match(hotfix, /alter function public\.prepare_registration_batch_for_payos\(bigint\[\], text\)\s+set schema private/);
@@ -28,11 +29,11 @@ test('production hotfix leaves exactly one public payment-preparation signature'
   assert.match(hotfix, /grant execute on function public\.prepare_registration_batch_for_payos\(bigint\[\], text, text\)\s+to service_role/);
 });
 
-test('normal checkout bypasses promotion and remains server-authoritative', () => {
-  assert.match(api, /prepare_registration_payment_v2/);
-  assert.doesNotMatch(api, /promotionCode|promotion_code_input|prepare_registration_batch_for_payos/);
-  assert.match(stabilization, /item_total := package_record\.price_per_month \* request_record\.months/);
-  assert.match(stabilization, /request_record\.total_amount is distinct from item_total/);
+test('normal checkout uses v3 with explicit null promotion and remains server-authoritative', () => {
+  assert.match(api, /prepare_registration_checkout_v3/);
+  assert.match(api, /promotion_code_input: promotionCode/);
+  assert.match(completion, /item_total := package_record\.price_per_month \* request_record\.months/);
+  assert.match(completion, /request_record\.total_amount is distinct from item_total/);
 });
 
 test('percentage, fixed and bonus-month promotion infrastructure remains installed', () => {
@@ -43,10 +44,12 @@ test('percentage, fixed and bonus-month promotion infrastructure remains install
   assert.doesNotMatch(stabilization, /evaluate_registration_promotion|promotion_code_input|promotion_snapshot/);
 });
 
-test('promotion input cannot enter the stabilized PayOS path', () => {
-  assert.doesNotMatch(api, /promotionCode|promotion_code_input/);
+test('promotion input enters the unique v3 path before provider order creation', () => {
+  assert.match(api, /promotionCode/);
+  assert.match(api, /promotion_code_input/);
+  assert.match(api, /logCheckoutStage\('PREPARE_BASE_PRICING'/);
   assert.match(api, /diagnostic\.stage = 'PREPARE_BATCH'/);
-  assert.ok(api.indexOf("PREPARE_BATCH") < api.indexOf("CREATE_PAYOS_ORDER"));
+  assert.ok(api.indexOf("PREPARE_BASE_PRICING") < api.indexOf("CREATE_PAYOS_ORDER"));
 });
 
 test('duplicate and failed-attempt retries preserve one financial intent', () => {

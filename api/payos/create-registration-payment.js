@@ -19,23 +19,35 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
     const requestIds = normalizeRequestIds(parsed.value.requestIds || parsed.value.request_ids);
     diagnostic.requestIds = requestIds;
     const phone = normalizePhone(parsed.value.phone);
+    const promotionCode = normalizePromotionCode(parsed.value.promotionCode || parsed.value.promotion_code);
     const returnUrl = normalizeUrl(parsed.value.returnUrl || parsed.value.return_url || `${originFromRequest(req)}/#/register`);
     const cancelUrl = normalizeUrl(parsed.value.cancelUrl || parsed.value.cancel_url || returnUrl);
+    logCheckoutStage('SUBMIT_REQUEST', diagnostic, { promotionApplied: Boolean(promotionCode) });
+    logCheckoutStage('PREPARE_BASE_PRICING', diagnostic, { promotionApplied: Boolean(promotionCode) });
+    if (promotionCode) logCheckoutStage('EVALUATE_PROMOTION', diagnostic, { promotionApplied: true });
     diagnostic.stage = 'PREPARE_BATCH';
-    const prepared = await prepareBatch(requestIds, phone);
+    const prepared = await prepareBatch(requestIds, phone, promotionCode);
     const payment = prepared?.payment;
     const batch = prepared?.batch;
     const amount = Number(payment?.total_amount);
     diagnostic.batchId = batch?.id || null;
     diagnostic.paymentId = payment?.id || null;
+    logCheckoutStage('PREPARE_BATCH', diagnostic, { reused: Boolean(prepared?.reused) });
+    if (prepared?.reused) logCheckoutStage('REUSE_REQUEST', diagnostic, { resource: 'batch_payment' });
     diagnostic.stage = 'PREPARE_PAYMENT';
+    logCheckoutStage('PREPARE_PAYMENT', diagnostic);
     if (!batch?.id || !payment?.id || !Number.isSafeInteger(amount) || amount <= 0 || amount !== Number(batch.total_amount)) throw new Error('Tổng tiền lô đăng ký không hợp lệ.');
 
     diagnostic.stage = 'CREATE_PAYOS_ORDER';
+    logCheckoutStage('CREATE_PAYOS_ORDER', diagnostic);
     const existingOrder = await fetchExistingPayosOrder(payment.id);
     if (existingOrder) {
       const readyOrder = existingOrder.checkout_url ? existingOrder : await waitForCheckout(payment.id, existingOrder.order_code);
       if (!readyOrder?.checkout_url) { const error = new Error('Link PayOS đang được tạo.'); error.code = 'CHECKOUT_IN_PROGRESS'; throw error; }
+      diagnostic.orderCode = readyOrder.order_code || null;
+      logCheckoutStage('REUSE_REQUEST', diagnostic, { resource: 'payos_order' });
+      diagnostic.stage = 'RETURN_CHECKOUT';
+      logCheckoutStage('RETURN_CHECKOUT', diagnostic, { reused: true });
       return res.status(200).json({ success: true, batch: formatBatch(prepared), payment: formatPayment(readyOrder, amount, true) });
     }
 
@@ -44,9 +56,11 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
     const request = { orderCode, amount, description: normalizePayosDescription(`DHL${payment.id}`, orderCode), returnUrl, cancelUrl, expiredAt: createPaymentExpiredAt() };
     request.signature = signPaymentRequest(request, requireEnv('PAYOS_CHECKSUM_KEY'));
     diagnostic.stage = 'RECORD_PAYOS_ORDER';
+    logCheckoutStage('RECORD_PAYOS_ORDER', diagnostic, { phase: 'reserve' });
     await recordOrder(payment.id, request, { stage: 'reserved', batchId: batch.id, expiresAt: request.expiredAt });
     diagnostic.stage = 'CREATE_PAYOS_ORDER';
     diagnostic.payosReached = true;
+    logCheckoutStage('CREATE_PAYOS_ORDER', diagnostic, { providerReached: true });
     const response = await fetch(`${PAYOS_API_BASE_URL}${PAYOS_CREATE_PAYMENT_PATH}`, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'x-client-id': requireEnv('PAYOS_CLIENT_ID'), 'x-api-key': requireEnv('PAYOS_API_KEY') }, body: JSON.stringify(request) });
     const provider = await safeJson(response);
     if (!response.ok || provider?.code !== '00') {
@@ -57,8 +71,10 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
     }
     const data = provider.data || {};
     diagnostic.stage = 'RECORD_PAYOS_ORDER';
+    logCheckoutStage('RECORD_PAYOS_ORDER', diagnostic, { phase: 'provider_result' });
     const saved = await recordOrder(payment.id, request, { ...provider, batchId: batch.id, expiresAt: request.expiredAt }, data);
     diagnostic.stage = 'RETURN_CHECKOUT';
+    logCheckoutStage('RETURN_CHECKOUT', diagnostic, { reused: false });
     return res.status(200).json({ success: true, batch: formatBatch(prepared), payment: formatPayment(saved, amount, false, request.expiredAt) });
   } catch (error) {
     if (diagnostic.paymentId && diagnostic.orderCode && ['CREATE_PAYOS_ORDER', 'RECORD_PAYOS_ORDER'].includes(diagnostic.stage)) {
@@ -79,6 +95,7 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
       requestIds: diagnostic.requestIds,
       batchId: diagnostic.batchId,
       paymentId: diagnostic.paymentId,
+      orderCode: diagnostic.orderCode,
       payosReached: diagnostic.payosReached,
       code: safeDiagnostic(error?.code),
       message: safeDiagnostic(error?.message),
@@ -90,10 +107,23 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
   }
 };
 
-async function prepareBatch(requestIds, phone) {
+async function prepareBatch(requestIds, phone, promotionCode) {
   const config = getSupabaseServiceConfig();
-  const response = await fetch(`${config.url}/rest/v1/rpc/prepare_registration_payment_v2`, { method: 'POST', headers: { apikey: config.key, Authorization: `Bearer ${config.key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ request_ids_input: requestIds, phone_input: phone }) });
-  const data = await safeJson(response);
+  const headers = { apikey: config.key, Authorization: `Bearer ${config.key}`, 'Content-Type': 'application/json' };
+  let response = await fetch(`${config.url}/rest/v1/rpc/prepare_registration_checkout_v3`, {
+    method: 'POST', headers,
+    body: JSON.stringify({ request_ids_input: requestIds, phone_input: phone, promotion_code_input: promotionCode }),
+  });
+  let data = await safeJson(response);
+  // Safe rollout bridge: code can deploy before the migration. It is used only
+  // for no-promotion checkout and disappears once v3 is available.
+  if (!promotionCode && !response.ok && (response.status === 404 || data?.code === 'PGRST202')) {
+    response = await fetch(`${config.url}/rest/v1/rpc/prepare_registration_payment_v2`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ request_ids_input: requestIds, phone_input: phone }),
+    });
+    data = await safeJson(response);
+  }
   if (!response.ok) {
     const error = new Error(data?.message || 'Không chuẩn bị được lô đăng ký.');
     error.code = data?.code;
@@ -154,10 +184,11 @@ async function recordOrder(paymentId, request, providerPayload, values = {}) {
   return Array.isArray(data) ? data[0] : data;
 }
 
-function formatBatch(prepared) { return { id: Number(prepared.batch.id), status: prepared.batch.status, amount: Number(prepared.batch.total_amount), kiosks: prepared.items || [], reused: Boolean(prepared.reused) }; }
+function formatBatch(prepared) { return { id: Number(prepared.batch.id), status: prepared.batch.status, amount: Number(prepared.batch.total_amount), subtotal: Number(prepared.batch.subtotal_before_discount || prepared.batch.total_amount), discountAmount: Number(prepared.batch.discount_amount || 0), promotion: prepared.promotion || null, kiosks: prepared.items || [], reused: Boolean(prepared.reused) }; }
 function formatPayment(order, amount, reused, expiresAt = null) { return { paymentId: Number(order.payment_id), amount, orderCode: Number(order.order_code), checkoutUrl: order.checkout_url || null, paymentLinkId: order.payment_link_id || null, expiresAt: expiresAt || toUnixSeconds(order.expires_at), reused }; }
 function normalizeRequestIds(value) { const ids = (Array.isArray(value) ? value : [value]).map(Number).filter((id) => Number.isSafeInteger(id) && id > 0); if (!ids.length || ids.length > 20 || new Set(ids).size !== ids.length) throw new Error('Danh sách yêu cầu đăng ký không hợp lệ.'); return ids; }
 function normalizePhone(value) { const phone = String(value || '').replace(/[\s().-]/g, '').trim(); if (!/^\+?\d{9,15}$/.test(phone)) throw new Error('Số điện thoại xác nhận không hợp lệ.'); return phone; }
+function normalizePromotionCode(value) { const code = String(value || '').trim().toUpperCase(); if (code.length > 64 || (code && !/^[A-Z0-9_-]+$/.test(code))) throw new Error('Mã giảm giá không hợp lệ.'); return code || null; }
 function normalizeUrl(value) { const url = new URL(String(value || '').trim()); if (!['http:', 'https:'].includes(url.protocol)) throw new Error('URL chuyển hướng PayOS không hợp lệ.'); return url.toString(); }
 function enforceRateLimit(req) { const key = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown'; const now = Date.now(); const bucket = rateBuckets.get(key) || { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS }; if (bucket.resetAt <= now) { bucket.count = 0; bucket.resetAt = now + RATE_LIMIT_WINDOW_MS; } bucket.count += 1; rateBuckets.set(key, bucket); if (bucket.count > RATE_LIMIT_MAX) { const error = new Error('Bạn thao tác quá nhanh.'); error.status = 429; throw error; } }
 function publicRegistrationError(error) { if (error?.status === 429) return 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.'; if (error?.code === 'P0001' && error?.message) return String(error.message).slice(0, 180); if (error?.code === '42501') return 'Số điện thoại không khớp lô đăng ký.'; if (error?.code === 'CHECKOUT_IN_PROGRESS' || error?.code === '23505') return 'Link thanh toán đang được tạo. Vui lòng bấm Thanh toán lại sau vài giây.'; if (error?.code === 'MISSING_ENV') return 'Hệ thống thanh toán chưa được cấu hình đầy đủ.'; return 'Không tạo được thanh toán PayOS cho lô đăng ký. Vui lòng thử lại hoặc liên hệ hỗ trợ.'; }
@@ -171,4 +202,16 @@ function safeDiagnostic(value) {
     .replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]')
     .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED_JWT]')
     .replace(/\+?\d{9,}/g, '[REDACTED_NUMBER]');
+}
+
+function logCheckoutStage(stage, diagnostic, fields = {}) {
+  console.info('REGISTRATION_CHECKOUT_STAGE', {
+    stage,
+    requestIds: diagnostic.requestIds,
+    batchId: diagnostic.batchId,
+    paymentId: diagnostic.paymentId,
+    orderCode: diagnostic.orderCode,
+    payosReached: diagnostic.payosReached,
+    ...fields,
+  });
 }

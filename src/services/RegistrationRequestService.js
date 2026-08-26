@@ -2,12 +2,9 @@ import { requireSupabaseClient, runQuery } from './BaseService.js';
 
 export const RegistrationRequestService = {
   async list(status = 'pending') {
-    let query = requireSupabaseClient()
-      .from('registration_requests')
-      .select('id, facebook_name, facebook_id, facebook_link, phone, service_name, months, total_amount, requested_start_date, requested_end_date, status, submitted_at, reviewed_at, rejection_reason, customer_id, kiosk_id, metadata, categories(name), business_types(name)')
-      .order('submitted_at', { ascending: false });
-    if (status) query = query.eq('status', status);
-    return runQuery(query);
+    return runQuery(requireSupabaseClient().rpc('admin_list_registration_requests', {
+      status_input: status || null,
+    }));
   },
 
   async create(request) {
@@ -39,6 +36,20 @@ export const RegistrationRequestService = {
       request_id_input: id,
       action_input: action,
       reason_input: reason || null,
+    }));
+  },
+
+  async completeExternal(id, note = '') {
+    return runQuery(requireSupabaseClient().rpc('admin_complete_awaiting_registration', {
+      request_id_input: id,
+      note_input: note || null,
+    }));
+  },
+
+  async cancelAwaiting(id, reason) {
+    return runQuery(requireSupabaseClient().rpc('admin_cancel_awaiting_registration', {
+      request_id_input: id,
+      reason_input: reason,
     }));
   },
 };

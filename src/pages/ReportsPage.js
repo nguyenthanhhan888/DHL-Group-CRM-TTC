@@ -343,7 +343,10 @@ function renderOverview(report) {
   return `
     ${renderSummaryCards([
       card('blue', renderIcon('check-circle'), report.summary.completedCount, 'Thanh toán hoàn thành'),
-      card('purple', renderIcon('clock'), report.summary.pendingCount, 'Thanh toán đang chờ'),
+      card('purple', renderIcon('clock'), report.summary.pendingPayments, 'Thanh toán đang chờ'),
+      card('orange', renderIcon('clock'), report.summary.awaitingPaymentRequests, 'Hồ sơ chờ thanh toán'),
+      card('teal', renderIcon('kiosk'), report.summary.pendingKiosks, 'Kiosk chờ duyệt'),
+      card('blue', renderIcon('check-circle'), report.summary.pendingReviewRequests, 'Đơn chờ duyệt'),
       card('orange', renderIcon('warning'), report.summary.expiringSoon, 'Kiosk sắp hết hạn'),
       card('red', renderIcon('x-circle'), report.summary.expiredKiosks, 'Kiosk hết hạn'),
       card('green', renderIcon('money'), formatCurrency(report.summary.totalRevenue), 'Doanh thu trong kỳ', true),

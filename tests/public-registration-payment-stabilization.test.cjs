@@ -15,6 +15,7 @@ const webhook = read('api/payos/webhook.js');
 const requestService = read('src/services/RegistrationRequestService.js');
 const notifications = read('src/services/AdminNotificationService.js');
 const legacy = read('supabase/migrations/20260729224250_create_public_legacy_registration_requests.sql');
+const completion = read('supabase/migrations/20260825160000_complete_registration_checkout_v3.sql');
 
 test('stabilization exposes one unique two-argument service-role RPC', () => {
   assert.equal((migration.match(/create function public\.prepare_registration_payment_v2/g) || []).length, 1);
@@ -26,13 +27,13 @@ test('stabilization exposes one unique two-argument service-role RPC', () => {
   assert.match(migration, /grant execute on function public\.prepare_registration_payment_v2\(bigint\[\], text\)[\s\S]*to service_role/);
 });
 
-test('browser and Node checkout cannot send or evaluate a promotion', () => {
-  assert.match(page, /Mã giảm giá đang được bảo trì và sẽ sớm hoạt động trở lại\./);
-  assert.doesNotMatch(page, /applyPromotion|evaluate-promotion|state\.promotion/);
-  assert.doesNotMatch(service, /promotionCode|promotion_code/);
-  assert.match(api, /rpc\/prepare_registration_payment_v2/);
-  assert.match(api, /JSON\.stringify\(\{ request_ids_input: requestIds, phone_input: phone \}\)/);
-  assert.doesNotMatch(api, /promotionCode|promotion_code_input|prepare_registration_batch_for_payos/);
+test('browser and Node checkout pass optional promotion explicitly to v3', () => {
+  assert.match(page, /applyPromotion/);
+  assert.match(page, /evaluate-promotion/);
+  assert.match(service, /promotionCode: options\.promotionCode \|\| null/);
+  assert.match(api, /rpc\/prepare_registration_checkout_v3/);
+  assert.match(api, /promotion_code_input: promotionCode/);
+  assert.match(completion, /prepare_registration_checkout_v3\(\s*request_ids_input bigint\[\],\s*phone_input text,\s*promotion_code_input text/);
 });
 
 test('single and multi-Kiosk totals remain authoritative with one payment', () => {
@@ -63,12 +64,13 @@ test('retry reuses request ownership, batch, payment, Kiosk and active provider 
   assert.match(api, /failReservedOrder\(diagnostic\.paymentId, diagnostic\.orderCode/);
 });
 
-test('awaiting-payment stays outside Admin review while legacy stays pending', () => {
-  assert.match(migration, /not in \('awaiting_payment', 'pending', 'approved'\)/);
-  assert.match(requestService, /\.eq\('status', status\)/);
-  assert.match(notifications, /\.eq\('status','pending'\)/);
-  assert.doesNotMatch(requestService, /awaiting_payment/);
-  assert.doesNotMatch(notifications, /awaiting_payment/);
+test('awaiting-payment is visible but remains separate from Admin review', () => {
+  assert.match(requestService, /admin_list_registration_requests/);
+  assert.match(notifications, /\.eq\('status', 'pending'\)/);
+  assert.match(notifications, /\.eq\('status', 'awaiting_payment'\)/);
+  assert.match(notifications, /registrationCount: pendingCount/);
+  assert.match(completion, /'pendingReviewRequests'/);
+  assert.match(completion, /'awaitingPaymentRequests'/);
   assert.match(legacy, /'request_type', 'legacy'/);
   assert.match(legacy, /'status', 'pending'/);
 });

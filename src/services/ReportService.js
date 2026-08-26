@@ -17,8 +17,8 @@ export const ReportService = {
     const requestedPageSize = positiveInteger(options.pageSize, 50);
     const pageSize = ALLOWED_PAGE_SIZES.has(requestedPageSize) ? requestedPageSize : 50;
     const supabase = requireSupabaseClient();
-    const { data } = await runQuery(
-      supabase.rpc('get_reports_data', {
+    const [{ data }, { data: operations }] = await Promise.all([
+      runQuery(supabase.rpc('get_reports_data', {
         p_report_type: normalizedTab,
         p_start_date: normalizeDate(filters.startDate),
         p_end_date: normalizeDate(filters.endDate),
@@ -32,14 +32,15 @@ export const ReportService = {
         p_sort_direction: options.sortDirection === 'asc' ? 'asc' : 'desc',
         p_page: page,
         p_page_size: pageSize,
-      }),
-    );
+      })),
+      runQuery(supabase.rpc('get_registration_operations_summary')),
+    ]);
 
-    return { data: normalizeResponse(data, normalizedTab, page, pageSize) };
+    return { data: normalizeResponse(data, normalizedTab, page, pageSize, operations) };
   },
 };
 
-function normalizeResponse(data, tab, page, pageSize) {
+function normalizeResponse(data, tab, page, pageSize, operations = {}) {
   const report = data && typeof data === 'object' ? data : {};
   const pagination = report.pagination || {};
   const summary = {};
@@ -47,6 +48,10 @@ function normalizeResponse(data, tab, page, pageSize) {
   Object.entries(report.summary || {}).forEach(([key, value]) => {
     summary[key] = numericOrValue(value);
   });
+  summary.pendingPayments = nonNegativeNumber(operations?.pendingPayments ?? summary.pendingCount);
+  summary.awaitingPaymentRequests = nonNegativeNumber(operations?.awaitingPaymentRequests);
+  summary.pendingKiosks = nonNegativeNumber(operations?.pendingKiosks ?? summary.pendingKiosks);
+  summary.pendingReviewRequests = nonNegativeNumber(operations?.pendingReviewRequests);
 
   return {
     tab: report.tab || tab,

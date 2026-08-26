@@ -11,7 +11,8 @@ const callableOrRelation = new Set([
   'array_length', 'btrim', 'count', 'floor', 'hashtextextended', 'jsonb_agg', 'jsonb_build_array',
   'jsonb_build_object', 'lower', 'make_interval', 'now', 'to_jsonb', 'upper',
   'pg_advisory_xact_lock', 'pg_get_functiondef', 'pg_trigger', 'regexp_replace',
-  'replace', 'set_config', 'string_agg', 'strpos', 'unnest',
+  'replace', 'set_config', 'string_agg', 'strpos', 'unnest', 'jsonb_array_elements',
+  'row_number', 'sum', 'array_agg', 'concat_ws',
 ]);
 const invalidSpecialForms = new Set([
   'coalesce', 'trim', 'nullif', 'greatest', 'least', 'extract',

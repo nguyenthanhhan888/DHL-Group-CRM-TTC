@@ -59,6 +59,7 @@ module.exports = async function payosWebhookHandler(req, res) {
       return sendError(res, 400, 'INVALID_PAYOS_DATA', 'Dữ liệu thanh toán PayOS không hợp lệ.');
     }
 
+    logWebhook('PAYOS_WEBHOOK_STAGE', { stage: 'WEBHOOK_FINALIZE', orderCode });
     const result = await callSupabaseRpc('handle_payos_webhook', {
       order_code_input: orderCode,
       amount_input: amount,
@@ -103,8 +104,9 @@ function buildEventKey(data) {
 }
 
 function logWebhook(event, fields = {}) {
-  console.info(event, { orderCode: safeOrderCode(fields.orderCode), reason: safeReason(fields.reason) });
+  console.info(event, { stage: safeStage(fields.stage), orderCode: safeOrderCode(fields.orderCode), reason: safeReason(fields.reason) });
 }
 
 function safeOrderCode(value) { const parsed=Number(value); return Number.isSafeInteger(parsed)&&parsed>0?parsed:null; }
 function safeReason(value) { const reason=String(value||'').toUpperCase(); return /^[A-Z0-9_]{1,64}$/.test(reason)?reason:null; }
+function safeStage(value) { const stage=String(value||'').toUpperCase(); return /^[A-Z0-9_]{1,64}$/.test(stage)?stage:null; }
