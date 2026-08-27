@@ -86,7 +86,7 @@ function renderAdminTopbar({ displayName, username, roleLabel, avatarPath }) {
         <div class="top-bar-right top-bar-user-actions">
           <span class="connection-badge" data-supabase-badge>Chưa kết nối dữ liệu</span>
           <span class="current-date" data-current-date></span>
-          <details class="admin-notification-center"><summary class="top-icon-link" aria-label="Mở thông báo quản trị">${renderIcon('alert')}<span class="notification-count hidden" data-notification-count></span></summary><div class="admin-notification-popover"><header><strong>Việc cần chú ý</strong><span data-notification-summary>Đang tải...</span></header><div data-notification-list></div></div></details>
+          <details class="admin-notification-center"><summary class="top-icon-link" aria-label="Mở thông báo quản trị">${renderIcon('alert')}<span class="notification-count hidden" data-notification-count></span></summary><div class="admin-notification-popover"><header><div><strong>Việc cần chú ý</strong><span data-notification-summary>Đang tải...</span></div><button class="notification-mark-all" type="button" data-notification-mark-all>Đánh dấu tất cả đã đọc</button></header><div data-notification-list></div></div></details>
           <button class="top-icon-link theme-toggle-button" type="button" data-theme-toggle aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
             ${renderIcon('moon')}
           </button>

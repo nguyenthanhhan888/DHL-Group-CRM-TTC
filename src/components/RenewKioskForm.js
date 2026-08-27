@@ -8,6 +8,7 @@ import { bindCurrencyInput, formatCurrency, parseCurrencyInput } from '../utils/
 import { formatDate, parseDateOnly, startOfToday, toDateOnly } from '../utils/date.js';
 import { escapeHtml } from '../utils/html.js';
 import { renderIcon } from '../utils/icons.js';
+import { setButtonBusy } from '../utils/buttonState.js';
 
 let currentKiosk = null;
 
@@ -107,6 +108,6 @@ function stateView(title, message) { return `<div class="empty-state"><div class
 function methodLabel(value) { return ({ transfer: 'Chuyển khoản', cash: 'Tiền mặt', other: 'Khác' })[value] || value || '—'; }
 function value(id) { return document.getElementById(id)?.value.trim() || ''; } function number(id) { return Number(value(id) || 0); } function setText(id, text) { const element = document.getElementById(id); if (element) element.textContent = text; }
 function showError(message) { const element = document.getElementById('renew-form-error'); if (element) { element.textContent = message; element.classList.remove('hidden'); } } function clearError() { document.getElementById('renew-form-error')?.classList.add('hidden'); }
-function setSaving(button, saving, path) { if (!button) return; button.disabled = saving; button.textContent = saving ? (path === 'paid' ? 'Đang xác nhận...' : 'Đang tạo link...') : (path === 'paid' ? 'Xác nhận đã thanh toán & Gia hạn' : 'Tạo PayOS'); }
+function setSaving(button, saving, path) { if (!button) return; if (saving) { setButtonBusy(button, true, { busyLabel: path === 'paid' ? 'Đang xác nhận...' : 'Đang tạo link...' }); return; } setButtonBusy(button, false); button.textContent = path === 'paid' ? 'Xác nhận đã thanh toán & Gia hạn' : 'Tạo PayOS'; }
 function routeUrl() { return `${window.location.origin}${window.location.pathname}#/kiosk-detail?id=${currentKiosk?.id || ''}`; }
 if (typeof document !== 'undefined') document.addEventListener('click', (event) => { if (event.target.matches('[data-renew-cancel]')) Modal.close(); });

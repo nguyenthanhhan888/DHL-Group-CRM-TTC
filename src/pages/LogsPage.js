@@ -22,6 +22,7 @@ const ACTION_FILTERS = [
   { value: 'admin_manual_renewal', label: 'Gia hạn Kiosk' },
   { value: 'confirm_payos', label: 'Xác nhận thanh toán PayOS' },
   { value: 'confirm_payos_batch', label: 'Xác nhận thanh toán PayOS theo đơn' },
+  { value: 'admin_cancel', label: 'Hủy hồ sơ Kiosk' },
 ];
 const MODULE_FILTERS = [
   { value: 'Customer', label: 'Khách hàng' },
@@ -391,6 +392,7 @@ function actionLabel(action) {
     pause_promotion: 'Tạm ngưng mã giảm giá',
     reactivate_promotion: 'Kích hoạt lại mã giảm giá',
     delete_promotion: 'Xóa mã giảm giá',
+    admin_cancel: 'Hủy hồ sơ Kiosk',
   };
   return labels[normalizeAction(action)] || 'Hoạt động hệ thống';
 }
@@ -517,6 +519,7 @@ function humanLogSummary(log) {
   if (action === 'confirm_payos' || action === 'confirm_payos_batch') {
     return `${entity} · thanh toán PayOS đã xác nhận`;
   }
+  if (action === 'admin_cancel') return `${entity} · đã hủy hồ sơ chưa thanh toán`;
   if (action === 'create' && entityKind(log) === 'Kiosk') {
     return `${entity} · đăng ký mới`;
   }
@@ -573,6 +576,7 @@ function importantChange(log) {
     review_legacy_cancel: 'Đã hủy hồ sơ', create_promotion: 'Đã tạo mã',
     update_promotion: 'Đã cập nhật chương trình', pause_promotion: 'Đã tạm ngưng',
     reactivate_promotion: 'Đã kích hoạt', delete_promotion: 'Đã xóa mã',
+    admin_cancel: 'Đã hủy hồ sơ chưa thanh toán',
   };
   return businessResults[action] || friendlyReason(log.reason);
 }

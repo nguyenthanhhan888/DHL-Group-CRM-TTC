@@ -13,6 +13,7 @@ import { formatCurrency } from '../utils/currency.js';
 import { duplicateValues, isValidPhone, setInlineError } from '../utils/formValidation.js';
 import { escapeHtml } from '../utils/html.js';
 import { renderIcon } from '../utils/icons.js';
+import { setButtonBusy } from '../utils/buttonState.js';
 
 const state = {
   categories: [], businessTypes: [], sequence: 0, step: 1, submitting: false,
@@ -422,11 +423,10 @@ async function submitRegistration(event) {
   event.preventDefault();
   if (state.submitting || !validateStep(1) || !validateKiosks()) return;
   const confirmation = document.getElementById('register-confirmation');
-  if (!confirmation.checked) { confirmation.focus(); showFormError('Vui lòng xác nhận thông tin trước khi thanh toán.'); return; }
+  if (!confirmation.checked) { showFormError('Vui lòng xác nhận thông tin trước khi thanh toán.', confirmation); return; }
   state.submitting = true;
   const button = document.getElementById('register-submit-button');
-  const original = button.innerHTML;
-  button.disabled = true; button.textContent = 'Đang tạo thanh toán...';
+  setButtonBusy(button, true, { busyLabel: 'Đang tạo thanh toán...' });
   try {
     const { data } = await RegistrationService.submitWithPayos({
       customer: { contact_name: read('register-facebook-name'), facebook_name: read('register-facebook-name'), facebook_id: read('register-customer-id'), facebook_link: read('register-customer-link'), phone: read('register-phone'), address: read('register-address') },
@@ -441,7 +441,7 @@ async function submitRegistration(event) {
     console.error('Public registration submission failed', error);
     showFormError('Không thể tạo thanh toán lúc này. Dữ liệu của bạn vẫn được giữ để thử lại.');
   } finally {
-    state.submitting = false; button.disabled = false; button.innerHTML = original;
+    state.submitting = false; setButtonBusy(button, false);
   }
 }
 
@@ -504,7 +504,7 @@ function findBusinessType(card) { return state.businessTypes.find((item) => Stri
 function value(card, name) { const fields = [...card.querySelectorAll(`[data-kiosk-${name}]`)]; return (fields.find((item) => item.checked) || fields[0])?.value.trim() || ''; }
 function read(id) { return document.getElementById(id)?.value.trim() || ''; }
 function renumberKiosks() { const cards = document.querySelectorAll('[data-register-kiosk]'); cards.forEach((card, index) => { card.querySelector('[data-kiosk-title]').textContent = `Kiosk ${index + 1}`; card.querySelector('[data-remove-kiosk]').classList.toggle('hidden', cards.length === 1); }); setText('register-kiosk-count', cards.length); }
-function showFormError(message) { const error = document.getElementById('registration-form-error'); if (error) { error.textContent = message; error.classList.remove('hidden'); } }
+function showFormError(message, target = null) { const error = document.getElementById('registration-form-error'); if (error) { error.textContent = message; error.classList.remove('hidden'); } Toast.show(message, 'error'); const invalid = target || document.querySelector('[aria-invalid="true"], .input-error, :invalid'); invalid?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }); invalid?.focus?.({ preventScroll: true }); }
 function clearFormError() { const error = document.getElementById('registration-form-error'); if (error) { error.textContent = ''; error.classList.add('hidden'); } }
 function setText(id, text) { const element = document.getElementById(id); if (element) element.textContent = text; }
 function resetState() { state.categories = []; state.businessTypes = []; state.sequence = 0; state.step = 1; state.submitting = false; state.promotion = null; state.promotionContextKey = null; state.promotionRequestId = 0; state.promotionPending = false; }
