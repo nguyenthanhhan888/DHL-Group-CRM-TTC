@@ -2,6 +2,7 @@ import { escapeHtml } from '../utils/html.js';
 import { getUserAvatarPath } from '../utils/avatar.js';
 import { renderIcon } from '../utils/icons.js';
 import { PUBLIC_BRAND } from '../config/organization.js';
+import { getThemeLogoPath } from '../utils/themeLogo.js';
 
 export function AppLayout({ navSections, user }) {
   const displayName = user?.display_name || user?.username || 'Người dùng';
@@ -9,13 +10,15 @@ export function AppLayout({ navSections, user }) {
   const roleLabel = getRoleLabel(user);
   const avatarPath = getUserAvatarPath(user);
   const isAdmin = user?.is_system_admin === true;
-  const brandLogoPath = escapeHtml(PUBLIC_BRAND.assets.logo);
+  const brandLogoPath = escapeHtml(getThemeLogoPath());
+  const brandLogoLightPath = escapeHtml(PUBLIC_BRAND.assets.logoLight);
+  const brandLogoDarkPath = escapeHtml(PUBLIC_BRAND.assets.logoDark);
   return `
     <div class="app-shell">
       <aside class="sidebar" data-sidebar>
         <div class="sidebar-logo">
           <div class="sidebar-brand-image-wrap" aria-label="Diễn Châu - À Đây Rồi (DHL)">
-            <img class="sidebar-brand-image" src="${brandLogoPath}" alt="" width="1280" height="512">
+            <img class="sidebar-brand-image" src="${brandLogoPath}" data-theme-logo data-logo-light="${brandLogoLightPath}" data-logo-dark="${brandLogoDarkPath}" alt="" width="2172" height="724">
           </div>
           <div class="sidebar-brand-copy">
             <strong>Diễn Châu - À Đây Rồi</strong>
@@ -47,7 +50,7 @@ export function AppLayout({ navSections, user }) {
             <button class="icon-button" type="button" data-menu-toggle aria-label="Mở menu" aria-expanded="false">
               <span class="nav-icon bare-icon" aria-hidden="true">${renderIcon('menu')}</span>
             </button>
-            <img class="top-brand-mark" src="${brandLogoPath}" alt="Diễn Châu - À Đây Rồi (DHL)" width="1280" height="512" loading="lazy">
+            <img class="top-brand-mark" src="${brandLogoPath}" data-theme-logo data-logo-light="${brandLogoLightPath}" data-logo-dark="${brandLogoDarkPath}" alt="Diễn Châu - À Đây Rồi (DHL)" width="2172" height="724" loading="lazy">
             <span class="top-bar-context">Diễn Châu - À Đây Rồi (DHL)</span>
           </div>
           ${isAdmin

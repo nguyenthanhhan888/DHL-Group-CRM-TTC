@@ -52,7 +52,8 @@ test('accordion keeps one section open and current route controls the active sec
 });
 
 test('sidebar uses the valid brand asset and compact accessible presentation', () => {
-  assert.match(layout, /PUBLIC_BRAND\.assets\.logo/);
+  assert.match(layout, /getThemeLogoPath\(\)/);
+  assert.match(layout, /data-theme-logo/);
   assert.doesNotMatch(layout, /photo_2026-08-03_06-31-15\.jpg/);
   assert.match(layout, /Diễn Châu - À Đây Rồi/);
   assert.match(css, /\.nav-section-items\{display:grid;grid-template-rows:0fr/);

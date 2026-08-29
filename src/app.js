@@ -12,6 +12,7 @@ import { AdminNotificationService } from './services/AdminNotificationService.js
 import { formatToday } from './utils/date.js';
 import { escapeHtml } from './utils/html.js';
 import { renderIcon } from './utils/icons.js';
+import { syncThemeLogos } from './utils/themeLogo.js';
 import { BusinessTypesPage } from './pages/BusinessTypesPage.js';
 import { CategoriesPage } from './pages/CategoriesPage.js';
 import { PromotionsPage } from './pages/PromotionsPage.js';
@@ -565,6 +566,7 @@ function setTheme(theme, { persist = true } = {}) {
   const normalizedTheme = theme === 'light' ? 'light' : 'dark';
   document.documentElement.dataset.theme = normalizedTheme;
   document.documentElement.style.colorScheme = normalizedTheme;
+  syncThemeLogos(normalizedTheme);
   if (persist) localStorage.setItem(THEME_STORAGE_KEY, normalizedTheme);
   window.dispatchEvent(new CustomEvent('dhl:themechange', { detail: { theme: normalizedTheme } }));
 }

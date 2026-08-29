@@ -3,6 +3,7 @@ import { PublicContactLinks } from './PublicSupport.js';
 import { PublicLogo } from './PublicLogo.js';
 import { PUBLIC_BRAND } from '../config/organization.js';
 import { renderIcon } from '../utils/icons.js';
+import { syncThemeLogos } from '../utils/themeLogo.js';
 
 const links = [
   ['home', 'Trang chủ'],
@@ -17,7 +18,7 @@ export function PublicLayout({ route = 'home', content = '' } = {}) {
       <header class="portal-header">
         <div class="portal-nav-wrap">
           <a class="portal-brand" href="#/home" aria-label="${PUBLIC_BRAND.name}">
-            ${PublicLogo()}
+            ${PublicLogo({ className: 'public-header-logo' })}
           </a>
           <button class="portal-theme-button" type="button" aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối" data-public-theme-toggle><span aria-hidden="true">${renderIcon('moon')}</span></button>
           <button class="portal-menu-button" type="button" aria-label="Mở menu" aria-expanded="false" data-public-menu>
@@ -38,6 +39,7 @@ export function PublicLayout({ route = 'home', content = '' } = {}) {
 }
 
 export function bindPublicLayout(root) {
+  syncThemeLogos(undefined, root);
   const button = root.querySelector('[data-public-menu]');
   const nav = root.querySelector('[data-public-nav]');
   button?.addEventListener('click', () => {
@@ -61,6 +63,7 @@ export function bindPublicLayout(root) {
     const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
     document.documentElement.dataset.theme = next;
     document.documentElement.style.colorScheme = next;
+    syncThemeLogos(next, root);
     localStorage.setItem('dhlThemePreference', next);
     window.dispatchEvent(new CustomEvent('dhl:themechange', { detail: { theme: next } }));
     updateThemeButton(themeButton);
