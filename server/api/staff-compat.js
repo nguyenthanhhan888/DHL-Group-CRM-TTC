@@ -1,8 +1,8 @@
 // LEGACY COMPATIBILITY — REMOVE AFTER STABLE RELEASE.
 // New callers use /api/user-management. This adapter intentionally uses the
 // unified user profile/direct-permission authorization model.
-const { PERMISSIONS } = require('../shared/permissions.js');
-const { requirePermission, serviceFetch } = require('./_auth.js');
+const { PERMISSIONS } = require('../../shared/permissions.js');
+const { requirePermission, serviceFetch } = require('../../api/_auth.js');
 
 module.exports = async function staffCompatibilityHandler(req, res) {
   res.setHeader('Cache-Control', 'no-store');

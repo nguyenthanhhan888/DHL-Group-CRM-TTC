@@ -8,7 +8,7 @@ const port = Number(process.env.PORT || 8010);
 const apiRoutes = new Map([
   ['/api/auth-account', 'api/auth-account.js'],
   ['/api/facebook-id', 'api/facebook-id.js'],
-  ['/api/staff', 'api/staff.js'],
+  ['/api/staff', 'api/user-management.js'],
   ['/api/user-management', 'api/user-management.js'],
   ['/api/payos/create-payment', 'api/payos/create-payment.js'],
   ['/api/payos/create-registration-payment', 'api/payos/create-registration-payment.js'],
@@ -65,6 +65,7 @@ async function handleApi(req, res, url) {
 
   const bodyText = await readBody(req);
   req.query = Object.fromEntries(url.searchParams.entries());
+  if (url.pathname === '/api/staff') req.query.compat = 'staff';
   if (bodyText) {
     try {
       req.body = JSON.parse(bodyText);

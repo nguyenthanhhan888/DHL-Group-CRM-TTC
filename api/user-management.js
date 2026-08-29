@@ -1,4 +1,5 @@
 const { PERMISSIONS } = require('../shared/permissions.js');
+const staffCompatibilityHandler = require('../server/api/staff-compat.js');
 const {
   httpError,
   reauthenticateSystemAdmin,
@@ -13,6 +14,9 @@ const PHONE_PATTERN = /^\+?[0-9 .()-]{9,20}$/;
 
 module.exports = async function userManagementHandler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
+  if (req.method === 'GET' && String(req.query?.compat || '') === 'staff') {
+    return staffCompatibilityHandler(req, res);
+  }
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, message: 'Chỉ hỗ trợ phương thức POST.' });

@@ -34,6 +34,16 @@ async function callHandler(body) {
   return res;
 }
 
+async function callStaffCompatibility() {
+  const res = mockResponse();
+  await userManagementHandler({
+    method: 'GET',
+    query: { compat: 'staff' },
+    headers: { authorization: 'Bearer actor-token' },
+  }, res);
+  return res;
+}
+
 function accessProfile(overrides = {}) {
   return {
     user_id: ACTOR_ID,
@@ -122,6 +132,50 @@ test('System Admin can list users without individual user_permissions rows', asy
   assert.equal(res.payload.users.length, 1);
   assert.deepEqual(res.payload.users[0].permissions, []);
   assert.equal(res.payload.total, 1);
+});
+
+test('legacy GET /api/staff compatibility preserves listing contract for System Admin', async () => {
+  const users = [targetProfile()];
+  global.fetch = async (url) => {
+    const parsed = new URL(url);
+    if (parsed.pathname === '/auth/v1/user') return response(200, { id: ACTOR_ID });
+    if (parsed.pathname === '/rest/v1/rpc/get_my_access_profile') return response(200, accessProfile());
+    if (parsed.pathname === '/rest/v1/user_profiles') {
+      assert.equal(parsed.searchParams.get('select'), 'user_id,username,display_name,email,phone,status,web_access_enabled,is_system_admin,created_at');
+      assert.equal(parsed.searchParams.get('order'), 'created_at.desc');
+      assert.equal(parsed.searchParams.get('limit'), '100');
+      return response(200, users);
+    }
+    throw new Error(`Unexpected fetch: ${parsed.pathname}`);
+  };
+
+  const res = await callStaffCompatibility();
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.headers['Cache-Control'], 'no-store');
+  assert.deepEqual(res.payload, { ok: true, users, deprecated: true });
+});
+
+test('legacy staff compatibility still enforces user-management permission', async () => {
+  global.fetch = async (url) => {
+    const parsed = new URL(url);
+    if (parsed.pathname === '/auth/v1/user') return response(200, { id: ACTOR_ID });
+    if (parsed.pathname === '/rest/v1/rpc/get_my_access_profile') {
+      return response(200, accessProfile({ is_system_admin: false, permissions: [PERMISSIONS.DASHBOARD] }));
+    }
+    throw new Error(`Unexpected fetch: ${parsed.pathname}`);
+  };
+
+  const res = await callStaffCompatibility();
+  assert.equal(res.statusCode, 403);
+  assert.deepEqual(res.payload, { ok: false, message: 'Bạn không có quyền thực hiện thao tác này.' });
+});
+
+test('GET user-management without the staff rewrite marker keeps the existing POST-only contract', async () => {
+  const res = mockResponse();
+  await userManagementHandler({ method: 'GET', query: {}, headers: {} }, res);
+  assert.equal(res.statusCode, 405);
+  assert.equal(res.headers.Allow, 'POST');
+  assert.deepEqual(res.payload, { ok: false, message: 'Chỉ hỗ trợ phương thức POST.' });
 });
 
 test('grant permissions performs authoritative sync and enables web access', async () => {
