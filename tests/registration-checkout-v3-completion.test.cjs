@@ -91,7 +91,8 @@ test('Admin UI exposes request-centric filters, payment states and safe dialogs'
 
 test('reports and notifications keep all four pending concepts separate', () => {
   for (const key of ['pendingPayments', 'awaitingPaymentRequests', 'pendingKiosks', 'pendingReviewRequests']) assert.match(sql, new RegExp(`'${key}'`));
-  for (const label of ['Giao dịch Pending', 'Hồ sơ chờ thanh toán', 'Kiosk chờ duyệt', 'Hồ sơ chờ duyệt']) assert.match(reports, new RegExp(label));
+  const overview = reports.match(/function renderOverview[\s\S]*?function renderRevenue/)?.[0] || '';
+  for (const label of ['Hồ sơ cần xử lý', 'Hồ sơ chờ thanh toán', 'Kiosk hoạt động']) assert.match(overview, new RegExp(label));
   assert.match(notifications, /pendingReviewCount: pendingCount/);
   assert.match(notifications, /awaitingPaymentCount: awaitingCount/);
   assert.match(notifications, /registrationCount: pendingCount/);

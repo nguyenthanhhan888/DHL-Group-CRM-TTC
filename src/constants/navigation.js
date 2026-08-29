@@ -15,6 +15,7 @@ export const PAGE_TITLES = {
   register: 'Đăng ký trực tuyến',
   'registration-requests': 'Hồ sơ Kiosk',
   staff: 'Quản lý nhân viên',
+  'user-management': 'Quản lý người dùng',
   reports: 'Báo cáo',
   permissions: 'Phân quyền',
   user: 'Trang chủ',
@@ -43,73 +44,46 @@ export const PAGE_TITLES = {
 export const NAV_SECTIONS = [
   {
     label: 'TỔNG QUAN',
+    standalone: true,
     items: [
-      { route: 'user', label: 'Trang chủ', icon: 'home', roles: ['user'] },
-      { route: 'dashboard', label: 'Dashboard', icon: 'dashboard', roles: ['admin'] },
+      { route: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     ],
   },
   {
-    label: 'QUẢN LÝ CRM',
+    label: 'QUẢN LÝ KHÁCH HÀNG',
+    collapsible: true,
     items: [
-      { route: 'customers', label: 'Khách hàng', icon: 'users', roles: ['admin'] },
-      { route: 'kiosks', label: 'Kiosk', icon: 'store', roles: ['admin'] },
-      { route: 'register', label: 'Đăng ký Kiosk', icon: 'plus', roles: ['admin'] },
-      { route: 'registration-requests', label: 'Hồ sơ Kiosk', icon: 'check', roles: ['admin'] },
-      { route: 'categories', label: 'Danh mục', icon: 'list', roles: ['admin'] },
-      { route: 'business-types', label: 'Loại hình kinh doanh', icon: 'briefcase', roles: ['admin'] },
-      { route: 'promotions', label: 'Mã giảm giá', icon: 'coin', roles: ['admin'] },
-      { route: 'reports', label: 'Báo cáo', icon: 'report', roles: ['admin'] },
+      { route: 'customers', label: 'Khách hàng', icon: 'users' },
+      { route: 'kiosks', label: 'Kiosk', icon: 'store' },
+      { route: 'register', label: 'Đăng ký Kiosk', icon: 'plus' },
+      { route: 'registration-requests', label: 'Hồ sơ Kiosk', icon: 'check' },
+      { route: 'categories', label: 'Danh mục', icon: 'list' },
+      { route: 'business-types', label: 'Loại hình kinh doanh', icon: 'briefcase' },
+      { route: 'promotions', label: 'Mã giảm giá', icon: 'coin' },
+      { route: 'reports', label: 'Báo cáo', icon: 'report' },
     ],
   },
   {
     label: 'TƯƠNG TÁC CHÉO',
+    collapsible: true,
     items: [
-      { route: 'admin/ttc', label: 'Tổng quan TTC', icon: 'target', roles: ['admin'] },
-      { route: 'admin-ttc-announcements', label: 'Thông báo', icon: 'alert', roles: ['admin'] },
-      { route: 'admin-ttc-campaigns', label: 'Tăng tương tác', icon: 'boost', roles: ['admin'] },
-      { route: 'admin-ttc-tasks', label: 'Duyệt nhiệm vụ', icon: 'check', roles: ['admin'] },
-      { route: 'admin-ttc-users', label: 'Người dùng', icon: 'user-circle', roles: ['admin'] },
-      { route: 'admin-ttc-wallets', label: 'Ví xu', icon: 'coin', roles: ['admin'] },
-      { route: 'admin-ttc-settings', label: 'Cấu hình giá', icon: 'sliders', roles: ['admin'] },
-      { route: 'admin-ttc-logs', label: 'Kiểm tra & vi phạm', icon: 'alert', roles: ['admin'] },
-      { route: 'ttc-earn', label: 'Kiếm xu', icon: 'coin', roles: ['user'] },
-      { route: 'ttc-campaign-create', label: 'Tăng Tương Tác', icon: 'boost', roles: ['user'] },
-      { route: 'ttc-campaigns', label: 'Tăng tương tác của tôi', icon: 'list', roles: ['user'] },
-      { route: 'ttc-wallet', label: 'Ví xu', icon: 'wallet', roles: ['user'] },
-      { route: 'ttc-wallet-history', label: 'Lịch sử giao dịch', icon: 'history', roles: ['user'] },
+      { route: 'ttc', label: 'Tổng quan TTC', icon: 'target' },
+      { route: 'admin/ttc', matchRoute: 'admin', permission: 'admin-ttc', label: 'Tổng quan TTC', icon: 'target' },
+      { route: 'admin-ttc-announcements', label: 'Thông báo', icon: 'alert' },
+      { route: 'admin-ttc-campaigns', label: 'Tăng tương tác', icon: 'boost' },
+      { route: 'admin-ttc-tasks', label: 'Duyệt nhiệm vụ', icon: 'check' },
+      { route: 'admin-ttc-wallets', label: 'Ví xu', icon: 'coin' },
+      { route: 'admin-ttc-settings', label: 'Cấu hình giá', icon: 'sliders' },
+      { route: 'admin-ttc-logs', label: 'Kiểm tra & vi phạm', icon: 'alert' },
     ],
   },
   {
-    label: 'KIOSK',
+    label: 'CÀI ĐẶT HỆ THỐNG',
+    collapsible: true,
     items: [
-      { route: 'user-kiosks', label: 'Kiosk của tôi', icon: 'store', roles: ['user'] },
-      { route: 'user-register-kiosk', label: 'Đăng ký mới', icon: 'plus', roles: ['user'] },
-      { route: 'payments-mine', label: 'Thanh toán', icon: 'coin', roles: ['user'] },
-    ],
-  },
-  {
-    label: 'TÀI KHOẢN',
-    items: [
-      { route: 'user-profile', label: 'Hồ sơ', icon: 'user-circle', roles: ['user'] },
-      { route: 'user-facebook', label: 'Cấu Hình Facebook', icon: 'facebook', roles: ['user'] },
-      { route: 'user-announcements', label: 'Thông báo', icon: 'alert', roles: ['user'] },
-      { route: 'user-support', label: 'Hỗ trợ', icon: 'support', roles: ['user'] },
-    ],
-  },
-  {
-    label: 'HỆ THỐNG',
-    items: [
-      { route: 'logs', label: 'Nhật ký hoạt động', icon: 'history', roles: ['admin'] },
-      { route: 'settings', label: 'Cài đặt', icon: 'settings', roles: ['admin'] },
-    ],
-  },
-];
-
-export const REVIEWER_NAV_SECTIONS = [
-  {
-    label: 'Kiểm duyệt',
-    items: [
-      { route: 'registration-requests', label: 'Duyệt đăng ký', icon: 'check' },
+      { route: 'user-management', label: 'Quản lý người dùng', icon: 'users' },
+      { route: 'logs', label: 'Nhật ký hoạt động', icon: 'history' },
+      { route: 'settings', label: 'Cài đặt', icon: 'settings' },
     ],
   },
 ];

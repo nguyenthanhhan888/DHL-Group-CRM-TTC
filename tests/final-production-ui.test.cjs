@@ -60,19 +60,21 @@ test('detail headings, tabs, and information banners use semantic colors', async
   assert.match(css, /\.notice strong\s*\{\s*color:\s*inherit/);
 });
 
-test('login is a two-tab official portal using the centralized cover asset', async () => {
+test('login is a username/password official portal using the centralized cover asset', async () => {
   const [login, organization] = await Promise.all([
     source('src/pages/LoginPage.js'),
     source('src/config/organization.js'),
   ]);
-  assert.equal((login.match(/data-auth-tab=/g) || []).length, 2);
-  assert.match(login, /Đăng nhập/);
-  assert.match(login, /Đăng ký tài khoản/);
+  assert.equal((login.match(/data-auth-tab=/g) || []).length, 0);
+  assert.match(login, /id="login-username"/);
+  assert.match(login, /id="login-password"/);
+  assert.match(login, /Đăng nhập hệ thống/);
+  assert.doesNotMatch(login, /Đăng ký tài khoản/);
   assert.doesNotMatch(login, /Đăng ký Kiosk/);
   assert.match(login, /PUBLIC_BRAND\.assets\.cover/);
   assert.match(organization, /cover:\s*'images\/cover\.PNG'/);
-  assert.match(login, /Cổng chính thức/);
-  assert.match(login, /Kết nối rõ ràng • Quản lý thuận tiện/);
+  assert.match(login, /Cổng quản trị chính thức/);
+  assert.match(login, /An toàn • Rõ quyền • Dễ quản lý/);
   assert.doesNotMatch(login, /Tăng lượt thích|Tăng follow|Tăng share/);
 });
 

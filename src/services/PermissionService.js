@@ -1,3 +1,5 @@
+// LEGACY COMPATIBILITY — REMOVE AFTER STABLE RELEASE.
+// New code reads direct permissions from get_my_access_profile().
 import { requireSupabaseClient, runQuery } from './BaseService.js';
 
 export const PermissionService = {

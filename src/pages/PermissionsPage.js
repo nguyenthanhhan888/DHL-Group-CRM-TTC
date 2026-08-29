@@ -1,3 +1,5 @@
+// LEGACY COMPATIBILITY — REMOVE AFTER STABLE RELEASE.
+// Old routes redirect to the unified User Management page.
 import { PageHeader } from '../components/PageHeader.js';
 import { PermissionService } from '../services/PermissionService.js';
 import { ROLES } from '../constants/roles.js';

@@ -1,4 +1,6 @@
 const REQUIRED_ENV = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'];
+const { PERMISSIONS } = require('../../shared/permissions.js');
+const { requirePermission } = require('../_auth.js');
 
 module.exports = async function verifyFacebookTaskHandler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -20,7 +22,8 @@ module.exports = async function verifyFacebookTaskHandler(req, res) {
     const taskId = positiveInteger(req.body?.taskId);
     if (!taskId) return res.status(400).json({ ok: false, message: 'Thiếu nhiệm vụ cần xác minh.' });
 
-    const authUser = await getAuthenticatedUser(accessToken);
+    const actor = await requirePermission(req, PERMISSIONS.TTC);
+    const authUser = actor.user;
     const task = await getTask(taskId);
     if (!task) return res.status(404).json({ ok: false, message: 'Không tìm thấy nhiệm vụ.' });
     if (task.assignee_user_id !== authUser.id) {
@@ -299,22 +302,6 @@ function isDevBypassEnabled() {
 function isProductionRuntime() {
   if (process.env.VERCEL_ENV) return process.env.VERCEL_ENV === 'production';
   return process.env.NODE_ENV === 'production';
-}
-
-async function getAuthenticatedUser(accessToken) {
-  const response = await fetch(`${baseUrl()}/auth/v1/user`, {
-    headers: {
-      apikey: process.env.SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-  const data = await response.json().catch(() => null);
-  if (!response.ok || !data?.id) {
-    const error = new Error('Phiên đăng nhập không hợp lệ.');
-    error.status = 401;
-    throw error;
-  }
-  return data;
 }
 
 async function getTask(taskId) {

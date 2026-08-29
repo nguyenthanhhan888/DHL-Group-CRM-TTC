@@ -38,21 +38,21 @@ const state = {
 
 export function ReportsPage() {
   return `
+    <div class="reports-page">
     ${PageHeader({
       title: 'Báo cáo',
-      actions: '<button class="btn-secondary" id="report-export-button" type="button">Xuất CSV (trang hiện tại)</button>',
+      actions: '<button class="btn-secondary report-export-button" id="report-export-button" type="button">Xuất CSV (trang hiện tại)</button>',
     })}
     ${Toolbar({
       className: 'filter-panel report-filter-panel',
       children: `
-        <div class="filter-panel-head">
+        <div class="filter-panel-head report-filter-head">
           <div>
-            <span class="filter-eyebrow">Bộ lọc báo cáo</span>
-            <strong>Thu hẹp dữ liệu theo thời gian, nhóm và trạng thái</strong>
+            <h2>Bộ lọc báo cáo</h2>
+            <p>Thu hẹp dữ liệu theo thời gian, nhóm và trạng thái</p>
           </div>
-          <button class="btn-secondary" id="report-refresh-button" type="button">Làm mới</button>
         </div>
-        <div class="filter-grid report-filter-grid">
+        <div class="report-filter-primary">
           <label class="filter-field filter-field-date">
             <span>Từ ngày</span>
             <input id="report-start-date" class="form-control compact-date" type="date" aria-label="Ngày bắt đầu" />
@@ -61,17 +61,24 @@ export function ReportsPage() {
             <span>Đến ngày</span>
             <input id="report-end-date" class="form-control compact-date" type="date" aria-label="Ngày kết thúc" />
           </label>
-          <label class="filter-field">
+          <label class="filter-field report-filter-search">
+            <span>Tìm kiếm</span>
+            <input id="report-search" class="form-control" type="search" placeholder="Tìm khách hàng, Kiosk, trạng thái hoặc số tiền" aria-label="Tìm trong báo cáo" autocomplete="off" />
+          </label>
+        </div>
+        <details class="report-advanced-filters" ${hasActiveAdvancedFilters() ? 'open' : ''}>
+          <summary>
+            <span><strong>Bộ lọc nâng cao</strong><small>ID, nhóm, trạng thái và cách hiển thị</small></span>
+            <span class="report-advanced-chevron" aria-hidden="true">${renderIcon('chevron')}</span>
+          </summary>
+          <div class="report-filter-advanced-grid">
+          <label class="filter-field report-filter-id">
             <span>ID khách hàng</span>
             <input id="report-customer-filter" class="form-control" type="number" min="1" placeholder="VD: 212" aria-label="Lọc ID khách hàng" />
           </label>
-          <label class="filter-field">
+          <label class="filter-field report-filter-id">
             <span>ID Kiosk</span>
             <input id="report-kiosk-filter" class="form-control" type="number" min="1" placeholder="VD: 240" aria-label="Lọc ID Kiosk" />
-          </label>
-          <label class="filter-field filter-field-wide">
-            <span>Tìm kiếm</span>
-            <input id="report-search" class="form-control" type="search" placeholder="Tìm khách hàng, kiosk, trạng thái hoặc số tiền" aria-label="Tìm trong báo cáo" autocomplete="off" />
           </label>
           <label class="filter-field">
             <span>Danh mục</span>
@@ -141,6 +148,11 @@ export function ReportsPage() {
               <option value="100">100 dòng</option>
             </select>
           </label>
+          </div>
+        </details>
+        <div class="report-filter-actions">
+          <span>Thay đổi bộ lọc được áp dụng tự động</span>
+          <button class="btn-secondary" id="report-refresh-button" type="button">${renderIcon('refresh')}<span>Làm mới</span></button>
         </div>
       `,
     })}
@@ -151,7 +163,8 @@ export function ReportsPage() {
         </button>
       `).join('')}
     </div>
-    <div id="reports-content">${renderLoadingState()}</div>
+    <div id="reports-content" class="reports-content">${renderLoadingState()}</div>
+    </div>
   `;
 }
 
@@ -236,6 +249,20 @@ function syncControls() {
   setControlValue('report-sort-direction', state.sortDirection);
   setControlValue('report-page-size', state.pageSize);
   setControlValue('report-search', state.searchTerm);
+}
+
+function hasActiveAdvancedFilters() {
+  return Boolean(
+    state.filters.customerId
+    || state.filters.kioskId
+    || state.filters.categoryId
+    || state.filters.businessTypeId
+    || state.filters.paymentStatus
+    || state.filters.kioskStatus
+    || state.sortBy
+    || state.sortDirection !== 'desc'
+    || state.pageSize !== 50
+  );
 }
 
 function setControlValue(id, value) {
@@ -342,11 +369,9 @@ function renderReportContent() {
 function renderOverview(report) {
   return `
     ${renderSummaryCards([
-      card('blue', renderIcon('check-circle'), report.summary.completedCount, 'Thanh toán hoàn thành'),
-      card('purple', renderIcon('clock'), report.summary.pendingPayments, 'Giao dịch Pending'),
+      card('blue', renderIcon('check-circle'), report.summary.pendingReviewRequests, 'Hồ sơ cần xử lý'),
       card('orange', renderIcon('clock'), report.summary.awaitingPaymentRequests, 'Hồ sơ chờ thanh toán'),
-      card('teal', renderIcon('kiosk'), report.summary.pendingKiosks, 'Kiosk chờ duyệt'),
-      card('blue', renderIcon('check-circle'), report.summary.pendingReviewRequests, 'Hồ sơ chờ duyệt'),
+      card('green', renderIcon('check-circle'), report.summary.activeKiosks, 'Kiosk hoạt động'),
       card('orange', renderIcon('warning'), report.summary.expiringSoon, 'Kiosk sắp hết hạn'),
       card('red', renderIcon('x-circle'), report.summary.expiredKiosks, 'Kiosk hết hạn'),
       card('green', renderIcon('money'), formatCurrency(report.summary.totalRevenue), 'Doanh thu trong kỳ', true),

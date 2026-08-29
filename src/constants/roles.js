@@ -1,3 +1,5 @@
+// LEGACY COMPATIBILITY — REMOVE AFTER STABLE RELEASE.
+// Unified web authorization uses src/constants/permissions.js.
 export const ROLES = {
   ADMIN: 'admin',
   REVIEWER: 'reviewer',

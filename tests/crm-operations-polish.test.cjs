@@ -18,12 +18,16 @@ const css = read('src/styles/app.css');
 const migration = read('supabase/migrations/20260827120000_deactivate_cancelled_public_provisional_kiosks.sql');
 
 test('Hồ sơ Kiosk copy keeps payment, review and Kiosk states distinct', () => {
+  const overview = reports.match(/function renderOverview[\s\S]*?function renderRevenue/)?.[0] || '';
+  const overviewCards = overview.match(/renderSummaryCards\(\[([\s\S]*?)\]\)/)?.[1] || '';
   assert.match(navigation, /'registration-requests': 'Hồ sơ Kiosk'/);
   assert.match(requests, /title: 'Hồ sơ Kiosk'/);
   assert.match(requests, /Chờ thanh toán[\s\S]*PayOS chưa tạo doanh thu/);
   assert.match(requests, /Chờ duyệt[\s\S]*Legacy\/Bổ sung/);
-  assert.match(reports, /Giao dịch Pending/);
-  assert.match(reports, /Hồ sơ chờ thanh toán/);
+  assert.match(overview, /Hồ sơ cần xử lý/);
+  assert.match(overview, /Hồ sơ chờ thanh toán/);
+  assert.match(overview, /Kiosk hoạt động/);
+  assert.doesNotMatch(overviewCards, /Giao dịch Pending|Kiosk chờ duyệt/);
 });
 
 test('global toast and reusable busy button expose accessible compact states', () => {
@@ -50,10 +54,9 @@ test('notification badge counts unread lifecycle-deduped items and supports mark
 });
 
 test('business logs name Admin cancellation while raw identifiers stay in technical details', () => {
-  assert.match(logs, /admin_cancel: 'Hủy hồ sơ Kiosk'/);
-  assert.match(logs, /Đã hủy hồ sơ chưa thanh toán/);
-  assert.match(logs, /Chi tiết kỹ thuật/);
-  assert.match(logs, /resolved_entity/);
+  assert.match(logs, /value: 'admin_cancel', label: 'Hủy hồ sơ Kiosk'/);
+  assert.match(logs, /formatAuditLog/);
+  assert.match(logs, /Thông tin kỹ thuật/);
 });
 
 test('cancelled public provisional Kiosks become inactive without touching completed Kiosks', () => {

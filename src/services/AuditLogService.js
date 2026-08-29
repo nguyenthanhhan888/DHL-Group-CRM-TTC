@@ -66,49 +66,102 @@ export const AuditLogService = {
   },
 };
 
-async function enrichBusinessEntities(supabase, rows) {
+export async function enrichBusinessEntities(supabase, rows) {
   if (!rows.length) return rows;
   const requestIds = uniqueIds(rows.filter(isRegistrationLog).map((log) => log.record_id));
   const requests = requestIds.length
-    ? (await runQuery(supabase.from('registration_requests').select('id,kiosk_id,customer_id,facebook_name').in('id', requestIds))).data || []
+    ? await safeBatchSelect(supabase, 'registration_requests', 'id,kiosk_id,customer_id,facebook_name', 'id', requestIds)
     : [];
   const requestsById = new Map(requests.map((item) => [String(item.id), item]));
-  const kioskIds = uniqueIds(rows.flatMap((log) => [nestedId(log, 'kiosk_id'), nestedId(log, 'payment.kiosk_id'), entityRecordId(log, 'kiosk'), requestsById.get(String(log.record_id))?.kiosk_id]));
-  const customerIds = uniqueIds(rows.flatMap((log) => [nestedId(log, 'customer_id'), nestedId(log, 'payment.customer_id'), entityRecordId(log, 'customer'), requestsById.get(String(log.record_id))?.customer_id]));
-  const promotionIds = uniqueIds(rows.flatMap((log) => [nestedId(log, 'promotion_id'), entityRecordId(log, 'promotion')]));
-  const [kiosks, customers, promotions] = await Promise.all([
-    batchSelect(supabase, 'kiosks', 'id,facebook_name', kioskIds),
-    batchSelect(supabase, 'customers', 'id,facebook_name', customerIds),
-    batchSelect(supabase, 'promotions', 'id,code,name', promotionIds),
+  const paymentIds = uniqueIds(rows.flatMap((log) => [...nestedIds(log, 'payment_id'), ...nestedIds(log, 'payment.id'), entityRecordId(log, 'payment')]));
+  const payments = await safeBatchSelect(supabase, 'payments', 'id,kiosk_id,customer_id,total_amount,payment_status,start_date,end_date,months', 'id', paymentIds);
+  const paymentById = new Map(payments.map((item) => [String(item.id), item]));
+  const kioskIds = uniqueIds(rows.flatMap((log) => {
+    const payment = paymentById.get(String(nestedId(log, 'payment_id') || nestedId(log, 'payment.id') || entityRecordId(log, 'payment')));
+    return [...nestedIds(log, 'kiosk_id'), ...nestedIds(log, 'payment.kiosk_id'), entityRecordId(log, 'kiosk'), requestsById.get(String(log.record_id))?.kiosk_id, payment?.kiosk_id];
+  }));
+  const customerIds = uniqueIds(rows.flatMap((log) => {
+    const payment = paymentById.get(String(nestedId(log, 'payment_id') || nestedId(log, 'payment.id') || entityRecordId(log, 'payment')));
+    return [...nestedIds(log, 'customer_id'), ...nestedIds(log, 'payment.customer_id'), entityRecordId(log, 'customer'), requestsById.get(String(log.record_id))?.customer_id, payment?.customer_id];
+  }));
+  const promotionIds = uniqueIds(rows.flatMap((log) => [...nestedIds(log, 'promotion_id'), entityRecordId(log, 'promotion')]));
+  const userIds = uniqueIds(rows.flatMap((log) => [...nestedIds(log, 'user_id'), ...nestedIds(log, 'wallet_user_id'), entityRecordId(log, 'user')]));
+  const businessTypeIds = uniqueIds(rows.flatMap((log) => nestedIds(log, 'business_type_id')));
+  const categoryIds = uniqueIds(rows.flatMap((log) => nestedIds(log, 'category_id')));
+  const [kiosks, customers, promotions, users, businessTypes, categories] = await Promise.all([
+    safeBatchSelect(supabase, 'kiosks', 'id,facebook_name', 'id', kioskIds),
+    safeBatchSelect(supabase, 'customers', 'id,facebook_name', 'id', customerIds),
+    safeBatchSelect(supabase, 'promotions', 'id,code,name', 'id', promotionIds),
+    safeBatchSelect(supabase, 'user_profiles', 'user_id,display_name,username', 'user_id', userIds),
+    safeBatchSelect(supabase, 'business_types', 'id,name', 'id', businessTypeIds),
+    safeBatchSelect(supabase, 'categories', 'id,name', 'id', categoryIds),
   ]);
   const kioskById = new Map(kiosks.map((item) => [String(item.id), item]));
   const customerById = new Map(customers.map((item) => [String(item.id), item]));
   const promotionById = new Map(promotions.map((item) => [String(item.id), item]));
+  const userById = new Map(users.map((item) => [String(item.user_id), item]));
+  const businessTypeById = new Map(businessTypes.map((item) => [String(item.id), item]));
+  const categoryById = new Map(categories.map((item) => [String(item.id), item]));
   return rows.map((log) => {
     const request = requestsById.get(String(log.record_id));
     const promotionId = nestedId(log, 'promotion_id') || entityRecordId(log, 'promotion');
-    const kioskId = nestedId(log, 'kiosk_id') || nestedId(log, 'payment.kiosk_id') || entityRecordId(log, 'kiosk') || request?.kiosk_id;
-    const customerId = nestedId(log, 'customer_id') || nestedId(log, 'payment.customer_id') || entityRecordId(log, 'customer') || request?.customer_id;
-    if (promotionId) return withResolved(log, 'Mã giảm giá', promotionById.get(String(promotionId))?.code || null, promotionId);
-    if (kioskId || isRegistrationLog(log)) return withResolved(log, 'Kiosk', kioskById.get(String(kioskId))?.facebook_name || request?.facebook_name || null, kioskId);
-    if (customerId) return withResolved(log, 'Khách hàng', customerById.get(String(customerId))?.facebook_name || null, customerId);
-    return log;
+    const paymentId = nestedId(log, 'payment_id') || nestedId(log, 'payment.id') || entityRecordId(log, 'payment');
+    const payment = paymentById.get(String(paymentId));
+    const kioskId = nestedId(log, 'kiosk_id') || nestedId(log, 'payment.kiosk_id') || entityRecordId(log, 'kiosk') || request?.kiosk_id || payment?.kiosk_id;
+    const customerId = nestedId(log, 'customer_id') || nestedId(log, 'payment.customer_id') || entityRecordId(log, 'customer') || request?.customer_id || payment?.customer_id;
+    const userId = nestedId(log, 'user_id') || nestedId(log, 'wallet_user_id') || entityRecordId(log, 'user');
+    const resolvedNames = {
+      kiosk: named(kioskById.get(String(kioskId))?.facebook_name, kioskId),
+      customer: named(customerById.get(String(customerId))?.facebook_name, customerId),
+      promotion: named(promotionById.get(String(promotionId))?.code, promotionId),
+      user: named(userDisplayName(userById.get(String(userId))), userId),
+      payment: named(paymentId ? `Thanh toán #${paymentId}` : null, paymentId),
+      kiosks: mapNames(kioskById, (item) => item.facebook_name),
+      customers: mapNames(customerById, (item) => item.facebook_name),
+      promotions: mapNames(promotionById, (item) => item.code),
+      users: mapNames(userById, userDisplayName),
+      payments: mapNames(paymentById, (item) => `Thanh toán #${item.id}`),
+      businessTypes: mapNames(businessTypeById, (item) => item.name),
+      categories: mapNames(categoryById, (item) => item.name),
+    };
+    const enriched = { ...log, resolved_names: resolvedNames, resolved_payment: payment || null };
+    if (promotionId) return withResolved(enriched, 'Mã giảm giá', resolvedNames.promotion?.name || null, promotionId);
+    if (userId) return withResolved(enriched, 'Người dùng', resolvedNames.user?.name || null, userId);
+    if (kioskId || isRegistrationLog(log)) return withResolved(enriched, 'Kiosk', resolvedNames.kiosk?.name || request?.facebook_name || null, kioskId);
+    if (customerId) return withResolved(enriched, 'Khách hàng', resolvedNames.customer?.name || null, customerId);
+    return enriched;
   });
 }
 
-function batchSelect(supabase, table, columns, ids) {
-  return ids.length ? runQuery(supabase.from(table).select(columns).in('id', ids)).then(({ data }) => data || []) : Promise.resolve([]);
+async function safeBatchSelect(supabase, table, columns, idColumn, ids) {
+  if (!ids.length) return [];
+  try {
+    const { data } = await runQuery(supabase.from(table).select(columns).in(idColumn, ids));
+    return data || [];
+  } catch {
+    return [];
+  }
 }
 function withResolved(log, kind, name, id) { return { ...log, resolved_entity: { kind, name, id, missing: !name } }; }
 function uniqueIds(values) { return [...new Set(values.filter((value) => value !== null && value !== undefined && value !== '').map(String))]; }
 function isRegistrationLog(log) { return /registration/i.test(String(log.entity || log.module || '')) || /review_legacy/i.test(String(log.action || '')); }
-function entityRecordId(log, kind) { return String(log.entity || log.module || '').toLowerCase().includes(kind) ? log.record_id : null; }
+function entityRecordId(log, kind) {
+  const scope = String(log.entity || log.module || '').toLowerCase();
+  if (kind === 'user') return /user|staff|profile|permission|wallet/.test(scope) ? log.record_id : null;
+  return scope.includes(kind) ? log.record_id : null;
+}
+function named(name, id) { return name || id ? { name: name || null, id: id || null } : null; }
+function userDisplayName(item) { return item?.display_name || item?.username || null; }
+function mapNames(map, label) { return Object.fromEntries([...map.entries()].map(([id, item]) => [id, label(item)]).filter(([, value]) => value)); }
 function nestedId(log, path) {
   for (const source of [log.after, log.before]) {
     const value = path.split('.').reduce((current, key) => current?.[key], source);
     if (value !== undefined && value !== null && value !== '') return value;
   }
   return null;
+}
+function nestedIds(log, path) {
+  return [log.after, log.before].map((source) => path.split('.').reduce((current, key) => current?.[key], source));
 }
 
 function normalizeRequired(value, label) {

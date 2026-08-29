@@ -6,6 +6,7 @@ const css = fs.readFileSync(new URL('../src/styles/app.css', import.meta.url), '
 const kioskPage = fs.readFileSync(new URL('../src/pages/KiosksPage.js', import.meta.url), 'utf8');
 const logPage = fs.readFileSync(new URL('../src/pages/LogsPage.js', import.meta.url), 'utf8');
 const logService = fs.readFileSync(new URL('../src/services/AuditLogService.js', import.meta.url), 'utf8');
+const logFormatter = fs.readFileSync(new URL('../src/utils/auditLogPresentation.js', import.meta.url), 'utf8');
 
 test('Kiosk cards use the shared badge with a compact card-specific visual rule', () => {
   assert.match(kioskPage, /StatusBadge\(status\)/);
@@ -16,10 +17,10 @@ test('Kiosk cards use the shared badge with a compact card-specific visual rule'
 
 test('log names are batch-resolved and raw technical data remains expandable', () => {
   assert.match(logService, /Promise\.all\(\[/);
-  assert.match(logService, /\.in\('id', ids\)/);
+  assert.match(logService, /\.in\(idColumn, ids\)/);
   assert.doesNotMatch(logService, /for\s*\([^)]*\)\s*\{[^}]*await\s+runQuery/s);
-  assert.match(logPage, /resolved_entity/);
-  assert.match(logPage, /resolved_entity\.kind} đã xóa/);
+  assert.match(logFormatter, /resolved_entity/);
+  assert.match(logFormatter, /fallbackEntity\(resolved\.kind/);
   assert.match(logPage, /<details class="log-technical-details">/);
   assert.match(logPage, /renderRawJson\(log\.before, log\.after\)/);
 });

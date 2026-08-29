@@ -1,110 +1,55 @@
 import { getSupabaseClient } from '../supabase/client.js';
 
 export const StaffService = {
-  async list() {
-    try {
-      return await listStaffViaApi();
-    } catch (error) {
-      try {
-        return await invoke({ action: 'list' });
-      } catch (edgeError) {
-        const fallback = await fallbackListStaff(edgeError);
-        return {
-          ok: true,
-          staff: fallback.staff,
-          warning: fallback.warning || edgeError?.message || error?.message || 'Edge Function manage-staff chưa sẵn sàng.',
-        };
-      }
-    }
+  async list({ search = '', page = 1, pageSize = 25 } = {}) {
+    return invoke({ action: 'list', search, page, pageSize });
   },
 
-  async create(payload) {
-    return invoke({ action: 'create', reason: 'Admin tạo tài khoản Reviewer', ...payload });
+  async detail(userId) {
+    return invoke({ action: 'detail', userId });
   },
 
-  async resetPassword(userId, password) {
-    return invoke({
-      action: 'reset_password',
-      userId,
-      password,
-      reason: 'Admin đặt lại mật khẩu Reviewer',
-    });
+  async updateProfile(userId, payload) {
+    return invoke({ action: 'update_profile', userId, ...payload });
   },
 
-  async update(userId, payload) {
-    return invoke({
-      action: 'update',
-      userId,
-      reason: 'Admin cập nhật thông tin Reviewer',
-      ...payload,
-    });
+  async syncPermissions(userId, permissions, adminPassword, reason = '') {
+    return invoke({ action: 'sync_permissions', userId, permissions, adminPassword, reason });
   },
 
-  async setActive(userId, isActive) {
-    return invoke({
-      action: 'set_active',
-      userId,
-      isActive,
-      reason: isActive ? 'Admin kích hoạt Reviewer' : 'Admin vô hiệu hóa Reviewer',
-    });
+  async adjustWallet(userId, { amount, reason, description = '', adminPassword, idempotencyKey } = {}) {
+    return invoke({ action: 'adjust_wallet', userId, amount, reason, description, adminPassword, idempotencyKey });
   },
 
+  async walletLedger(userId, { page = 1, pageSize = 20 } = {}) {
+    return invoke({ action: 'wallet_ledger', userId, page, pageSize });
+  },
+
+  async setLocked(userId, locked, adminPassword, reason) {
+    return invoke({ action: 'set_locked', userId, locked, adminPassword, reason });
+  },
+
+  async resetPassword(userId, newPassword, adminPassword, reason) {
+    return invoke({ action: 'reset_password', userId, newPassword, adminPassword, reason });
+  },
 };
 
 async function invoke(body) {
   const client = getSupabaseClient();
   if (!client) throw new Error('Supabase chưa được cấu hình.');
-  const { data, error } = await client.functions.invoke('manage-staff', { body });
-  if (error) throw new Error(await edgeErrorMessage(error));
-  if (!data?.ok) throw new Error(data?.message || 'Không thể quản lý nhân viên.');
-  return data;
-}
-
-async function listStaffViaApi() {
-  const client = getSupabaseClient();
-  if (!client) throw new Error('Supabase chưa được cấu hình.');
   const { data: sessionData } = await client.auth.getSession();
   const accessToken = sessionData?.session?.access_token || '';
-  if (!accessToken) throw new Error('Bạn cần đăng nhập admin để xem nhân viên.');
-  const response = await fetch('/api/staff', {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${accessToken}` },
+  if (!accessToken) throw new Error('Bạn cần đăng nhập để quản lý người dùng.');
+  const response = await fetch('/api/user-management', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok || !payload?.ok) {
-    throw new Error(payload?.message || 'Không tải được nhân viên qua API.');
+    const error = new Error(payload?.message || 'Không thể quản lý người dùng.');
+    error.status = response.status;
+    throw error;
   }
-  return { ok: true, staff: payload.staff || [] };
-}
-
-async function fallbackListStaff(originalError) {
-  const client = getSupabaseClient();
-  if (!client) throw new Error('Supabase chưa được cấu hình.');
-  const { data, error } = await client
-    .from('user_roles')
-    .select('user_id, username, display_name, role, is_active, created_at')
-    .in('role', ['admin', 'reviewer'])
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  return {
-    staff: (data || []).map((item) => ({
-      userId: item.user_id,
-      username: item.username,
-      displayName: item.display_name,
-      role: item.role,
-      isActive: item.is_active,
-      email: '',
-      lastSignInAt: null,
-      readOnlyFallback: true,
-    })),
-  };
-}
-
-async function edgeErrorMessage(error) {
-  try {
-    const payload = await error.context?.json();
-    return payload?.message || error.message;
-  } catch {
-    return error.message || 'Edge Function trả về lỗi.';
-  }
+  return payload;
 }

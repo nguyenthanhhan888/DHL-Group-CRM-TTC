@@ -6,18 +6,16 @@ const ORIGINAL_ENV = { ...process.env };
 
 function mockResponse() {
   return {
-    statusCode: 200,
-    headers: {},
-    payload: null,
+    statusCode: 200, headers: {}, payload: null,
     setHeader(name, value) { this.headers[name] = value; },
     status(value) { this.statusCode = value; return this; },
     json(value) { this.payload = value; return this; },
   };
 }
 
-async function call(body, { method = 'POST', headers = {} } = {}) {
+async function call(body, { headers = {} } = {}) {
   const res = mockResponse();
-  await handler({ method, body, headers }, res);
+  await handler({ method: 'POST', body, headers, socket: { remoteAddress: '127.0.0.1' } }, res);
   return res;
 }
 
@@ -26,15 +24,9 @@ function response(status, payload) {
     ok: status >= 200 && status < 300,
     status,
     statusText: status >= 200 && status < 300 ? 'OK' : 'Error',
-    text: async () => JSON.stringify(payload),
+    headers: new Headers(),
+    text: async () => payload == null ? '' : JSON.stringify(payload),
   };
-}
-
-function missingUsernameResponse() {
-  return response(400, {
-    code: '42703',
-    message: 'column user_profiles.username does not exist',
-  });
 }
 
 test.beforeEach(() => {
@@ -44,6 +36,7 @@ test.beforeEach(() => {
     SUPABASE_ANON_KEY: 'anon-key',
     SUPABASE_SERVICE_ROLE_KEY: 'service-key',
   };
+  handler.__test.loginAttempts.clear();
 });
 
 test.afterEach(() => {
@@ -51,121 +44,83 @@ test.afterEach(() => {
   delete global.fetch;
 });
 
-test('resolves phone login when live DB is missing user_profiles.username', async () => {
-  global.fetch = async (url) => {
-    const parsed = new URL(url);
-    const path = `${parsed.pathname}?${parsed.searchParams.toString()}`;
-    if (path.includes('/rest/v1/user_profiles') && path.includes('select=user_id%2Cusername')) {
-      return missingUsernameResponse();
-    }
-    if (path.includes('/rest/v1/user_profiles') && path.includes('select=user_id%2Cemail%2Cphone%2Cmetadata')) {
-      return response(200, [{
-        user_id: 'user-1',
-        email: null,
-        phone: '0888640349',
-        metadata: { username: 'hannt', auth_email: 'hannt@users.dhl.local' },
-      }]);
-    }
-    throw new Error(`Unexpected fetch: ${path}`);
-  };
-
-  const res = await call({ action: 'resolve_login', identifier: '0888640349' });
-  assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.payload, { ok: true, email: 'hannt@users.dhl.local' });
-});
-
-test('creates username account with metadata fallback when username column is not deployed yet', async () => {
-  const profileBodies = [];
-
+test('admin username login normalizes lowercase and never exposes internal email', async () => {
+  const requests = [];
   global.fetch = async (url, options = {}) => {
     const parsed = new URL(url);
-    const path = `${parsed.pathname}?${parsed.searchParams.toString()}`;
-    const method = options.method || 'GET';
-
-    if (method === 'GET' && path.includes('/rest/v1/user_profiles') && path.includes('select=user_id%2Cusername')) {
-      return missingUsernameResponse();
+    requests.push({ path: `${parsed.pathname}?${parsed.searchParams}`, options });
+    if (parsed.pathname === '/rest/v1/user_profiles') {
+      assert.equal(parsed.searchParams.get('username'), 'eq.admin');
+      return response(200, [{ user_id: 'admin-id', username: 'admin', status: 'active', web_access_enabled: true, is_system_admin: true }]);
     }
-    if (method === 'GET' && path.includes('/rest/v1/user_profiles') && path.includes('metadata-%3E%3Eusername')) {
-      return response(200, []);
+    if (parsed.pathname === '/auth/v1/admin/users/admin-id') return response(200, { user: { id: 'admin-id', email: 'internal-admin@example.invalid' } });
+    if (parsed.pathname === '/auth/v1/token') {
+      assert.deepEqual(JSON.parse(options.body), { email: 'internal-admin@example.invalid', password: 'correct-password' });
+      return response(200, { access_token: 'access-token', refresh_token: 'refresh-token', user: { id: 'admin-id', email: 'internal-admin@example.invalid' } });
     }
-    if (method === 'POST' && parsed.pathname === '/auth/v1/admin/users') {
-      return response(200, { user: { id: 'user-1', email: 'tester@users.dhl.local' } });
+    if (parsed.pathname === '/rest/v1/rpc/get_my_access_profile') {
+      return response(200, { user_id: 'admin-id', username: 'admin', status: 'active', web_access_enabled: true, is_system_admin: true, permissions: [] });
     }
-    if (method === 'POST' && parsed.pathname === '/rest/v1/user_profiles') {
-      const body = JSON.parse(options.body);
-      profileBodies.push(body);
-      if (Object.prototype.hasOwnProperty.call(body, 'username')) return missingUsernameResponse();
-      return response(201, null);
-    }
-    if (method === 'POST' && parsed.pathname === '/rest/v1/wallets') {
-      return response(201, null);
-    }
-    throw new Error(`Unexpected fetch: ${method} ${path}`);
+    throw new Error(`Unexpected fetch: ${parsed.pathname}`);
   };
 
-  const res = await call({
-    action: 'create_user_account',
-    displayName: 'Test User',
-    username: 'tester',
-    password: 'secret123',
-  });
-
+  const res = await call({ action: 'username_login', username: '  ADMIN  ', password: 'correct-password' });
   assert.equal(res.statusCode, 200);
   assert.equal(res.payload.ok, true);
-  assert.equal(res.payload.username, 'tester');
-  assert.equal(profileBodies.length, 2);
-  assert.equal(profileBodies[0].username, 'tester');
-  assert.equal(Object.prototype.hasOwnProperty.call(profileBodies[1], 'username'), false);
-  assert.equal(profileBodies[1].metadata.username, 'tester');
+  assert.equal(res.payload.session.accessToken, 'access-token');
+  assert.doesNotMatch(JSON.stringify(res.payload), /internal-admin|example\.invalid|email/i);
+  assert.equal(requests.some((item) => item.path.includes('user_roles')), false);
 });
 
-test('admin profile update falls back when selecting user by id without username column', async () => {
-  const patches = [];
-
-  global.fetch = async (url, options = {}) => {
+test('wrong username and wrong password return the same generic response', async () => {
+  global.fetch = async (url) => {
     const parsed = new URL(url);
-    const path = `${parsed.pathname}?${parsed.searchParams.toString()}`;
-    const method = options.method || 'GET';
-
-    if (method === 'GET' && parsed.pathname === '/auth/v1/user') {
-      return response(200, { id: 'admin-1' });
-    }
-    if (method === 'GET' && parsed.pathname === '/rest/v1/user_roles') {
-      return response(200, [{ role: 'admin', is_active: true }]);
-    }
-    if (method === 'GET' && path.includes('/rest/v1/user_profiles') && path.includes('select=user_id%2Cusername')) {
-      return missingUsernameResponse();
-    }
-    if (method === 'GET' && path.includes('/rest/v1/user_profiles') && path.includes('select=user_id%2Cdisplay_name')) {
-      return response(200, [{
-        user_id: 'user-1',
-        display_name: 'Old Name',
-        email: null,
-        phone: null,
-        status: 'active',
-        metadata: { username: 'tester' },
-      }]);
-    }
-    if (method === 'PATCH' && parsed.pathname === '/rest/v1/user_profiles') {
-      patches.push(JSON.parse(options.body));
-      return response(204, null);
-    }
-    throw new Error(`Unexpected fetch: ${method} ${path}`);
+    if (parsed.pathname === '/rest/v1/user_profiles') return response(200, []);
+    throw new Error(`Unexpected fetch: ${parsed.pathname}`);
   };
+  const wrongUsername = await call({ action: 'username_login', username: 'missing', password: 'anything' });
 
-  const res = await call({
-    action: 'admin_update_user_profile',
-    userId: 'user-1',
-    displayName: 'New Name',
-    metadataPatch: { admin_permissions: ['admin-ttc-users'] },
-  }, {
-    headers: { authorization: 'Bearer admin-session' },
-  });
+  handler.__test.loginAttempts.clear();
+  global.fetch = async (url) => {
+    const parsed = new URL(url);
+    if (parsed.pathname === '/rest/v1/user_profiles') return response(200, [{ user_id: 'user-id' }]);
+    if (parsed.pathname === '/auth/v1/admin/users/user-id') return response(200, { user: { id: 'user-id', email: 'hidden@example.invalid' } });
+    if (parsed.pathname === '/auth/v1/token') return response(400, { error: 'invalid_grant' });
+    throw new Error(`Unexpected fetch: ${parsed.pathname}`);
+  };
+  const wrongPassword = await call({ action: 'username_login', username: 'member', password: 'wrong' });
 
-  assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.payload, { ok: true });
-  assert.equal(patches.length, 1);
-  assert.equal(patches[0].display_name, 'New Name');
-  assert.equal(patches[0].metadata.username, 'tester');
-  assert.deepEqual(patches[0].metadata.admin_permissions, ['admin-ttc-users']);
+  assert.equal(wrongUsername.statusCode, 401);
+  assert.equal(wrongPassword.statusCode, 401);
+  assert.deepEqual(wrongUsername.payload, wrongPassword.payload);
+  assert.equal(wrongUsername.payload.message, handler.__test.GENERIC_LOGIN_ERROR);
+});
+
+test('locked or permissionless account is denied after valid password with a generic response', async () => {
+  for (const access of [
+    { status: 'locked', web_access_enabled: false, is_system_admin: false, permissions: ['dashboard'] },
+    { status: 'active', web_access_enabled: true, is_system_admin: false, permissions: [] },
+  ]) {
+    handler.__test.loginAttempts.clear();
+    let loggedOut = false;
+    global.fetch = async (url) => {
+      const parsed = new URL(url);
+      if (parsed.pathname === '/rest/v1/user_profiles') return response(200, [{ user_id: 'user-id' }]);
+      if (parsed.pathname === '/auth/v1/admin/users/user-id') return response(200, { user: { id: 'user-id', email: 'hidden@example.invalid' } });
+      if (parsed.pathname === '/auth/v1/token') return response(200, { access_token: 'token', refresh_token: 'refresh', user: { id: 'user-id' } });
+      if (parsed.pathname === '/rest/v1/rpc/get_my_access_profile') return response(200, { user_id: 'user-id', ...access });
+      if (parsed.pathname === '/auth/v1/logout') { loggedOut = true; return response(204, null); }
+      throw new Error(`Unexpected fetch: ${parsed.pathname}`);
+    };
+    const res = await call({ action: 'username_login', username: 'member', password: 'valid-password' });
+    assert.equal(res.statusCode, 401);
+    assert.equal(res.payload.message, handler.__test.GENERIC_LOGIN_ERROR);
+    assert.equal(loggedOut, true);
+  }
+});
+
+test('legacy email resolver is disabled and cannot disclose an auth email', async () => {
+  const res = await call({ action: 'resolve_login', identifier: 'admin' });
+  assert.equal(res.statusCode, 410);
+  assert.deepEqual(res.payload, { ok: false, message: handler.__test.GENERIC_LOGIN_ERROR });
 });

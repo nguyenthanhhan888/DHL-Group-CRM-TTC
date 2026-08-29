@@ -55,7 +55,8 @@ test('recent activity UI is limited to completed business events', async () => {
     source.indexOf('function renderDashboardError'),
   );
 
-  assert.match(renderer, /activity\.label/);
+  assert.match(renderer, /recentActivityPresentation\(activity\.type\)/);
+  assert.match(renderer, /presentation\.label/);
   assert.match(renderer, /formatCurrency\(activity\.amount\)/);
   assert.match(renderer, /formatDate\(activity\.occurredAt\)/);
   assert.doesNotMatch(renderer, /pending|submitted_at|payment_status/);

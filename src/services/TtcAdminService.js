@@ -109,21 +109,18 @@ export const TtcAdminService = {
     amount,
     reason,
     description = '',
+    adminPassword = '',
     idempotencyKey = createIdempotencyKey('admin-wallet-adjustment'),
-    metadata = {},
   } = {}) {
-    const { data } = await runQuery(requireSupabaseClient().rpc('admin_post_wallet_ledger', {
-      wallet_user_id_input: normalizeRequired(userId, 'User'),
-      amount_input: nonZeroNumber(amount, 'Số xu'),
-      transaction_type_input: 'admin_adjustment',
-      related_table_input: null,
-      related_id_input: null,
-      idempotency_key_input: idempotencyKey,
-      description_input: normalizeOptional(description),
-      reason_input: normalizeRequired(reason, 'Lý do'),
-      metadata_input: metadata && typeof metadata === 'object' ? metadata : {},
-    }));
-    return { data };
+    return userManagementRequest({
+      action: 'adjust_wallet',
+      userId: normalizeRequired(userId, 'User'),
+      amount: nonZeroNumber(amount, 'Số xu'),
+      description: normalizeOptional(description),
+      reason: normalizeRequired(reason, 'Lý do'),
+      adminPassword: normalizeRequired(adminPassword, 'Mật khẩu quản trị'),
+      idempotencyKey,
+    });
   },
 
   async resetUserPassword(userId, password) {
@@ -200,17 +197,6 @@ export const TtcAdminService = {
       throw new Error(responsePayload?.message || 'Không cập nhật được thông tin user.');
     }
     return responsePayload;
-  },
-
-  async confirmCurrentAdminPassword(password) {
-    const normalizedPassword = normalizeRequired(password, 'Mật khẩu xác nhận');
-    const client = requireSupabaseClient();
-    const { data: sessionData } = await client.auth.getSession();
-    const email = sessionData?.session?.user?.email || '';
-    if (!email) throw new Error('Không tìm thấy email phiên admin để xác nhận mật khẩu.');
-    const { error } = await client.auth.signInWithPassword({ email, password: normalizedPassword });
-    if (error) throw new Error('Mật khẩu xác nhận không đúng.');
-    return true;
   },
 
   async createCampaignForUser({
@@ -358,4 +344,19 @@ function nonNegativeInteger(value, label) {
 function createIdempotencyKey(prefix) {
   if (globalThis.crypto?.randomUUID) return `${prefix}:${globalThis.crypto.randomUUID()}`;
   return `${prefix}:${Date.now()}:${Math.random().toString(16).slice(2)}`;
+}
+
+async function userManagementRequest(body) {
+  const client = requireSupabaseClient();
+  const { data: sessionData } = await client.auth.getSession();
+  const accessToken = sessionData?.session?.access_token || '';
+  if (!accessToken) throw new Error('Bạn cần đăng nhập System Admin.');
+  const response = await fetch('/api/user-management', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload?.ok) throw new Error(payload?.message || 'Không thể thực hiện thao tác người dùng.');
+  return payload;
 }

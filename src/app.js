@@ -1,12 +1,11 @@
 import { Modal } from './components/Modal.js';
 import { Toast } from './components/Toast.js';
 import { NAV_SECTIONS, PAGE_TITLES } from './constants/navigation.js';
-import { PERMISSIONS, ROLES } from './constants/roles.js';
+import { PERMISSIONS, canAccessPermission, canAccessRoute } from './constants/permissions.js';
 import { AppLayout } from './layouts/AppLayout.js';
 import { createRouter } from './router/index.js';
 import { getSupabaseStatus } from './supabase/client.js';
 import { AuthService } from './services/AuthService.js';
-import { PermissionService } from './services/PermissionService.js';
 import { settingsService } from './services/SettingsService.js';
 import { WalletService } from './services/WalletService.js';
 import { AdminNotificationService } from './services/AdminNotificationService.js';
@@ -32,7 +31,6 @@ import { SettingsPage } from './pages/SettingsPage.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { RegistrationRequestsPage } from './pages/RegistrationRequestsPage.js';
 import { StaffPage } from './pages/StaffPage.js';
-import { PermissionsPage } from './pages/PermissionsPage.js';
 import { UserHomePage } from './pages/UserHomePage.js';
 import { TtcPage } from './pages/TtcPage.js';
 import { AdminTtcPage } from './pages/AdminTtcPage.js';
@@ -55,8 +53,9 @@ const routes = {
   settings: SettingsPage,
   reports: ReportsPage,
   'registration-requests': RegistrationRequestsPage,
+  'user-management': StaffPage,
   staff: StaffPage,
-  permissions: PermissionsPage,
+  permissions: StaffPage,
   'legacy-registration': LegacyRegistrationPage,
   register: RegisterPage,
   user: UserHomePage,
@@ -77,14 +76,14 @@ const routes = {
   'admin-ttc-campaigns': AdminTtcPage,
   'admin-ttc-announcements': AdminTtcPage,
   'admin-ttc-tasks': AdminTtcPage,
-  'admin-ttc-users': AdminTtcPage,
+  'admin-ttc-users': StaffPage,
   'admin-ttc-wallets': AdminTtcPage,
   'admin-ttc-settings': AdminTtcPage,
   'admin-ttc-logs': AdminTtcPage,
 };
 
 const PUBLIC_ROUTES = new Set(['home', 'register', 'legacy-registration', 'lookup', 'login']);
-const HIDDEN_WEB_ROUTES = new Set(['payments', 'staff', 'permissions']);
+const HIDDEN_WEB_ROUTES = new Set();
 const THEME_STORAGE_KEY = 'dhlThemePreference';
 
 async function initApp() {
@@ -119,16 +118,6 @@ async function initApp() {
       return;
     }
 
-    if (profile.role === ROLES.REVIEWER) {
-      profile.permissions = await PermissionService.getMyPermissions();
-      profile.permissions = applyLocalPreviewPermissions(profile.permissions);
-      if (!profile.permissions.length) {
-        await AuthService.signOut();
-        renderLogin(root, 'Tài khoản chưa được cấp quyền truy cập.');
-        return;
-      }
-    }
-
     try {
       await settingsService.getPublicSettings();
     } catch {
@@ -141,35 +130,15 @@ async function initApp() {
 }
 
 function renderAuthenticatedApp(root, profile) {
-  const { role, permissions: userPermissions } = profile;
-  let permissions;
-
-  if (role === ROLES.REVIEWER) {
-    permissions = {
-      canAccess: (route) => {
-        const allowedRoutes = new Set(userPermissions || []);
-        return allowedRoutes.has(route);
-      }
-    };
-  } else {
-    permissions = PERMISSIONS[role] || PERMISSIONS[ROLES.FUTURE_CUSTOMER];
-  }
+  const userPermissions = profile.permissions || [];
 
   const canAccess = (route) => {
     if (route === 'not-found') return true;
     if (HIDDEN_WEB_ROUTES.has(String(route || '').split('?')[0])) return false;
-    return permissions.canAccess(routePermission(route));
+    return canAccessRoute(profile, normalizeRouteForPermission(route));
   };
 
-  const getDefaultRoute = (role) => {
-    if (role === ROLES.ADMIN) return 'dashboard';
-    if (role === ROLES.REVIEWER) return firstAllowedRoute(userPermissions);
-    if (role === ROLES.SUPPORT) return 'dashboard';
-    if (role === ROLES.USER) return 'user';
-    return 'register';
-  };
-
-  const defaultRoute = getDefaultRoute(role);
+  const defaultRoute = firstAllowedRoute(profile);
 
   window.addEventListener('hashchange', () => {
     if (PUBLIC_ROUTES.has(getRouteName())) {
@@ -177,22 +146,24 @@ function renderAuthenticatedApp(root, profile) {
     }
   });
 
-  if (getRouteName() === 'login') {
+  if (['staff', 'permissions', 'admin-ttc-users'].includes(getRouteName())) {
+    window.location.hash = '#/user-management';
+  } else if (getRouteName() === 'login') {
     window.location.hash = `#/${defaultRoute}`;
   } else if (!canAccess(getRouteName())) {
     window.location.hash = `#/${defaultRoute}`;
   }
 
-  const getNavSections = (role) => {
+  const getNavSections = () => {
     return NAV_SECTIONS
       .map((section) => ({
         ...section,
-        items: filterNavItems(section.items, role, canAccess),
+        items: filterNavItems(section.items, profile, canAccess),
       }))
       .filter((section) => section.items.length);
   };
 
-  const navSections = getNavSections(role);
+  const navSections = getNavSections();
 
   root.innerHTML = AppLayout({ navSections, user: profile });
   Modal.mount();
@@ -203,15 +174,16 @@ function renderAuthenticatedApp(root, profile) {
   const currentDate = document.querySelector('[data-current-date]');
   const menuToggle = document.querySelector('[data-menu-toggle]');
   const sidebarOverlay = document.querySelector('[data-sidebar-overlay]');
+  const notificationCenter = document.querySelector('.admin-notification-center');
   const supabaseBadge = document.querySelector('[data-supabase-badge]');
 
   if (currentDate) currentDate.textContent = formatToday();
   bindThemeToggle();
   updateSupabaseBadge(supabaseBadge);
   refreshTopbarWallet(profile);
-  if(profile?.role===ROLES.ADMIN)refreshAdminNotifications();
+  if (canAccessPermission(profile, PERMISSIONS.NOTIFICATIONS)) refreshAdminNotifications();
   window.addEventListener('dhl-wallet-updated', (event) => {
-    if (profile?.role !== ROLES.USER) return;
+    if (!canAccessPermission(profile, PERMISSIONS.WALLET)) return;
     const wallet = event?.detail?.wallet;
     if (wallet && Object.prototype.hasOwnProperty.call(wallet, 'balance')) {
       updateTopbarWalletLabel(wallet);
@@ -503,9 +475,27 @@ function renderAuthenticatedApp(root, profile) {
 
   menuToggle?.addEventListener('click', () => setSidebarOpen(!sidebar?.classList.contains('open')));
   sidebarOverlay?.addEventListener('click', () => setSidebarOpen(false));
+  const collapsibleNavSections = [...document.querySelectorAll('[data-nav-section-collapsible]')];
+  collapsibleNavSections.forEach((section) => {
+    section.addEventListener('toggle', () => {
+      section.querySelector('[data-nav-section-toggle]')?.setAttribute('aria-expanded', String(section.open));
+      if (!section.open) return;
+      collapsibleNavSections.forEach((otherSection) => {
+        if (otherSection !== section) otherSection.open = false;
+      });
+    });
+  });
+  document.addEventListener('click', (event) => {
+    if (notificationCenter?.open && !notificationCenter.contains(event.target)) notificationCenter.open = false;
+  });
 
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
+    if (notificationCenter?.open) {
+      notificationCenter.open = false;
+      notificationCenter.querySelector('summary')?.focus();
+      return;
+    }
     if (sidebar?.classList.contains('open')) {
       setSidebarOpen(false);
       menuToggle?.focus();
@@ -540,12 +530,11 @@ function renderAuthenticatedApp(root, profile) {
         return;
       }
 
-      if (freshProfile.role === ROLES.REVIEWER) {
-        const freshPermissions = await PermissionService.getMyPermissions();
-        userPermissions.splice(0, userPermissions.length, ...applyLocalPreviewPermissions(freshPermissions));
-        if (!canAccess(getRouteName())) {
-          window.location.hash = `#/${firstAllowedRoute(userPermissions)}`;
-        }
+      Object.assign(profile, freshProfile);
+      userPermissions.splice(0, userPermissions.length, ...(freshProfile.permissions || []));
+      profile.permissions = userPermissions;
+      if (!canAccess(getRouteName())) {
+        window.location.hash = `#/${firstAllowedRoute(profile)}`;
       }
     } catch {
       // A transient refresh failure should not destroy the current UI. Protected
@@ -554,7 +543,7 @@ function renderAuthenticatedApp(root, profile) {
   }, 30_000);
 }
 
-async function refreshAdminNotifications(){try{const data=await AdminNotificationService.getActionable();const count=document.querySelector('[data-notification-count]');const navCount=document.querySelector('[data-registration-nav-count]');const summary=document.querySelector('[data-notification-summary]');const list=document.querySelector('[data-notification-list]');const markAll=document.querySelector('[data-notification-mark-all]');if(count){count.textContent=String(data.unreadCount);count.classList.toggle('hidden',!data.unreadCount);}if(navCount){navCount.textContent=String(data.registrationCount);navCount.classList.toggle('hidden',!data.registrationCount);}if(summary)summary.textContent=data.items.length?`${data.unreadCount} chưa đọc · ${data.summaryText}`:'Không có việc cần xử lý';if(markAll){markAll.disabled=!data.unreadCount;markAll.onclick=()=>{AdminNotificationService.markAllRead(data.items);refreshAdminNotifications();};}if(list){list.innerHTML=data.items.length?data.items.map(item=>`<a class="admin-notification-item is-${escapeHtml(item.tone)} ${item.read?'is-read':'is-unread'}" data-notification-id="${escapeHtml(item.id)}" href="${escapeHtml(item.href)}"><span aria-hidden="true">${renderIcon(item.icon)}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.description)}</small><time>${escapeHtml(item.timeLabel)}</time></span></a>`).join(''):'<p class="admin-notification-empty">Mọi việc đã được xử lý.</p>';list.querySelectorAll('[data-notification-id]').forEach(item=>item.addEventListener('click',()=>AdminNotificationService.markRead(item.dataset.notificationId)));}}catch{const summary=document.querySelector('[data-notification-summary]');if(summary)summary.textContent='Không thể tải thông báo';}}
+async function refreshAdminNotifications(){try{const data=await AdminNotificationService.getActionable();const items=[...data.items].sort((left,right)=>Date.parse(right.createdAt||0)-Date.parse(left.createdAt||0));const count=document.querySelector('[data-notification-count]');const navCount=document.querySelector('[data-registration-nav-count]');const list=document.querySelector('[data-notification-list]');const markAll=document.querySelector('[data-notification-mark-all]');if(count){count.textContent=String(data.unreadCount);count.classList.toggle('hidden',!data.unreadCount);}if(navCount){navCount.textContent=String(data.registrationCount);navCount.classList.toggle('hidden',!data.registrationCount);}if(markAll){markAll.disabled=!data.unreadCount;markAll.onclick=()=>{AdminNotificationService.markAllRead(items);refreshAdminNotifications();};}if(list){list.innerHTML=items.length?items.map(item=>`<a class="admin-notification-item is-${escapeHtml(item.tone)} ${item.read?'is-read':'is-unread'}" data-notification-id="${escapeHtml(item.id)}" href="${escapeHtml(item.href)}"><span aria-hidden="true">${renderIcon(item.icon)}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.description)}</small><time>${escapeHtml(item.timeLabel)}</time></span></a>`).join(''):'<p class="admin-notification-empty">Mọi việc đã được xử lý.</p>';list.querySelectorAll('[data-notification-id]').forEach(item=>item.addEventListener('click',()=>{AdminNotificationService.markRead(item.dataset.notificationId);document.querySelector('.admin-notification-center')?.removeAttribute('open');}));}}catch{const list=document.querySelector('[data-notification-list]');if(list)list.innerHTML='<p class="admin-notification-empty">Không thể tải thông báo.</p>';}}
 
 function applySavedTheme() {
   const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
@@ -589,83 +578,42 @@ function updateThemeToggle(button) {
     : '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 3.5v2M12 18.5v2M5.6 5.6 7 7M17 17l1.4 1.4M3.5 12h2M18.5 12h2M5.6 18.4 7 17M17 7l1.4-1.4"/></svg>';
 }
 
-function routePermission(route) {
+function normalizeRouteForPermission(route) {
   const routeName = String(route || '').split('?')[0];
-  if (routeName && routeName !== route) return routePermission(routeName);
-  if (route === 'admin/ttc') return 'admin-ttc';
-  return {
-    'customer-detail': 'customers',
-    'kiosk-detail': 'kiosks',
-    'payment-detail': 'payments',
-    'payments-mine': 'user',
-    'user-profile': 'user',
-    'user-announcements': 'user',
-    'user-support': 'user',
-    'user-kiosks': 'user',
-    'user-register-kiosk': 'user',
-    'user-facebook': 'user',
-    'ttc-earn': 'ttc',
-    'ttc-campaign-create': 'ttc',
-    'ttc-campaigns': 'ttc',
-    'ttc-wallet': 'ttc',
-    'ttc-wallet-history': 'ttc',
-    'admin-ttc-campaigns': 'admin-ttc',
-    'admin-ttc-announcements': 'admin-ttc',
-    'admin-ttc-tasks': 'admin-ttc',
-    'admin-ttc-users': 'admin-ttc',
-    'admin-ttc-wallets': 'admin-ttc',
-    'admin-ttc-settings': 'admin-ttc',
-    'admin-ttc-logs': 'admin-ttc',
-    admin: getRouteSubPath() === 'ttc' ? 'admin-ttc' : 'admin',
-  }[route] || route;
+  if (routeName && routeName !== route) return normalizeRouteForPermission(routeName);
+  if (route === 'admin/ttc') return 'admin';
+  return route;
 }
 
-function filterNavItems(items, role, canAccess) {
+function filterNavItems(items, profile, canAccess) {
   return items
     .map((item) => {
-      if (!item.roles || item.roles.includes(role)) {
-        if (item.children?.length) {
-          const children = filterNavItems(item.children, role, canAccess);
-          return children.length ? { ...item, children } : null;
-        }
-        const permissionRoute = item.matchRoute || item.route;
-        return permissionRoute && canAccess(permissionRoute) ? item : null;
+      if (item.children?.length) {
+        const children = filterNavItems(item.children, profile, canAccess);
+        return children.length ? { ...item, children } : null;
       }
-      return null;
+      if (item.permission) return canAccessPermission(profile, item.permission) ? item : null;
+      return item.route && canAccess(item.route) ? item : null;
     })
     .filter(Boolean);
 }
 
 function isProfileAllowed(profile) {
   if (!profile) return false;
-  if (![ROLES.ADMIN, ROLES.USER].includes(profile.role)) return false;
-  if (profile.role === ROLES.USER) return profile.status !== 'locked';
-  return Boolean(profile.is_active);
+  return profile.status === 'active'
+    && profile.web_access_enabled === true
+    && (profile.is_system_admin === true || (Array.isArray(profile.permissions) && profile.permissions.length > 0));
 }
 
-function firstAllowedRoute(userPermissions = []) {
+function firstAllowedRoute(profile) {
   const preferred = [
-    'registration-requests',
-    'dashboard',
-    'customers',
-    'kiosks',
-    'admin-ttc',
-    'ttc',
-    'user',
-    'reports',
-    'logs',
+    'dashboard', 'reports', 'customers', 'customer-detail', 'kiosks', 'kiosk-detail',
+    'registration-requests', 'payments', 'payment-detail', 'categories', 'business-types',
+    'ttc', 'admin-ttc-campaigns', 'admin-ttc-announcements', 'admin-ttc-tasks',
+    'admin-ttc-wallets', 'admin-ttc-settings', 'admin-ttc-logs', 'admin',
+    'user-management', 'logs', 'settings',
   ];
-  const route = preferred.find((item) => userPermissions.includes(item)) || userPermissions[0] || 'dashboard';
-  return route === 'admin-ttc' ? 'admin/ttc' : route;
-}
-
-function applyLocalPreviewPermissions(permissions = []) {
-  if (!isLocalPreviewHost()) return permissions;
-  return Array.from(new Set(permissions || []));
-}
-
-function isLocalPreviewHost() {
-  return ['localhost', '127.0.0.1', '0.0.0.0'].includes(window.location.hostname);
+  return preferred.find((route) => canAccessRoute(profile, route)) || 'dashboard';
 }
 
 function normalizePublicPathRoute() {
@@ -756,6 +704,14 @@ function setActiveNavigation(route) {
     if (toggle) toggle.setAttribute('aria-expanded', String(hasActiveChild || group.open));
     if (hasActiveChild) group.open = true;
   });
+  const collapsibleSections = [...document.querySelectorAll('[data-nav-section-collapsible]')];
+  const activeSection = collapsibleSections.find((section) => section.querySelector('.nav-item.active'));
+  collapsibleSections.forEach((section) => {
+    const hasActiveChild = Boolean(section.querySelector('.nav-item.active'));
+    if (activeSection) section.open = section === activeSection;
+    section.classList.toggle('has-active-child', hasActiveChild);
+    section.querySelector('[data-nav-section-toggle]')?.setAttribute('aria-expanded', String(section.open));
+  });
 }
 
 function updateSupabaseBadge(element) {
@@ -768,7 +724,7 @@ function updateSupabaseBadge(element) {
 }
 
 async function refreshTopbarWallet(profile, options = {}) {
-  if (profile?.role !== ROLES.USER) return;
+  if (!canAccessPermission(profile, PERMISSIONS.WALLET)) return;
   const walletLabel = document.querySelector('[data-topbar-wallet]');
   if (!walletLabel) return;
   if (options.showLoading !== false) walletLabel.textContent = 'Đang tải';

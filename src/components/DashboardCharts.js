@@ -76,14 +76,18 @@ export function renderCategoryChart(distribution) {
   empty.classList.toggle('hidden', total > 0);
   if (total === 0) return;
 
-  const context = setupCanvas(canvas, 216);
+  const compact = (canvas.parentElement?.clientWidth || 0) < 460;
+  const context = compact
+    ? setupCanvas(canvas, categoryMobileHeight(distribution))
+    : setupCanvas(canvas, 216);
   if (!context) return;
 
   const { ctx, width, height } = context;
   const theme = chartTheme();
-  const centerX = width * 0.35;
-  const centerY = height / 2;
-  const radius = Math.min(height / 2 - 12, 84);
+  const radius = compact ? Math.min(width / 2 - 20, 76) : Math.min(height / 2 - 12, 84);
+  const desktopGroupWidth = radius * 2 + 40 + 190;
+  const centerX = compact ? width / 2 : Math.max(radius, (width - desktopGroupWidth) / 2 + radius);
+  const centerY = compact ? radius + 8 : height / 2;
   const innerRadius = radius * 0.54;
   let angle = -Math.PI / 2;
 
@@ -110,7 +114,11 @@ export function renderCategoryChart(distribution) {
   ctx.font = '11px Be Vietnam Pro, sans-serif';
   ctx.fillText('Kiosk', centerX, centerY + 20);
 
-  drawCategoryLegend(ctx, distribution, width, theme);
+  drawCategoryLegend(ctx, distribution, width, theme, {
+    compact,
+    legendX: compact ? 0 : centerX + radius + 40,
+    legendTop: compact ? centerY + radius + 28 : null,
+  });
 }
 
 function drawRevenueGrid(ctx, width, height, padding, labels, theme) {
@@ -161,12 +169,15 @@ function formatCompactNumber(value) {
   }).format(value);
 }
 
-function drawCategoryLegend(ctx, distribution, width, theme) {
-  const legendX = width * 0.68;
+function drawCategoryLegend(ctx, distribution, width, theme, layout) {
+  const legendX = layout.compact ? Math.max(16, (width - 190) / 2) : layout.legendX;
   const itemCount = Math.min(distribution.length, 6);
   const rowHeight = 26;
   const totalLegendHeight = itemCount * rowHeight;
-  const legendY = (ctx.canvas.height / (window.devicePixelRatio || 1) - totalLegendHeight) / 2;
+  const canvasHeight = ctx.canvas.height / (window.devicePixelRatio || 1);
+  const legendY = layout.compact
+    ? layout.legendTop
+    : (canvasHeight - totalLegendHeight) / 2;
 
   distribution.slice(0, 6).forEach((item, index) => {
     const y = legendY + index * 26;
@@ -179,6 +190,10 @@ function drawCategoryLegend(ctx, distribution, width, theme) {
     ctx.textAlign = 'left';
     ctx.fillText(`${label} (${item.count})`, legendX + 16, y + 13);
   });
+}
+
+function categoryMobileHeight(distribution) {
+  return 180 + Math.min(distribution.length, 6) * 26;
 }
 
 function chartTheme() {

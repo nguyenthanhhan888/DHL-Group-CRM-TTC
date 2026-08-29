@@ -30,14 +30,14 @@ test('technical mode and every filter are RPC inputs and page changes are clampe
 
 test('entity enrichment stays batched and technical details remain available', () => {
   assert.match(service, /Promise\.all\(\[/);
-  assert.match(service, /\.in\('id', ids\)/);
+  assert.match(service, /\.in\(idColumn, ids\)/);
   assert.doesNotMatch(service, /for\s*\([^)]*\)\s*\{[^}]*await\s+runQuery/s);
   assert.match(page, /<details class="log-technical-details">/);
-  assert.match(page, /resolved_entity\?\.missing/);
+  assert.match(page, /formatAuditLog/);
 });
 
 test('desktop hierarchy and mobile activity cards avoid technical IDs in primary markup', () => {
-  assert.match(css, /\.logs-table th:nth-child\(2\) \{ width:29%; \}/);
+  assert.match(css, /\.logs-table th:nth-child\(1\) \{ width:56%; \}/);
   assert.match(css, /\.logs-table th,.logs-table td \{ vertical-align:top; \}/);
   assert.match(page, /class="log-mobile-card"/);
   assert.match(page, /class="log-mobile-card-head"/);

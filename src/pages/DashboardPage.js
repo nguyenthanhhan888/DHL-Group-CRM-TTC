@@ -49,10 +49,12 @@ export function DashboardPage() {
           ${EmptyState({ title: 'Đang tải dữ liệu', message: 'Đang tải các hoạt động đã hoàn tất.' })}
         </div>
       </section>
-      <section class="dash-card">
+      <section class="dash-card category-chart-card">
         <div class="dash-card-header"><h3>Phân bổ danh mục</h3></div>
         <div class="chart-container small">
-          <canvas id="categoryChart" role="img" aria-label="Phân bổ danh mục"></canvas>
+          <div class="category-chart-stage">
+            <canvas id="categoryChart" role="img" aria-label="Phân bổ danh mục"></canvas>
+          </div>
           <div id="categoryChartEmpty" class="hidden">
             ${EmptyState({ title: 'Chưa có Kiosk', message: 'Không có dữ liệu kiosk để vẽ phân bổ danh mục.' })}
           </div>
@@ -117,20 +119,25 @@ function renderExpiringKiosks(kiosks, warningDays = getExpiryWarningDays()) {
   element.innerHTML = kiosks.map((kiosk) => {
     const days = daysUntil(kiosk.end_date);
     const daysClass = days <= 7 ? 'days-danger' : 'days-warning';
+    const kioskName = kiosk.facebook_name || 'Kiosk';
     return `
-      <div class="expiring-item">
+      <a class="expiring-item expiring-item-link" href="${kioskDetailHref(kiosk.id)}" aria-label="Xem Kiosk ${escapeHtml(kioskName)}">
         <div>
-          <div class="expiring-name">${escapeHtml(kiosk.facebook_name || '—')}</div>
+          <div class="expiring-name">${escapeHtml(kioskName)}</div>
           <div class="expiring-date">${escapeHtml(kiosk.customers?.facebook_name || '—')} · HH: ${formatDate(kiosk.end_date)}</div>
         </div>
         <span class="expiring-days ${daysClass}">Còn ${days} ngày</span>
-      </div>
+      </a>
     `;
   }).join('');
 }
 
 export function expiringKiosksEmptyMessage(warningDays = getExpiryWarningDays()) {
   return `Không tìm thấy kiosk sắp hết hạn trong ${normalizeWarningDays(warningDays)} ngày tới.`;
+}
+
+export function kioskDetailHref(kioskId) {
+  return `#/kiosk-detail?id=${encodeURIComponent(String(kioskId))}`;
 }
 
 function normalizeWarningDays(value) {
@@ -149,16 +156,30 @@ function renderRecentActivity(activities) {
     return;
   }
 
-  element.innerHTML = activities.map((activity) => `
-    <div class="recent-item">
-      <span class="recent-registration-icon" aria-hidden="true">${renderIcon(activity.type==='Gia hạn'?'refresh':activity.type==='Bổ sung Kiosk'?'user-plus':activity.type==='Thanh toán thành công'?'money':'store')}</span>
-      <div class="recent-registration-copy">
-        <span class="recent-activity-type">${escapeHtml(activity.label)}</span><div class="expiring-name">${escapeHtml(activity.name||'Kiosk')}</div>
-        <div class="expiring-date">${formatDate(activity.occurredAt)}</div>
+  element.innerHTML = activities.map((activity) => {
+    const presentation = recentActivityPresentation(activity.type);
+    return `
+      <div class="recent-item">
+        <span class="recent-registration-icon" aria-hidden="true">${renderIcon(presentation.icon)}</span>
+        <div class="recent-registration-copy">
+          <span class="recent-activity-type is-${presentation.tone}">${presentation.label}</span>
+          <div class="expiring-name">${escapeHtml(activity.name || 'Kiosk')}</div>
+          <div class="expiring-date">${formatDate(activity.occurredAt)}</div>
+        </div>
+        <strong class="recent-registration-amount">${escapeHtml(formatCurrency(activity.amount))}</strong>
       </div>
-      <strong class="recent-registration-amount">${escapeHtml(formatCurrency(activity.amount))}</strong>
-    </div>
-  `).join('');
+    `;
+  }).join('');
+}
+
+export function recentActivityPresentation(type) {
+  const presentation = {
+    'Đăng ký mới': { label: 'Đăng ký', tone: 'info', icon: 'store' },
+    'Gia hạn': { label: 'Gia hạn', tone: 'success', icon: 'refresh' },
+    'Bổ sung Kiosk': { label: 'Bổ sung', tone: 'secondary', icon: 'user-plus' },
+  }[type];
+  if (!presentation) throw new Error(`Loại hoạt động gần đây không hợp lệ: ${type || 'unknown'}.`);
+  return presentation;
 }
 
 function renderDashboardError(error) {

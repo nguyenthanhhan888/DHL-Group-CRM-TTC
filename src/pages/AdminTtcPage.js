@@ -3,7 +3,6 @@ import { bindFacebookIdResolvers, FacebookIdResolverFields } from '../components
 import { Modal } from '../components/Modal.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { Toast } from '../components/Toast.js';
-import { PAGE_TITLES } from '../constants/navigation.js';
 import { AnnouncementService } from '../services/AnnouncementService.js';
 import { TtcAdminService } from '../services/TtcAdminService.js';
 import { getUserAvatarPath } from '../utils/avatar.js';
@@ -76,28 +75,6 @@ const ADMIN_TTC_ROUTE_CONFIG = {
     panels: ['logs'],
   },
 };
-
-const USER_PERMISSION_ROUTES = [
-  'dashboard',
-  'reports',
-  'customers',
-  'kiosks',
-  'legacy-registration',
-  'payments',
-  'categories',
-  'business-types',
-  'registration-requests',
-  'admin-ttc',
-  'admin-ttc-campaigns',
-  'admin-ttc-announcements',
-  'admin-ttc-tasks',
-  'admin-ttc-users',
-  'admin-ttc-wallets',
-  'admin-ttc-settings',
-  'admin-ttc-logs',
-  'logs',
-  'settings',
-];
 
 export function AdminTtcPage({ route = 'admin' } = {}) {
   const view = ADMIN_TTC_ROUTE_CONFIG[route] || ADMIN_TTC_ROUTE_CONFIG.admin;
@@ -260,6 +237,7 @@ export function AdminTtcPage({ route = 'admin' } = {}) {
             </label>
           </div>
           <label class="form-group"><span>Lý do bắt buộc</span><textarea class="form-control" name="reason" rows="2" required></textarea></label>
+          <label class="form-group admin-password-confirm"><span>Xác nhận mật khẩu quản trị</span><input class="form-control" name="adminPassword" type="password" autocomplete="current-password" required></label>
           <div class="form-actions"><button class="btn-primary" type="submit">Ghi giao dịch ví</button></div>
         </form>
       </section>` : ''}
@@ -1305,7 +1283,6 @@ function renderUserDetailTable(users) {
                       <button class="table-action-button" type="button" data-admin-user-action="wallet" data-user-id="${escapeHtml(user.user_id)}">Sửa số dư</button>
                       <button class="table-action-button" type="button" data-admin-user-action="ledger" data-user-id="${escapeHtml(user.user_id)}">Nhật ký giao dịch</button>
                       <button class="table-action-button" type="button" data-admin-user-action="reset-password" data-user-id="${escapeHtml(user.user_id)}">Khôi phục mật khẩu</button>
-                      <button class="table-action-button" type="button" data-admin-user-action="permissions" data-user-id="${escapeHtml(user.user_id)}">Cấp quyền</button>
                     </div>
                   </details>
                 </td>
@@ -1336,11 +1313,6 @@ function renderAdminUserQuickAction(action, userId, panel) {
   if (action === 'detail') {
     panel?.closest('details')?.removeAttribute('open');
     openAdminUserDetail(user);
-    return;
-  }
-  if (action === 'permissions') {
-    panel?.closest('details')?.removeAttribute('open');
-    openAdminUserPermissions(user);
     return;
   }
   if (!panel) return;
@@ -1664,71 +1636,6 @@ function openAdminUserPasswordReset(user) {
   document.querySelector('#admin-user-reset-password-form [data-modal-close]')?.addEventListener('click', Modal.close);
 }
 
-function openAdminUserPermissions(user) {
-  const selectedPermissions = getUserAdminPermissions(user);
-  const username = getUserAccountName(user);
-  Modal.open({
-    title: 'Cấp quyền',
-    className: 'modal-wide',
-    body: `
-      <form id="admin-user-permissions-form" class="modal-form admin-user-permissions-form" data-user-id="${escapeHtml(user.user_id)}">
-        <div class="admin-user-permission-account">Tài khoản: <strong>${escapeHtml(username)}</strong></div>
-        <div class="admin-user-permission-grid">
-          ${USER_PERMISSION_ROUTES.map((route) => `
-            <label class="admin-user-permission-check">
-              <input type="checkbox" name="permissions" value="${escapeHtml(route)}" ${selectedPermissions.includes(route) ? 'checked' : ''}>
-              <span>${escapeHtml(permissionLabel(route))}</span>
-            </label>
-          `).join('')}
-        </div>
-        <label class="form-group admin-user-password-confirm">
-          <span>Xác nhận mật khẩu</span>
-          <input class="form-control" name="password" type="password" placeholder="Nhập mật khẩu để xác nhận cấp quyền" autocomplete="current-password" required>
-          <small>Vui lòng nhập mật khẩu tài khoản của bạn để xác nhận thay đổi quyền.</small>
-        </label>
-        <div class="modal-actions">
-          <button class="btn-secondary" type="button" data-admin-user-permissions-close>Đóng</button>
-          <button class="btn-primary" type="submit">Lưu</button>
-        </div>
-      </form>
-    `,
-  });
-  document.querySelector('[data-admin-user-permissions-close]')?.addEventListener('click', Modal.close);
-  document.getElementById('admin-user-permissions-form')?.addEventListener('submit', submitAdminUserPermissions);
-}
-
-async function submitAdminUserPermissions(event) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const user = state.users.find((item) => item.user_id === form.dataset.userId);
-  if (!user) {
-    Toast.show('Không tìm thấy người dùng.');
-    return;
-  }
-  const password = form.elements.password.value;
-  const permissions = Array.from(form.querySelectorAll('input[name="permissions"]:checked')).map((input) => input.value);
-  const button = form.querySelector('button[type="submit"]');
-  button.disabled = true;
-  button.textContent = 'Đang lưu...';
-  try {
-    await TtcAdminService.confirmCurrentAdminPassword(password);
-    await TtcAdminService.updateUserProfile(user.user_id, {
-      metadataPatch: {
-        admin_permissions: permissions,
-        admin_permissions_updated_at: new Date().toISOString(),
-      },
-    });
-    Modal.close();
-    Toast.show('Đã lưu quyền người dùng.');
-    await loadUsers();
-  } catch (error) {
-    Toast.show(error?.message || 'Không lưu được quyền người dùng.');
-  } finally {
-    button.disabled = false;
-    button.textContent = 'Lưu';
-  }
-}
-
 function renderAdminUserModalStat(label, value) {
   return `
     <div class="admin-user-modal-stat">
@@ -1923,36 +1830,6 @@ function getUserCreditLimit(user) {
   return Number.isFinite(value) && value >= 0 ? value : 5000000;
 }
 
-function getUserAdminPermissions(user) {
-  const permissions = user?.metadata?.admin_permissions;
-  return Array.isArray(permissions) ? permissions.filter((permission) => USER_PERMISSION_ROUTES.includes(permission)) : [];
-}
-
-function permissionLabel(route) {
-  const labels = {
-    dashboard: 'Quản lý thống kê',
-    reports: 'Quản lý báo cáo',
-    customers: 'Quản lý khách hàng',
-    kiosks: 'Quản lý Kiosk',
-    'legacy-registration': 'Quản lý dữ liệu cũ',
-    payments: 'Quản lý giao dịch',
-    categories: 'Quản lý nguồn',
-    'business-types': 'Quản lý ngành',
-    'registration-requests': 'Quản lý đơn hàng',
-    'admin-ttc': 'Quản lý TTC',
-    'admin-ttc-campaigns': 'Quản lý dịch vụ',
-    'admin-ttc-announcements': 'Quản lý thông báo',
-    'admin-ttc-tasks': 'Quản lý nhiệm vụ',
-    'admin-ttc-users': 'Quản lý người dùng',
-    'admin-ttc-wallets': 'Quản lý ví xu',
-    'admin-ttc-settings': 'Quản lý bảng giá',
-    'admin-ttc-logs': 'Quản lý vi phạm',
-    logs: 'Quản lý nhật ký',
-    settings: 'Cài đặt hệ thống',
-  };
-  return labels[route] || PAGE_TITLES[route] || route;
-}
-
 function formatNumber(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value || 0));
 }
@@ -2061,6 +1938,7 @@ async function adjustWallet(form) {
       amount: values.amount,
       description: values.description,
       reason: values.reason,
+      adminPassword: values.adminPassword,
       metadata: { source: 'admin_ttc_page' },
     });
     Toast.show('Đã ghi giao dịch ví.');

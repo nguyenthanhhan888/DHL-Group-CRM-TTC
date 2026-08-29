@@ -9,6 +9,7 @@ const apiRoutes = new Map([
   ['/api/auth-account', 'api/auth-account.js'],
   ['/api/facebook-id', 'api/facebook-id.js'],
   ['/api/staff', 'api/staff.js'],
+  ['/api/user-management', 'api/user-management.js'],
   ['/api/payos/create-payment', 'api/payos/create-payment.js'],
   ['/api/payos/create-registration-payment', 'api/payos/create-registration-payment.js'],
   ['/api/payos/status', 'api/payos/status.js'],
