@@ -20,10 +20,6 @@ export function AppLayout({ navSections, user }) {
           <div class="sidebar-brand-image-wrap" aria-label="Diễn Châu - À Đây Rồi (DHL)">
             <img class="sidebar-brand-image" src="${brandLogoPath}" data-theme-logo data-logo-light="${brandLogoLightPath}" data-logo-dark="${brandLogoDarkPath}" alt="" width="2172" height="724">
           </div>
-          <div class="sidebar-brand-copy">
-            <strong>Diễn Châu - À Đây Rồi</strong>
-            <span>(DHL)</span>
-          </div>
         </div>
         <nav class="sidebar-nav" aria-label="Điều hướng chính">
           ${navSections.map(renderNavSection).join('')}

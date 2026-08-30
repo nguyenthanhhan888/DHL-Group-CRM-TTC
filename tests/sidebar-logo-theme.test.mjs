@@ -36,20 +36,26 @@ test('public, sidebar and mobile header logos have separate responsive sizing wi
   assert.match(css, /@media\(max-width:640px\)\{[\s\S]*?\.portal-brand \.public-header-logo\{height:36px/);
   assert.match(css, /\.sidebar-brand-image\{[^}]*width:auto[^}]*height:44px[^}]*object-fit:contain/);
   assert.match(css, /\.sidebar-brand-image-wrap\{width:134px;height:46px;flex:0 0 134px\}/);
+  assert.match(css, /\.sidebar-brand-image-wrap\{width:42px;height:42px;flex:0 0 42px;padding:0;overflow:visible;border:0;border-radius:0;outline:0;background:transparent;box-shadow:none\}/);
   assert.match(css, /@media\(max-width:900px\)\{[\s\S]*?\.sidebar-brand-image-wrap\{width:122px;height:42px;flex-basis:122px\}/);
   assert.match(css, /@media\(max-width:640px\)\{[\s\S]*?\.sidebar-brand-image-wrap\{width:110px;height:40px;flex-basis:110px\}/);
   assert.match(css, /\.top-brand-mark\{width:auto;height:36px;max-width:none;flex:none/);
   assert.match(css, /\.top-bar-user-actions>\.connection-badge,\.top-bar-user-actions>\.current-date\{display:none\}/);
   assert.match(css, /\.top-wallet-pill\{width:34px;min-width:34px;max-width:34px;padding:0\}/);
   assert.doesNotMatch(css, /\.portal-brand img/);
+  assert.doesNotMatch(css, /brand-asset-surface/);
+  assert.doesNotMatch(css, /\.sidebar-brand-image-wrap\{[^}]*background:var\(/);
   assert.doesNotMatch(css.slice(css.lastIndexOf('Context-specific responsive brand sizing')), /object-fit:cover/);
   assert.match(layout, /class="sidebar-brand-image"/);
+  assert.doesNotMatch(layout, /class="sidebar-brand-copy"/);
+  assert.doesNotMatch(css, /\.sidebar-brand-copy/);
+  assert.doesNotMatch(css, /\.sidebar-logo\s*>\s*div:last-child/);
   assert.match(layout, /class="top-brand-mark"/);
 });
 
 test('stylesheet cache key changes with the corrected logo layout', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(html, /app\.css\?v=20260830-logo-layout/);
+  assert.match(html, /app\.css\?v=20260830-logo-transparent/);
 });
 
 test('theme switching updates mounted logos immediately without re-render or reload', () => {
