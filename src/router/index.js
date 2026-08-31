@@ -1,6 +1,6 @@
 const DEFAULT_ROUTE = 'dashboard';
 
-export function createRouter({ outlet, routes, fallback, onRouteChange, defaultRoute = DEFAULT_ROUTE, canAccess }) {
+export function createRouter({ outlet, routes, fallback, onRouteChange, defaultRoute = DEFAULT_ROUTE, canAccess, context = {} }) {
   function start() {
     window.addEventListener('hashchange', render);
     render();
@@ -21,7 +21,7 @@ export function createRouter({ outlet, routes, fallback, onRouteChange, defaultR
     const page = routes[route] || fallback;
     outlet.innerHTML = page({ route, params });
     onRouteChange?.(routes[route] ? route : defaultRoute);
-    page.afterRender?.({ route, params, outlet });
+    page.afterRender?.({ ...context, route, params, outlet });
   }
 
   return { start };

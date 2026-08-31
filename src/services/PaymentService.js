@@ -4,6 +4,12 @@ import { AuditLogService } from './AuditLogService.js';
 const PAYMENT_SELECT = '*, customers(facebook_name, phone), kiosks(facebook_name, facebook_id, business_type_id, business_types(name))';
 
 export const PaymentService = {
+  async canCorrectHistorical() {
+    const supabase = requireSupabaseClient();
+    const { data } = await runQuery(supabase.rpc('is_system_admin'));
+    return { data: data === true };
+  },
+
   async renewKiosk({
     kioskId,
     months = 1,
@@ -151,7 +157,7 @@ export const PaymentService = {
     return runQuery(
       supabase
         .from('payments')
-        .select('id, created_at, start_date, end_date, months, price_per_month, discount, total_amount, payment_method, payment_status, note')
+        .select('id, customer_id, kiosk_id, created_at, confirmed_at, start_date, end_date, months, price_per_month, discount, total_amount, payment_method, payment_status, transaction_type, registration_batch_id, note')
         .eq('kiosk_id', kioskId)
         .order('created_at', { ascending: false }),
     );
@@ -227,6 +233,31 @@ export const PaymentService = {
         payment_id_input: positiveInteger(id, 'Thanh toán'),
         note_input: normalizeOptionalText(note),
         reason_input: requiredText(reason, 'Lý do'),
+      }),
+    );
+    return { data };
+  },
+
+  async correctHistorical(id, {
+    startDate,
+    endDate,
+    months,
+    totalAmount,
+    reason,
+  } = {}) {
+    const supabase = requireSupabaseClient();
+    const amount = Number(totalAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error('Số tiền phải lớn hơn 0.');
+    }
+    const { data } = await runQuery(
+      supabase.rpc('correct_historical_payment', {
+        payment_id_input: positiveInteger(id, 'Thanh toán'),
+        start_date_input: requiredText(startDate, 'Ngày bắt đầu'),
+        end_date_input: requiredText(endDate, 'Ngày kết thúc'),
+        months_input: positiveInteger(months, 'Số tháng'),
+        total_amount_input: amount,
+        reason_input: requiredText(reason, 'Lý do chỉnh sửa'),
       }),
     );
     return { data };

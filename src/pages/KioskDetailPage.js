@@ -3,6 +3,7 @@ import { PageHeader } from '../components/PageHeader.js';
 import { StatusBadge } from '../components/StatusBadge.js';
 import { openRenewKioskForm } from '../components/RenewKioskForm.js';
 import { openKioskEditForm } from '../components/KioskEditForm.js';
+import { openHistoricalPaymentEditForm } from '../components/HistoricalPaymentEditForm.js';
 import { Toast } from '../components/Toast.js';
 import { FACEBOOK_GROUP_MEMBER_BASE_URL, FACEBOOK_PROFILE_BASE_URL } from '../constants/facebook.js';
 import { KioskService } from '../services/KioskService.js';
@@ -13,11 +14,13 @@ import { formatDate } from '../utils/date.js';
 import { escapeHtml } from '../utils/html.js';
 import { deriveKioskStatus } from '../utils/kioskStatus.js';
 
-const PAYMENT_COLUMNS = ['Ngày', 'Kỳ hạn', 'Số tháng', 'Số tiền', 'Phương thức', 'Trạng thái', 'Ghi chú'];
+const PAYMENT_COLUMNS = ['Ngày', 'Kỳ hạn', 'Số tháng', 'Số tiền', 'Phương thức', 'Trạng thái', 'Loại giao dịch', 'Ghi chú'];
 let currentKiosk = null;
 const detailState = {
   payments: [],
   paymentSearchTerm: '',
+  profile: null,
+  canCorrectHistorical: false,
 };
 
 export function KioskDetailPage() {
@@ -31,7 +34,8 @@ export function KioskDetailPage() {
   `;
 }
 
-KioskDetailPage.afterRender = async function afterRenderKioskDetail({ params }) {
+KioskDetailPage.afterRender = async function afterRenderKioskDetail({ params, profile } = {}) {
+  if (profile) detailState.profile = profile;
   const id = params?.get('id');
   if (!id) {
     renderKioskDetailState('Thiếu ID Kiosk', 'Mở trang chi tiết từ danh sách kiosk để xem dữ liệu.');
@@ -41,10 +45,15 @@ KioskDetailPage.afterRender = async function afterRenderKioskDetail({ params }) 
   renderKioskDetailState('Đang tải Kiosk', 'Vui lòng chờ trong giây lát.');
 
   try {
-    const [{ data: kiosk }, { data: payments }] = await Promise.all([
+    const accessProfile = profile || detailState.profile;
+    const [{ data: kiosk }, { data: payments }, { data: canCorrectHistorical }] = await Promise.all([
       KioskService.getById(id),
       PaymentService.listByKiosk(id),
+      PaymentService.canCorrectHistorical().catch(() => ({
+        data: accessProfile?.is_system_admin === true,
+      })),
     ]);
+    detailState.canCorrectHistorical = canCorrectHistorical === true;
 
     const { data: customerStatus } = kiosk?.customer_id
       ? await CustomerService.getStatusById(kiosk.customer_id)
@@ -123,6 +132,7 @@ function renderKioskDetail(kiosk, payments, customerStatus = null) {
 
     <section class="admin-card detail-section">
       <h3>Lịch sử thanh toán</h3>
+      ${isSystemAdmin() ? '<p class="kiosk-payment-admin-hint">System Admin có thể sửa bản ghi completed bằng nút “Sửa dữ liệu thanh toán” trên từng dòng.</p>' : ''}
       <div class="list-search-bar">
         <input id="kiosk-detail-payment-search" class="form-control" type="search" placeholder="Tìm theo kỳ hạn, số tiền, phương thức, trạng thái hoặc ghi chú" aria-label="Tìm lịch sử thanh toán Kiosk" autocomplete="off">
       </div>
@@ -145,6 +155,7 @@ function renderStatusActions(kiosk) {
 }
 
 function bindEventListeners() {
+  bindHistoricalPaymentActions();
   document.getElementById('renew-kiosk-detail-button')?.addEventListener('click', () => {
     openRenewKioskForm({
       kioskId: currentKiosk.id,
@@ -162,7 +173,10 @@ function bindEventListeners() {
   document.getElementById('kiosk-detail-payment-search')?.addEventListener('input', (event) => {
     detailState.paymentSearchTerm = event.currentTarget.value || '';
     const list = document.getElementById('kiosk-detail-payment-list');
-    if (list) list.innerHTML = renderPaymentHistory(detailState.payments);
+    if (list) {
+      list.innerHTML = renderPaymentHistory(detailState.payments);
+      bindHistoricalPaymentActions();
+    }
   });
 
   document.getElementById('kiosk-suspend-button')?.addEventListener('click', () => {
@@ -204,26 +218,70 @@ function renderPaymentHistory(payments) {
 
   return `
     <div class="table-card">
-      <table class="data-table">
+      <table class="data-table kiosk-payment-history-table ${isSystemAdmin() ? 'has-admin-actions' : ''}">
         <thead>
-          <tr>${PAYMENT_COLUMNS.map((column) => `<th>${column}</th>`).join('')}</tr>
+          <tr>${PAYMENT_COLUMNS.map((column) => `<th>${column}</th>`).join('')}${isSystemAdmin() ? '<th>Thao tác</th>' : ''}</tr>
         </thead>
         <tbody>
           ${filteredPayments.map((payment) => `
             <tr>
-              <td>${formatDate(payment.created_at)}</td>
-              <td>${escapeHtml(paymentPeriod(payment))}</td>
-              <td>${escapeHtml(paymentMonths(payment))}</td>
-              <td>${formatCurrency(payment.total_amount || 0)}</td>
-              <td>${escapeHtml(payment.payment_method || '—')}</td>
-              <td>${renderPaymentStatusBadge(payment.payment_status)}</td>
-              <td>${escapeHtml(payment.note || '—')}</td>
+              <td data-label="Ngày">${formatDate(payment.created_at)}</td>
+              <td data-label="Kỳ hạn">${escapeHtml(paymentPeriod(payment))}</td>
+              <td data-label="Số tháng">${escapeHtml(paymentMonths(payment))}</td>
+              <td data-label="Số tiền">${formatCurrency(payment.total_amount || 0)}</td>
+              <td data-label="Phương thức">${escapeHtml(payment.payment_method || '—')}</td>
+              <td data-label="Trạng thái">${renderPaymentStatusBadge(payment.payment_status)}</td>
+              <td data-label="Loại giao dịch">${escapeHtml(transactionTypeLabel(payment.transaction_type))}</td>
+              <td data-label="Ghi chú">${escapeHtml(payment.note || '—')}</td>
+              ${isSystemAdmin() ? `<td data-label="Thao tác">${renderHistoricalPaymentAction(payment)}</td>` : ''}
             </tr>
           `).join('')}
         </tbody>
       </table>
     </div>
   `;
+}
+
+function renderHistoricalPaymentAction(payment) {
+  if (!isHistoricalPaymentEditable(payment)) {
+    return '<span class="muted-text">Không áp dụng</span>';
+  }
+  return `<button class="table-action-button kiosk-payment-edit-action" type="button" data-edit-historical-payment="${escapeHtml(payment.id)}" aria-label="Sửa dữ liệu thanh toán #${escapeHtml(payment.id)}">Sửa dữ liệu thanh toán</button>`;
+}
+
+function bindHistoricalPaymentActions() {
+  document.querySelectorAll('[data-edit-historical-payment]').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (!isSystemAdmin()) return;
+      const payment = detailState.payments.find((item) => String(item.id) === button.dataset.editHistoricalPayment);
+      if (!isHistoricalPaymentEditable(payment)) return;
+      openHistoricalPaymentEditForm({
+        payment,
+        kioskName: currentKiosk?.facebook_name,
+        onSaved: () => KioskDetailPage.afterRender({
+          params: new URLSearchParams({ id: currentKiosk.id }),
+        }),
+      });
+    });
+  });
+}
+
+function isHistoricalPaymentEditable(payment) {
+  return payment
+    && String(payment.payment_status || '').toLowerCase() === 'completed'
+    && String(payment.transaction_type || 'standard').toLowerCase() !== 'adjustment'
+    && !payment.registration_batch_id;
+}
+
+function isSystemAdmin() {
+  return detailState.canCorrectHistorical === true;
+}
+
+function transactionTypeLabel(value) {
+  const normalized = String(value || 'standard').toLowerCase();
+  return ({ standard: 'Tiêu chuẩn', renewal: 'Gia hạn', adjustment: 'Điều chỉnh' })[normalized]
+    || value
+    || 'Tiêu chuẩn';
 }
 
 function filterPaymentHistory(payments) {

@@ -511,6 +511,7 @@ function renderAuthenticatedApp(root, profile) {
     fallback: NotFoundPage,
     defaultRoute,
     canAccess,
+    context: { profile },
     onRouteChange(route) {
       document.title = `${PAGE_TITLES[route] || PAGE_TITLES.dashboard} · DHL Group`;
       setActiveNavigation(route);

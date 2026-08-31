@@ -35,6 +35,7 @@ const FIELD_LABELS = Object.freeze({
   facebook_url_original: 'Liên kết Facebook', customer_id: 'Khách hàng', kiosk_id: 'Kiosk', user_id: 'Người dùng',
   payment_id: 'Thanh toán', promotion_id: 'Mã giảm giá', category_id: 'Danh mục',
   business_type_id: 'Ngành nghề', start_date: 'Ngày bắt đầu', end_date: 'Ngày hết hạn',
+  kiosk_end_date: 'Thời hạn hiện tại của Kiosk',
   requested_start_date: 'Ngày bắt đầu', requested_end_date: 'Ngày hết hạn',
   renewal_period_start: 'Ngày bắt đầu gia hạn', new_start_date: 'Ngày bắt đầu mới',
   new_expiry_date: 'Ngày hết hạn mới', old_expiry_date: 'Ngày hết hạn cũ',
@@ -60,7 +61,7 @@ export function formatAuditLog(log = {}) {
   const objectName = entityDisplayName(log);
   const changes = businessChanges(log);
   const action = normalizeAction(log.action);
-  const actionLabelValue = actionLabel(action);
+  const actionLabelValue = isHistoricalPaymentCorrection(log) ? 'Sửa dữ liệu thanh toán' : actionLabel(action);
   const title = businessTitle({ log, action, category, actorName, objectName, changes });
   const secondary = businessSecondary({ log, action, category, changes });
   return {
@@ -238,6 +239,7 @@ export function isTechnicalLog(log = {}) {
 function businessTitle({ log, action, category, actorName, objectName, changes }) {
   const amount = extractValue(log, ['actual_amount', 'total_amount', 'amount']);
   const kioskName = log.resolved_names?.kiosk?.name;
+  if (isHistoricalPaymentCorrection(log)) return `${actorName} đã sửa dữ liệu thanh toán của ${objectName}`;
   if (action === 'admin_manual_renewal') return `${objectName} được gia hạn`;
   if (action === 'confirm_payos' || action === 'confirm_payos_batch') {
     const payment = amount !== null ? `Thanh toán ${formatCurrency(amount)}` : 'Thanh toán';
@@ -267,6 +269,10 @@ function businessTitle({ log, action, category, actorName, objectName, changes }
 }
 
 function businessSecondary({ log, action, category, changes }) {
+  if (isHistoricalPaymentCorrection(log)) {
+    const summary = changes.slice(0, 4).map((change) => `${change.label}: ${change.before} → ${change.after}`).join(' · ');
+    return [summary, friendlyReason(log.reason, '') ? `Lý do: ${friendlyReason(log.reason, '')}` : ''].filter(Boolean).join(' · ');
+  }
   if (action === 'admin_manual_renewal' || category === 'renewal') {
     const start = extractValue(log, ['renewal_period_start', 'new_start_date', 'requested_start_date', 'start_date']);
     const end = extractValue(log, ['new_expiry_date', 'requested_end_date', 'end_date']);
@@ -283,6 +289,10 @@ function businessSecondary({ log, action, category, changes }) {
   if (changes.length) return changes.slice(0, 3).map((change) => `${change.label}: ${change.before} → ${change.after}`).join(' · ');
   const amount = extractValue(log, ['actual_amount', 'total_amount', 'amount']);
   return [amount !== null ? formatCurrency(amount) : '', friendlyReason(log.reason, '')].filter(Boolean).join(' · ') || `${categoryLabel(category)} đã được cập nhật`;
+}
+
+function isHistoricalPaymentCorrection(log = {}) {
+  return [log.after, log.before].some((value) => value?.correction_type === 'historical_payment');
 }
 
 function walletTitle(actorName, objectName, log) {
