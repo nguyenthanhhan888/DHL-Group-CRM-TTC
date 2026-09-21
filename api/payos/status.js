@@ -1,3 +1,4 @@
+const { displayOrderStatus, refreshOrder } = require('./_lifecycle');
 const {
   getSupabaseServiceConfig,
   getSupabaseUserConfig,
@@ -18,18 +19,21 @@ module.exports = async function payosStatusHandler(req, res) {
     const accessToken = normalizeBearerToken(req.headers.authorization);
 
     const authOrder = accessToken ? await fetchOrderWithUserAccess(orderCode, accessToken) : null;
-    const order = authOrder || await fetchOrderWithPaymentLink(orderCode, paymentLinkId);
+    let order = authOrder || await fetchOrderWithPaymentLink(orderCode, paymentLinkId);
     if (!order) {
       return sendError(res, 404, 'PAYOS_ORDER_NOT_FOUND', 'Không tìm thấy thanh toán PayOS.');
     }
 
+    order = await refreshOrder(order);
     const display = await fetchRegistrationDisplay(order.payment_id);
     return res.status(200).json({
       success: true,
       orderCode: Number(order.order_code),
-      status: authoritativeStatus(order.status, display.paymentStatus),
+      status: displayOrderStatus(order, display.paymentStatus),
       amount: Number(order.amount || 0),
       confirmedAt: order.confirmed_at || null,
+      reconciliationRequired: Boolean(order.reconciliation_required),
+      expiresAt: order.expires_at || null,
       processedAt: order.processed_at || null,
       ...display,
     });
@@ -59,7 +63,7 @@ function normalizeBearerToken(value) {
 
 async function fetchOrderWithUserAccess(orderCode, accessToken) {
   const config = getSupabaseUserConfig();
-  const response = await fetch(`${config.url}/rest/v1/payos_orders?select=order_code,status,amount,confirmed_at,processed_at,payment_link_id,payment_id&order_code=eq.${orderCode}&limit=1`, {
+  const response = await fetch(`${config.url}/rest/v1/payos_orders?select=*&order_code=eq.${orderCode}&limit=1`, {
     headers: {
       apikey: config.key,
       Authorization: `Bearer ${accessToken}`,
@@ -74,7 +78,7 @@ async function fetchOrderWithPaymentLink(orderCode, paymentLinkId) {
   if (!paymentLinkId) return null;
   const config = getSupabaseServiceConfig();
   const query = new URLSearchParams({
-    select: 'order_code,status,amount,confirmed_at,processed_at,payment_link_id,payment_id',
+    select: '*',
     order_code: `eq.${orderCode}`,
     payment_link_id: `eq.${paymentLinkId}`,
     limit: '1',

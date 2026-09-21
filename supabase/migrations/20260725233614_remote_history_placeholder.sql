@@ -1,2 +1,0 @@
--- Remote migration already exists in Supabase history.
--- Placeholder kept locally so Supabase CLI can compare future migrations safely.

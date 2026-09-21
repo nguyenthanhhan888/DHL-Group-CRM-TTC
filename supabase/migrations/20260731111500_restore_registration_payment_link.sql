@@ -3,10 +3,8 @@
 alter table public.registration_requests
   add column if not exists payment_id bigint
   references public.payments(id) on delete restrict;
-
 create index if not exists registration_requests_payment_idx
   on public.registration_requests(payment_id);
-
 create or replace function private.link_registration_request_payment()
 returns trigger
 language plpgsql
@@ -30,13 +28,11 @@ begin
   return new;
 end;
 $function$;
-
 drop trigger if exists link_registration_request_payment_trigger
   on public.registration_requests;
 create trigger link_registration_request_payment_trigger
 before insert on public.registration_requests
 for each row execute function private.link_registration_request_payment();
-
 create or replace function private.registration_request_payment(
   request_record public.registration_requests
 )
@@ -71,6 +67,5 @@ begin
   return resolved_payment_id;
 end;
 $function$;
-
 revoke all on function private.link_registration_request_payment() from public;
 revoke all on function private.registration_request_payment(public.registration_requests) from public;

@@ -4,6 +4,7 @@ import { StatusBadge } from '../components/StatusBadge.js';
 import { openRenewKioskForm } from '../components/RenewKioskForm.js';
 import { openKioskEditForm } from '../components/KioskEditForm.js';
 import { openHistoricalPaymentEditForm } from '../components/HistoricalPaymentEditForm.js';
+import { Modal } from '../components/Modal.js';
 import { Toast } from '../components/Toast.js';
 import { FACEBOOK_GROUP_MEMBER_BASE_URL, FACEBOOK_PROFILE_BASE_URL } from '../constants/facebook.js';
 import { KioskService } from '../services/KioskService.js';
@@ -13,6 +14,8 @@ import { formatCurrency } from '../utils/currency.js';
 import { formatDate } from '../utils/date.js';
 import { escapeHtml } from '../utils/html.js';
 import { deriveKioskStatus } from '../utils/kioskStatus.js';
+import { renderIcon } from '../utils/icons.js';
+import { setButtonBusy } from '../utils/buttonState.js';
 
 const PAYMENT_COLUMNS = ['Ngày', 'Kỳ hạn', 'Số tháng', 'Số tiền', 'Phương thức', 'Trạng thái', 'Loại giao dịch', 'Ghi chú'];
 let currentKiosk = null;
@@ -76,15 +79,20 @@ function renderKioskDetail(kiosk, payments, customerStatus = null) {
   if (!content || !header) return;
 
   const customer = { ...(kiosk.customers || {}), ...(customerStatus || {}) };
-  header.innerHTML = PageHeader({
-    title: `Kiosk: ${kiosk.facebook_name}`,
-    actions: `
-      <button class="btn-secondary" id="edit-kiosk-detail-button" type="button">Sửa kiosk</button>
-      <button class="btn-primary" id="renew-kiosk-detail-button" type="button">Gia hạn</button>
-      ${renderStatusActions(kiosk)}
-      <a class="btn-secondary link-button" href="#/kiosks">Quay lại</a>
-    `,
-  });
+  header.innerHTML = `
+    <header class="kiosk-detail-hero">
+      <a class="kiosk-detail-back" href="#/kiosks">${renderIcon('chevron-left')}<span>Danh sách Kiosk</span></a>
+      <div class="kiosk-detail-heading-row">
+        <div class="kiosk-detail-title">
+          <h1>${escapeHtml(kiosk.facebook_name || 'Kiosk')}</h1>
+          ${renderKioskStatusBadge(deriveKioskStatus(kiosk))}
+        </div>
+        <div class="kiosk-detail-actions" aria-label="Thao tác Kiosk">
+          ${renderStatusActions(kiosk)}
+        </div>
+      </div>
+    </header>
+  `;
 
   content.innerHTML = `
     <div class="admin-grid">
@@ -145,18 +153,43 @@ function renderKioskDetail(kiosk, payments, customerStatus = null) {
 
 function renderStatusActions(kiosk) {
   const status = kiosk.status;
+  let statusAction = '';
   if (status === 'active' || status === 'warning') {
-    return '<button class="btn-danger" id="kiosk-suspend-button" type="button">Tạm ngưng</button>';
+    statusAction = `<div class="kiosk-detail-menu-divider" role="separator"></div><button class="kiosk-detail-menu-item is-danger" id="kiosk-suspend-button" type="button" role="menuitem">${renderIcon('pause')}<span>Tạm ngưng Kiosk</span></button>`;
   }
   if (status === 'suspended') {
-    return '<button class="btn-secondary" id="kiosk-activate-button" type="button">Kích hoạt</button>';
+    statusAction = `<div class="kiosk-detail-menu-divider" role="separator"></div><button class="kiosk-detail-menu-item" id="kiosk-activate-button" type="button" role="menuitem">${renderIcon('check-circle')}<span>Kích hoạt lại Kiosk</span></button>`;
   }
-  return '';
+  return `
+    <details class="kiosk-detail-action-menu" id="kiosk-detail-action-menu">
+      <summary class="btn-primary kiosk-detail-action-trigger" aria-haspopup="menu" aria-expanded="false"><span>Thao tác</span>${renderIcon('chevron-down')}</summary>
+      <div class="kiosk-detail-action-popover" role="menu">
+        <button class="kiosk-detail-menu-item" id="edit-kiosk-detail-button" type="button" role="menuitem">${renderIcon('edit')}<span>Sửa thông tin</span></button>
+        <button class="kiosk-detail-menu-item" id="renew-kiosk-detail-button" type="button" role="menuitem">${renderIcon('refresh')}<span>Gia hạn</span></button>
+        ${statusAction}
+      </div>
+    </details>
+  `;
 }
 
 function bindEventListeners() {
   bindHistoricalPaymentActions();
+  const actionMenu = document.getElementById('kiosk-detail-action-menu');
+  actionMenu?.addEventListener('toggle', () => {
+    actionMenu.querySelector('summary')?.setAttribute('aria-expanded', String(actionMenu.open));
+    if (actionMenu.open) {
+      setTimeout(() => document.addEventListener('click', (event) => {
+        if (!actionMenu.contains(event.target)) actionMenu.open = false;
+      }, { once: true }));
+    }
+  });
+  actionMenu?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    actionMenu.open = false;
+    actionMenu.querySelector('summary')?.focus();
+  });
   document.getElementById('renew-kiosk-detail-button')?.addEventListener('click', () => {
+    if (actionMenu) actionMenu.open = false;
     openRenewKioskForm({
       kioskId: currentKiosk.id,
       onSaved: () => KioskDetailPage.afterRender({ params: new URLSearchParams({ id: currentKiosk.id }) }),
@@ -164,6 +197,7 @@ function bindEventListeners() {
   });
 
   document.getElementById('edit-kiosk-detail-button')?.addEventListener('click', () => {
+    if (actionMenu) actionMenu.open = false;
     openKioskEditForm({
       kiosk: currentKiosk,
       onSaved: () => KioskDetailPage.afterRender({ params: new URLSearchParams({ id: currentKiosk.id }) }),
@@ -180,13 +214,40 @@ function bindEventListeners() {
   });
 
   document.getElementById('kiosk-suspend-button')?.addEventListener('click', () => {
-    if (confirm('Bạn có chắc chắn muốn tạm ngưng Kiosk này?')) {
-      updateKioskStatus('suspended', 'Đã tạm ngưng Kiosk.');
-    }
+    if (actionMenu) actionMenu.open = false;
+    openSuspendConfirmation();
   });
 
   document.getElementById('kiosk-activate-button')?.addEventListener('click', () => {
     updateKioskStatus('active', 'Đã kích hoạt lại Kiosk.');
+  });
+}
+
+function openSuspendConfirmation() {
+  Modal.open({
+    title: 'Tạm ngưng Kiosk?',
+    className: 'kiosk-suspend-modal',
+    body: `
+      <div class="kiosk-suspend-confirmation">
+        <span class="kiosk-suspend-icon" aria-hidden="true">${renderIcon('warning')}</span>
+        <div>
+          <p>Kiosk <strong>${escapeHtml(currentKiosk?.facebook_name || '')}</strong> sẽ chuyển sang trạng thái tạm ngưng.</p>
+          <p class="muted-text">Bạn có thể kích hoạt lại Kiosk từ menu thao tác sau này.</p>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" type="button" data-kiosk-suspend-cancel>Hủy</button>
+        <button class="btn-danger" type="button" data-kiosk-suspend-confirm>${renderIcon('pause')}<span>Tạm ngưng Kiosk</span></button>
+      </div>
+    `,
+  });
+  document.querySelector('[data-kiosk-suspend-cancel]')?.addEventListener('click', Modal.close);
+  document.querySelector('[data-kiosk-suspend-confirm]')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    setButtonBusy(button, true, { busyLabel: 'Đang tạm ngưng...' });
+    const updated = await updateKioskStatus('suspended', 'Đã tạm ngưng Kiosk.');
+    if (updated) Modal.close();
+    else setButtonBusy(button, false);
   });
 }
 
@@ -196,8 +257,10 @@ async function updateKioskStatus(newStatus, successMessage) {
     await KioskService.update(currentKiosk.id, { status: newStatus }, reason);
     Toast.show(successMessage);
     await KioskDetailPage.afterRender({ params: new URLSearchParams({ id: currentKiosk.id }) });
+    return true;
   } catch (error) {
     Toast.show(`Lỗi: ${error.message}`, 'error');
+    return false;
   }
 }
 

@@ -1,3 +1,5 @@
+const { requirePermission, requireAuthenticatedUser } = require('../_auth');
+const { prepareCheckoutRetry } = require('./_lifecycle');
 const {
   PAYOS_API_BASE_URL,
   PAYOS_CREATE_PAYMENT_PATH,
@@ -35,10 +37,13 @@ module.exports = async function createPayosPaymentHandler(req, res) {
     const accessToken = req.headers.authorization;
 
     if (payload.purpose === 'crm_payment') {
-      const existingOrder = await fetchActiveCrmOrder(payload.paymentId, payload.amount);
+      await requirePermission(req, 'payments');
+      const existingOrder = await prepareCheckoutRetry(payload.paymentId);
+      if (existingOrder && Number(existingOrder.amount) !== payload.amount) throw new Error('Số tiền không khớp thanh toán.');
       if (existingOrder) return res.status(200).json(formatExistingOrder(existingOrder));
     }
 
+    if (payload.purpose === 'wallet_topup') await requireAuthenticatedUser(req);
     await recordPayosOrder(payload, accessToken, { stage: 'reserved', expiresAt: payload.request.expiredAt });
 
     const payosResponse = await fetch(`${PAYOS_API_BASE_URL}${PAYOS_CREATE_PAYMENT_PATH}`, {
@@ -79,7 +84,7 @@ module.exports = async function createPayosPaymentHandler(req, res) {
       ...formatPayosTransferInfo(payosData?.data, payload),
     });
   } catch (error) {
-    const status = error?.code === 'MISSING_ENV' ? 500 : 400;
+    const status = error?.status || (error?.code === 'MISSING_ENV' ? 500 : 400);
     return sendError(
       res,
       status,

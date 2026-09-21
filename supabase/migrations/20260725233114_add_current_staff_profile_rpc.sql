@@ -34,4 +34,4 @@ $function$;
 revoke all on function public.get_current_staff_profile() from public, anon, authenticated;
 grant execute on function public.get_current_staff_profile() to authenticated;
 
-notify pgrst, 'reload schema';
+notify pgrst, 'reload schema';;

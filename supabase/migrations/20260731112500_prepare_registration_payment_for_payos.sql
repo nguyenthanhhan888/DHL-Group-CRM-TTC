@@ -222,7 +222,6 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.prepare_registration_payment_for_payos(bigint, text)
   from public, anon, authenticated;
 grant execute on function public.prepare_registration_payment_for_payos(bigint, text)

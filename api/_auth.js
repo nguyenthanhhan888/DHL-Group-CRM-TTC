@@ -26,9 +26,6 @@ async function requireWebAccess(req) {
   if (profile.status !== 'active' || profile.web_access_enabled !== true) {
     throw httpError(403, 'Tài khoản không có quyền truy cập web.');
   }
-  if (!profile.is_system_admin && profile.permissions.length === 0) {
-    throw httpError(403, 'Tài khoản không có quyền truy cập web.');
-  }
   return { ...auth, profile };
 }
 

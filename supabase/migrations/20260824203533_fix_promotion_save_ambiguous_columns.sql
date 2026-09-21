@@ -123,7 +123,6 @@ begin
   return to_jsonb(saved);
 end;
 $function$;
-
 revoke all on function public.admin_save_promotion(bigint,jsonb,bigint[],bigint[])
 from public, anon, authenticated;
 grant execute on function public.admin_save_promotion(bigint,jsonb,bigint[],bigint[])

@@ -1,0 +1,28 @@
+{
+  "baseline_files": 353,
+  "modified": [
+    "src/app.js",
+    "src/constants/navigation.js",
+    "src/utils/businessEventPresentation.js",
+    "src/styles/app.css",
+    "src/layouts/AppLayout.js",
+    "src/pages/PromotionsPage.js",
+    "src/pages/LogsPage.js",
+    "src/pages/ReportsPage.js",
+    "tests/ui-ux-presentation-polish.test.cjs",
+    "tests/qa-round2-stabilization.test.mjs",
+    "tests/reports-filter-ui.test.cjs",
+    "tests/sidebar-redesign.test.cjs"
+  ],
+  "new": [
+    "src/utils/reviewPresentation.js",
+    "src/components/DetailFields.js",
+    "src/services/ReviewContextService.js",
+    "tests/predeploy-presentation.test.mjs",
+    "tests/visual/run-predeploy-ui.mjs",
+    "tests/visual/predeploy-ui-fixture.js",
+    "tests/visual/predeploy-ui.html"
+  ],
+  "migration_files_unchanged": 94,
+  "protected_roots_unchanged": true
+}

@@ -248,3 +248,4 @@ comment on column public.user_profiles.web_access_enabled is
   'Whether this TTC user may enter the administrative web application.';
 comment on column public.user_profiles.is_system_admin is
   'Protected canonical administrator flag; never derived from user_metadata.';
+;

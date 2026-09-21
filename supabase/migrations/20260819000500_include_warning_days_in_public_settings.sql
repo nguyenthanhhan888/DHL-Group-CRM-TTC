@@ -19,6 +19,5 @@ as $function$
     'warning_days'
   ]);
 $function$;
-
 revoke all on function public.get_public_organization_settings() from public, anon, authenticated;
 grant execute on function public.get_public_organization_settings() to anon, authenticated;

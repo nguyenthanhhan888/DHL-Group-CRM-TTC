@@ -57,7 +57,7 @@ test('duplicate and failed-attempt retries preserve one financial intent', () =>
   assert.match(stabilization, /'reused', true/);
   assert.match(batch, /payments_registration_batch_uidx/);
   assert.match(intent, /payos_orders_one_active_payment_uidx/);
-  assert.match(api, /fetchExistingPayosOrder\(payment\.id\)/);
+  assert.match(api, /prepareCheckoutRetry\(payment\.id\)/);
   assert.match(api, /expires_at: `gt\.\$\{new Date\(\)\.toISOString\(\)\}`/);
 });
 

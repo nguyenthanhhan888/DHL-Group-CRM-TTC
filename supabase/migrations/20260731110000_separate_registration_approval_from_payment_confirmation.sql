@@ -82,7 +82,6 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.approve_registration_request(bigint)
   from public, anon, authenticated;
 grant execute on function public.approve_registration_request(bigint)

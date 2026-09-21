@@ -1,15 +1,19 @@
+import { DetailFields } from '../components/DetailFields.js';
+import { ReviewContextService } from '../services/ReviewContextService.js';
+import { integrityPresentation, reviewReference } from '../utils/reviewPresentation.js';
 import { EmptyState } from '../components/EmptyState.js';
+import { DateRangeFields } from '../components/DateRangeFields.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { StatusBadge } from '../components/StatusBadge.js';
 import { bindPagination as bindSharedPagination, Pagination } from '../components/Pagination.js';
 import { StatCard } from '../components/StatCard.js';
 import { Toast } from '../components/Toast.js';
-import { Toolbar } from '../components/Toolbar.js';
+import { FilterBar } from '../components/FilterBar.js';
 import { BusinessTypeService } from '../services/BusinessTypeService.js';
 import { CategoryService } from '../services/CategoryService.js';
 import { ReportService } from '../services/ReportService.js';
 import { formatCurrency } from '../utils/currency.js';
-import { formatDate, startOfToday, toDateOnly } from '../utils/date.js';
+import { formatDate, startOfVietnamToday, toDateOnly } from '../utils/date.js';
 import { escapeHtml } from '../utils/html.js';
 import { renderIcon } from '../utils/icons.js';
 
@@ -18,7 +22,7 @@ const REPORT_TABS = [
   { id: 'revenue', label: 'Doanh thu' },
   { id: 'kiosks', label: 'Kiosk' },
   { id: 'customers', label: 'Khách hàng' },
-  { id: 'reconciliation', label: 'Đối soát' },
+  { id: 'reconciliation', label: 'Cần kiểm tra' },
   { id: 'categories', label: 'Danh mục / Loại hình' },
 ];
 
@@ -28,6 +32,7 @@ const state = {
   categories: [],
   businessTypes: [],
   report: null,
+  reviewContexts: [],
   requestId: 0,
   page: 1,
   pageSize: 50,
@@ -41,37 +46,21 @@ export function ReportsPage() {
     <div class="reports-page">
     ${PageHeader({
       title: 'Báo cáo',
-      actions: '<button class="btn-secondary report-export-button" id="report-export-button" type="button">Xuất CSV (trang hiện tại)</button>',
+      actions: '<button class="btn-secondary report-export-button" id="report-export-button" type="button">Xuất CSV (toàn bộ bộ lọc)</button>',
     })}
-    ${Toolbar({
-      className: 'filter-panel report-filter-panel',
+    ${FilterBar({
+      label: 'Bộ lọc báo cáo',
+      className: 'reports-filter-bar',
       children: `
-        <div class="filter-panel-head report-filter-head">
-          <div>
-            <h2>Bộ lọc báo cáo</h2>
-            <p>Thu hẹp dữ liệu theo thời gian, nhóm và trạng thái</p>
-          </div>
-        </div>
-        <div class="report-filter-primary">
-          <label class="filter-field filter-field-date">
-            <span>Từ ngày</span>
-            <input id="report-start-date" class="form-control compact-date" type="date" aria-label="Ngày bắt đầu" />
-          </label>
-          <label class="filter-field filter-field-date">
-            <span>Đến ngày</span>
-            <input id="report-end-date" class="form-control compact-date" type="date" aria-label="Ngày kết thúc" />
-          </label>
-          <label class="filter-field report-filter-search">
+          ${DateRangeFields({ fromId: 'report-start-date', toId: 'report-end-date' })}
+          <label class="filter-field filter-field-search">
             <span>Tìm kiếm</span>
             <input id="report-search" class="form-control" type="search" placeholder="Tìm khách hàng, Kiosk, trạng thái hoặc số tiền" aria-label="Tìm trong báo cáo" autocomplete="off" />
           </label>
-        </div>
-        <details class="report-advanced-filters" ${hasActiveAdvancedFilters() ? 'open' : ''}>
-          <summary>
-            <span><strong>Bộ lọc nâng cao</strong><small>ID, nhóm, trạng thái và cách hiển thị</small></span>
-            <span class="report-advanced-chevron" aria-hidden="true">${renderIcon('chevron')}</span>
-          </summary>
-          <div class="report-filter-advanced-grid">
+          <button class="btn-secondary filter-disclosure" id="report-advanced-toggle" type="button" aria-expanded="false" aria-controls="report-advanced-filters">Nâng cao ${renderIcon('chevron')}</button>
+          <button class="btn-secondary" id="report-refresh-button" type="button">${renderIcon('refresh')}<span>Làm mới</span></button>
+      `,
+      advanced: `<div class="admin-filter-advanced" id="report-advanced-filters" hidden><div class="admin-filter-row">
           <label class="filter-field report-filter-id">
             <span>ID khách hàng</span>
             <input id="report-customer-filter" class="form-control" type="number" min="1" placeholder="VD: 212" aria-label="Lọc ID khách hàng" />
@@ -148,13 +137,7 @@ export function ReportsPage() {
               <option value="100">100 dòng</option>
             </select>
           </label>
-          </div>
-        </details>
-        <div class="report-filter-actions">
-          <span>Thay đổi bộ lọc được áp dụng tự động</span>
-          <button class="btn-secondary" id="report-refresh-button" type="button">${renderIcon('refresh')}<span>Làm mới</span></button>
-        </div>
-      `,
+        </div></div>`,
     })}
     <div class="report-tabs" role="tablist" aria-label="Báo cáo">
       ${REPORT_TABS.map((tab) => `
@@ -176,6 +159,12 @@ ReportsPage.afterRender = function afterRenderReports() {
 };
 
 function bindEvents() {
+  document.getElementById('report-advanced-toggle')?.addEventListener('click', event => {
+    const button = event.currentTarget;
+    const panel = document.getElementById('report-advanced-filters');
+    panel.hidden = !panel.hidden;
+    button.setAttribute('aria-expanded', String(!panel.hidden));
+  });
   bindFilter('report-start-date', 'startDate');
   bindFilter('report-end-date', 'endDate');
   bindFilter('report-customer-filter', 'customerId');
@@ -251,19 +240,6 @@ function syncControls() {
   setControlValue('report-search', state.searchTerm);
 }
 
-function hasActiveAdvancedFilters() {
-  return Boolean(
-    state.filters.customerId
-    || state.filters.kioskId
-    || state.filters.categoryId
-    || state.filters.businessTypeId
-    || state.filters.paymentStatus
-    || state.filters.kioskStatus
-    || state.sortBy
-    || state.sortDirection !== 'desc'
-    || state.pageSize !== 50
-  );
-}
 
 function setControlValue(id, value) {
   const element = document.getElementById(id);
@@ -302,6 +278,9 @@ async function loadReportData() {
       sortDirection: state.sortDirection,
     });
     if (requestId !== state.requestId) return;
+    const contexts = state.activeTab === 'reconciliation' ? await ReviewContextService.resolve(data.rows.map(reviewReference)) : [];
+    if (requestId !== state.requestId) return;
+    state.reviewContexts = contexts;
     state.report = data;
     renderReportContent();
   } catch (error) {
@@ -376,7 +355,7 @@ function renderOverview(report) {
       card('red', renderIcon('x-circle'), report.summary.expiredKiosks, 'Kiosk hết hạn'),
       card('green', renderIcon('money'), formatCurrency(report.summary.totalRevenue), 'Doanh thu trong kỳ', true),
     ])}
-    <div class="report-grid">
+    <div class="report-grid report-overview-grid">
       ${renderReportCard('Top 10 khách hàng doanh thu cao', renderTable(topCustomerColumns(), report.topCustomers, 'Không có khách hàng phát sinh doanh thu trong kỳ.'))}
       ${renderReportCard('Kiosk cần chú ý', `<p class="report-definition">Gồm Kiosk chờ duyệt, sắp hết hạn hoặc đã hết hạn; mỗi dòng giữ trạng thái riêng.</p>${renderTable(kioskColumns(true), report.priorityKiosks, 'Không có Kiosk cần chú ý.')}`)}
     </div>
@@ -384,14 +363,15 @@ function renderOverview(report) {
 }
 
 function renderRevenue(report) {
+  const year = report.summary.currentYear;
+  const month = report.summary.currentMonth;
   return `
     ${renderSummaryCards([
-      card('green', renderIcon('money'), formatCurrency(report.summary.totalRevenue), 'Tổng doanh thu', true),
-      card('blue', renderIcon('check-circle'), report.summary.completedCount, 'Thanh toán hoàn thành'),
-      card('purple', renderIcon('chart'), formatCurrency(report.summary.averagePayment), 'Trung bình'),
-      card('teal', renderIcon('trending-up'), formatCurrency(report.summary.highestPayment), 'Cao nhất'),
-      card('orange', renderIcon('report'), formatCurrency(report.summary.lowestPayment), 'Thấp nhất'),
-    ])}
+      card('green', renderIcon('money'), formatCurrency(report.summary.currentYearRevenue), `Doanh thu năm ${year}`, true),
+      card('blue', renderIcon('money'), formatCurrency(report.summary.currentMonthRevenue), `Doanh thu tháng ${month}`, true),
+      card('red', renderIcon('receipt'), formatCurrency(report.summary.currentYearExpense), `Chi tiêu năm ${year}`, true),
+      card(report.summary.currentYearProfit >= 0 ? 'teal' : 'red', renderIcon('trending-up'), formatCurrency(report.summary.currentYearProfit), `Lợi nhuận ước tính năm ${year}`, true),
+    ], 'report-revenue-stats')}
     <div class="report-grid">
       ${renderReportCard('Doanh thu theo tháng', renderTable(monthColumns(), report.groups.monthly, 'Không có doanh thu theo tháng.'))}
       ${renderReportCard('Doanh thu theo loại hình', renderTable(businessRevenueColumns(), report.groups.businessTypes, 'Không có doanh thu theo loại hình.'))}
@@ -433,15 +413,18 @@ function renderCustomers(report) {
 }
 
 function renderReconciliation(report) {
+  const rows = report.rows.map((row, index) => ({ row, view: integrityPresentation(row, state.reviewContexts[index]) }));
+  const term = normalizeSearch(state.searchTerm);
+  const visible = rows.filter(({ row, view }) => !term || normalizeSearch([view.title, view.issue, view.guidance, view.customer, view.kiosk, view.amount, stripHtml(statusBadge(row.status)), formatDateTime(row.eventAt)].join(' ')).includes(term));
   return `
-    ${renderSummaryCards([
-      card('orange', renderIcon('alert'), report.summary.issueCount, 'Mục cần kiểm tra'),
-    ])}
-    <div class="notice warning reconciliation-note">
-      <strong>Đối soát là danh sách gợi ý kiểm tra</strong>
-      <span>Các mục dưới đây có thông tin chưa đồng nhất hoặc còn thiếu và cần được kiểm tra.</span>
-    </div>
-    ${renderReportCard('Đối soát chỉ đọc', renderTable(reconciliationColumns(), report.rows, 'Không phát hiện mục cần kiểm tra.'))}
+    ${renderSummaryCards([card('orange', renderIcon('alert'), report.summary.issueCount, 'Mục cần kiểm tra')])}
+    <p class="report-definition">Các liên kết hoặc thông tin dữ liệu còn thiếu, trùng hay chưa khớp. Mở bản ghi để kiểm tra; danh sách này không tự điều chỉnh dữ liệu.</p>
+    <div class="integrity-list">${visible.length ? visible.map(({ row, view }) => `<article class="integrity-card">
+      <header><h3>${escapeHtml(view.title)}</h3>${statusBadge(row.status)}</header>
+      ${DetailFields([['Khách hàng', view.customer], ['Kiosk', view.kiosk], ...(view.amount ? [['Số tiền', view.amount]] : []), ['Thời điểm', formatDateTime(row.eventAt)]])}
+      <div class="integrity-issue"><strong>Vấn đề: ${escapeHtml(view.issue)}</strong><p>${escapeHtml(view.guidance)}</p></div>
+      ${view.href ? `<a class="btn-secondary" href="${escapeHtml(view.href)}" aria-label="Kiểm tra ${escapeHtml(view.title)}">${renderIcon('search')}Kiểm tra</a>` : ''}
+    </article>`).join('') : EmptyState({ title: term ? 'Không tìm thấy dữ liệu' : 'Không có mục cần kiểm tra', message: term ? 'Thử từ khóa khác trong bộ lọc hiện tại.' : 'Không phát hiện vấn đề trong phạm vi báo cáo.' })}</div>
     ${renderPagination(report.pagination)}
   `;
 }
@@ -463,8 +446,9 @@ function card(tone, icon, value, label, fluid = false) {
   return StatCard({ tone, icon, value: value ?? 0, label, className: fluid ? 'stat-card-fluid' : '' });
 }
 
-function renderSummaryCards(cards) {
-  return `<div class="stats-grid report-stats">${cards.join('')}</div>`;
+function renderSummaryCards(cards, className = '') {
+  const classes = ['stats-grid', 'report-stats', className].filter(Boolean).join(' ');
+  return `<div class="${escapeHtml(classes)}">${cards.join('')}</div>`;
 }
 
 function renderReportCard(title, content) {
@@ -483,7 +467,7 @@ function renderTable(columns, rows, emptyMessage) {
         <thead><tr>${columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join('')}</tr></thead>
         <tbody>
           ${filteredRows.length
-            ? filteredRows.map((row) => `<tr>${columns.map((column) => `<td>${column.render(row)}</td>`).join('')}</tr>`).join('')
+            ? filteredRows.map((row) => `<tr>${columns.map((column) => `<td data-label="${escapeHtml(column.label)}">${column.render(row)}</td>`).join('')}</tr>`).join('')
             : `<tr><td colspan="${columns.length}">${EmptyState({ title: state.searchTerm ? 'Không tìm thấy dữ liệu' : 'Không có dữ liệu', message: noResultMessage })}</td></tr>`}
         </tbody>
       </table>
@@ -505,12 +489,16 @@ function normalizeSearch(value) {
   return String(value || '').trim().toLocaleLowerCase('vi');
 }
 
+function money(value) {
+  return `<span class="report-money">${escapeHtml(formatCurrency(value))}</span>`;
+}
+
 function topCustomerColumns() {
   return [
     { label: 'Khách hàng', render: (row) => customerLink(row.customerId, row.customerName) },
     { label: 'SĐT', render: (row) => escapeHtml(row.phone || '—') },
     { label: 'Thanh toán', render: (row) => number(row.paymentCount) },
-    { label: 'Tổng tiền', render: (row) => formatCurrency(row.totalAmount) },
+    { label: 'Tổng tiền', render: (row) => money(row.totalAmount) },
   ];
 }
 
@@ -518,7 +506,7 @@ function monthColumns() {
   return [
     { label: 'Tháng', render: (row) => escapeHtml(row.label || '—') },
     { label: 'Thanh toán', render: (row) => number(row.paymentCount) },
-    { label: 'Doanh thu', render: (row) => formatCurrency(row.totalAmount) },
+    { label: 'Doanh thu', render: (row) => money(row.totalAmount) },
   ];
 }
 
@@ -527,7 +515,7 @@ function businessRevenueColumns() {
     { label: 'Loại hình KD', render: (row) => escapeHtml(row.businessTypeName || '—') },
     { label: 'Danh mục', render: (row) => escapeHtml(row.categoryName || '—') },
     { label: 'Thanh toán', render: (row) => number(row.paymentCount) },
-    { label: 'Doanh thu', render: (row) => formatCurrency(row.totalAmount) },
+    { label: 'Doanh thu', render: (row) => money(row.totalAmount) },
   ];
 }
 
@@ -535,7 +523,7 @@ function methodColumns() {
   return [
     { label: 'Phương thức', render: (row) => escapeHtml(paymentMethodLabel(row.paymentMethod)) },
     { label: 'Thanh toán', render: (row) => number(row.paymentCount) },
-    { label: 'Doanh thu', render: (row) => formatCurrency(row.totalAmount) },
+    { label: 'Doanh thu', render: (row) => money(row.totalAmount) },
   ];
 }
 
@@ -546,7 +534,7 @@ function revenueDetailColumns() {
     { label: 'Kiosk', render: (row) => kioskLink(row.kioskId, row.kioskName) },
     { label: 'Loại hình KD', render: (row) => escapeHtml(row.businessTypeName || '—') },
     { label: 'Phương thức', render: (row) => escapeHtml(paymentMethodLabel(row.paymentMethod)) },
-    { label: 'Số tiền', render: (row) => formatCurrency(row.totalAmount) },
+    { label: 'Số tiền', render: (row) => money(row.totalAmount) },
   ];
 }
 
@@ -554,7 +542,7 @@ function kioskStatusColumns() {
   return [
     { label: 'Trạng thái', render: (row) => statusBadge(row.status) },
     { label: 'Số Kiosk', render: (row) => number(row.kioskCount) },
-    { label: 'Đã thu', render: (row) => formatCurrency(row.totalPaid) },
+    { label: 'Đã thu', render: (row) => money(row.totalPaid) },
   ];
 }
 
@@ -568,7 +556,7 @@ function kioskColumns(priority = false) {
   if (!priority) {
     columns.splice(2, 0, { label: 'Loại hình KD', render: (row) => escapeHtml(row.businessTypeName || '—') });
     columns.push({ label: 'Còn lại', render: (row) => daysLabel(row.daysLeft) });
-    columns.push({ label: 'Đã thu', render: (row) => formatCurrency(row.totalPaid) });
+    columns.push({ label: 'Đã thu', render: (row) => money(row.totalPaid) });
   }
   return columns;
 }
@@ -580,59 +568,24 @@ function customerColumns() {
     { label: 'Tổng Kiosk', render: (row) => number(row.totalKiosks) },
     { label: 'Hoạt động', render: (row) => number(row.activeKiosks) },
     { label: 'Hết hạn', render: (row) => number(row.expiredKiosks) },
-    { label: 'Tổng đã trả', render: (row) => formatCurrency(row.totalPaid) },
+    { label: 'Tổng đã trả', render: (row) => money(row.totalPaid) },
     { label: 'Thanh toán gần nhất', render: (row) => formatDateTime(row.latestCompletedPayment) },
     { label: 'Hạn Kiosk xa nhất', render: (row) => formatDate(row.latestKioskEndDate) },
   ];
 }
 
-function reconciliationColumns() {
-  return [
-    { label: 'Mục cần kiểm tra', render: (row) => `<span class="old-value">${escapeHtml(friendlyIssue(row.issue))}</span>` },
-    { label: 'Giải thích', render: (row) => `<span class="muted-text">${escapeHtml(issueExplanation(row))}</span>` },
-    { label: 'Loại', render: (row) => escapeHtml(row.entityType || '—') },
-    { label: 'Mã tham chiếu', render: (row) => escapeHtml(row.recordId || '—') },
-    { label: 'Khách hàng', render: (row) => customerLink(row.customerId, row.customerName) },
-    { label: 'Kiosk', render: (row) => kioskLink(row.kioskId, row.kioskName) },
-    { label: 'Trạng thái', render: (row) => statusBadge(row.status) },
-    { label: 'Số tiền', render: (row) => formatCurrency(row.totalAmount) },
-    { label: 'Thời điểm', render: (row) => formatDateTime(row.eventAt) },
-  ];
-}
-
-function friendlyIssue(issue) {
-  return {
-    'customers.total_paid không khớp': 'Tổng đã trả cần đối chiếu',
-    'Kiosk thiếu Facebook ID': 'Kiosk cần bổ sung Facebook ID',
-    'Kiosk thiếu end_date': 'Kiosk cần bổ sung ngày hết hạn',
-  }[issue] || 'Thông tin cần kiểm tra';
-}
-
-function issueExplanation(row) {
-  const issue = row.issue || '';
-  if (issue === 'customers.total_paid không khớp') {
-    return 'Tổng tiền đã ghi nhận chưa khớp với các khoản thanh toán hoàn thành trong kỳ.';
-  }
-  if (issue === 'Kiosk thiếu Facebook ID') {
-    return 'Kiosk đang hoạt động hoặc chờ xác nhận nhưng chưa có Facebook ID.';
-  }
-  if (issue === 'Kiosk thiếu end_date') {
-    return 'Kiosk chưa có ngày hết hạn để tính trạng thái hết hạn/sắp hết hạn.';
-  }
-  return 'Mở mục liên quan để kiểm tra và bổ sung thông tin.';
-}
 
 function categoryColumns() {
   return [
     { label: 'Danh mục', render: (row) => escapeHtml(row.categoryName || '—') },
     { label: 'Loại hình KD', render: (row) => escapeHtml(row.businessTypeName || '—') },
-    { label: 'Giá/tháng', render: (row) => formatCurrency(row.pricePerMonth) },
+    { label: 'Giá/tháng', render: (row) => money(row.pricePerMonth) },
     { label: 'Kiosk', render: (row) => number(row.kioskCount) },
     { label: 'Hoạt động', render: (row) => number(row.activeKiosks) },
     { label: 'Chờ duyệt', render: (row) => number(row.pendingKiosks) },
     { label: 'Hết hạn', render: (row) => number(row.expiredKiosks) },
     { label: 'Thanh toán', render: (row) => number(row.completedPayments) },
-    { label: 'Doanh thu', render: (row) => formatCurrency(row.totalRevenue) },
+    { label: 'Doanh thu', render: (row) => money(row.totalRevenue) },
   ];
 }
 
@@ -695,7 +648,7 @@ function formatDateTime(value) {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('vi-VN', {
+  return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -722,22 +675,23 @@ function renderReportError(error) {
   })}</section>`;
 }
 
-function exportCurrentPage() {
-  if (!state.report) {
-    Toast.show('Chưa có dữ liệu báo cáo để xuất.');
-    return;
-  }
-  const rows = exportRowsForCurrentTab(state.report);
-  if (!rows.length) {
-    Toast.show('Trang báo cáo hiện tại không có dữ liệu để xuất.');
-    return;
-  }
-  downloadCsv(rows, `bao-cao-${state.activeTab}-trang-${state.page}.csv`);
-  Toast.show(`Đã xuất ${rows.length} dòng của trang hiện tại.`);
+async function exportCurrentPage() {
+  if (!state.report) { Toast.show('Chưa có dữ liệu báo cáo để xuất.'); return; }
+  const tab = state.activeTab;
+  const button = document.getElementById('report-export-button');
+  if (button) button.disabled = true;
+  try {
+    const { data } = await ReportService.exportReportData(tab, { ...state.filters }, { sortBy: state.sortBy, sortDirection: state.sortDirection });
+    const rows = exportRowsForCurrentTab(data, tab);
+    if (!rows.length) { Toast.show('Bộ lọc hiện tại không có dữ liệu để xuất.'); return; }
+    downloadCsv(rows, `bao-cao-${tab}.csv`);
+    Toast.show(`Đã xuất ${rows.length} dòng theo bộ lọc.`);
+  } catch (error) { Toast.show(error?.message || 'Không thể xuất báo cáo.'); }
+  finally { if (button) button.disabled = false; }
 }
 
-function exportRowsForCurrentTab(report) {
-  if (state.activeTab === 'overview') {
+function exportRowsForCurrentTab(report, tab = state.activeTab) {
+  if (tab === 'overview') {
     return [
       ...report.topCustomers.map((row) => ({
         Nhóm: 'Top khách hàng',
@@ -783,7 +737,7 @@ function csvCell(value) {
 }
 
 function defaultFilters() {
-  const today = startOfToday();
+  const today = startOfVietnamToday();
   return {
     startDate: toDateOnly(new Date(today.getFullYear(), 0, 1)),
     endDate: toDateOnly(today),

@@ -88,6 +88,5 @@ begin
   execute corrected_definition;
 end;
 $migration$;
-
 revoke all on function public.get_dashboard_data(integer, integer) from public, anon;
 grant execute on function public.get_dashboard_data(integer, integer) to authenticated;

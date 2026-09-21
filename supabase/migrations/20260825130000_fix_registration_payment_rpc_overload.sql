@@ -4,18 +4,15 @@
 -- private helper and expose one unambiguous Data API function.
 alter function public.prepare_registration_batch_for_payos(bigint[], text)
   set schema private;
-
 revoke all on function private.prepare_registration_batch_for_payos(bigint[], text)
   from public, anon, authenticated;
 grant execute on function private.prepare_registration_batch_for_payos(bigint[], text)
   to service_role;
-
 -- PostgreSQL cannot remove an existing argument default with CREATE OR
 -- REPLACE. Drop both exact public identities after preserving the base body,
 -- then recreate the only supported Data API signature without a default.
 drop function if exists public.prepare_registration_batch_for_payos(bigint[], text);
 drop function if exists public.prepare_registration_batch_for_payos(bigint[], text, text);
-
 create function public.prepare_registration_batch_for_payos(
   request_ids_input bigint[],
   phone_input text,
@@ -135,7 +132,6 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.prepare_registration_batch_for_payos(bigint[], text, text)
   from public, anon, authenticated;
 grant execute on function public.prepare_registration_batch_for_payos(bigint[], text, text)

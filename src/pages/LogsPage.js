@@ -1,12 +1,20 @@
+import { DetailFields } from '../components/DetailFields.js';
+import { ReviewContextService } from '../services/ReviewContextService.js';
+import { eventReviewReference } from '../utils/reviewPresentation.js';
 import { EmptyState } from '../components/EmptyState.js';
+import { DateRangeFields } from '../components/DateRangeFields.js';
 import { Modal } from '../components/Modal.js';
 import { PageHeader } from '../components/PageHeader.js';
-import { Toolbar } from '../components/Toolbar.js';
+import { FilterBar } from '../components/FilterBar.js';
+import { renderIcon } from '../utils/icons.js';
+import { businessEventPresentation } from '../utils/businessEventPresentation.js';
 import { LOG_COLUMNS } from '../constants/tables.js';
 import { AuditLogService } from '../services/AuditLogService.js';
+import { BusinessEventService } from '../services/BusinessEventService.js';
 import { debounce } from '../utils/dom.js';
 import { bindPagination, Pagination, updatePagination } from '../components/Pagination.js';
 import { escapeHtml } from '../utils/html.js';
+import { vietnamDateRangeYearToDate } from '../utils/date.js';
 import {
   activityLogPresentation,
   actionLabel,
@@ -16,44 +24,32 @@ import {
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const ACTION_FILTERS = [
-  { value: 'create', label: 'Tạo mới' },
+  { value: 'registration', label: 'Đăng ký' },
+  { value: 'renewal', label: 'Gia hạn' },
+  { value: 'legacy', label: 'Bổ sung / Legacy' },
   { value: 'update', label: 'Cập nhật' },
-  { value: 'delete', label: 'Xóa' },
-  { value: 'confirm', label: 'Xác nhận' },
+  { value: 'payment', label: 'Thanh toán' },
+  { value: 'status', label: 'Trạng thái Kiosk' },
   { value: 'cancel', label: 'Hủy' },
-  { value: 'reject', label: 'Từ chối' },
-  { value: 'reset_password', label: 'Reset mật khẩu' },
-  { value: 'set_active', label: 'Kích hoạt/Vô hiệu hóa' },
-  { value: 'admin_manual_renewal', label: 'Gia hạn Kiosk' },
-  { value: 'confirm_payos', label: 'Xác nhận thanh toán PayOS' },
-  { value: 'confirm_payos_batch', label: 'Xác nhận thanh toán PayOS theo đơn' },
-  { value: 'admin_cancel', label: 'Hủy hồ sơ Kiosk' },
-  { value: 'update_profile', label: 'Cập nhật người dùng' },
-  { value: 'sync_permissions', label: 'Thay đổi quyền' },
-  { value: 'lock_user', label: 'Khóa người dùng' },
-  { value: 'unlock_user', label: 'Mở khóa người dùng' },
-  { value: 'create_promotion', label: 'Tạo mã giảm giá' },
-  { value: 'update_promotion', label: 'Sửa mã giảm giá' },
-  { value: 'pause_promotion', label: 'Tạm ngưng mã giảm giá' },
-  { value: 'reactivate_promotion', label: 'Kích hoạt mã giảm giá' },
+  { value: 'expense', label: 'Chi phí' },
+  { value: 'website', label: 'Nội dung Website' },
+  { value: 'reconciliation', label: 'Cần kiểm tra' },
 ];
-const MODULE_FILTERS = [
-  { value: 'Kiosk', label: 'Kiosk' },
-  { value: 'Customer', label: 'Khách hàng' },
-  { value: 'Payment', label: 'Thanh toán' },
-  { value: 'Renewal', label: 'Gia hạn' },
-  { value: 'UserManagement', label: 'Người dùng' },
-  { value: 'Promotion', label: 'Mã giảm giá' },
-  { value: 'System', label: 'Hệ thống' },
+const SOURCE_FILTERS = [
+  { value: 'Admin', label: 'Admin' },
+  { value: 'CRM', label: 'CRM' },
+  { value: 'PayOS', label: 'PayOS' },
 ];
+
+const initialRange = vietnamDateRangeYearToDate();
 
 const state = {
   searchTerm: '',
   actor: '',
   action: '',
   module: '',
-  fromDate: '',
-  toDate: '',
+  fromDate: initialRange.from,
+  toDate: initialRange.to,
   page: 1,
   pageSize: 10,
   total: 0,
@@ -69,16 +65,28 @@ export function LogsPage() {
       title: 'Lịch sử thay đổi',
       description: 'Theo dõi những thay đổi nghiệp vụ quan trọng trong CRM.',
     })}
-    ${Toolbar({
+    ${FilterBar({
+      label: 'Bộ lọc lịch sử',
       children: `
+        <label class="filter-field filter-field-search"><span>Tìm kiếm</span>
         <input
           type="search"
           id="log-search"
           class="form-control"
-          placeholder="Tìm theo nội dung, hành động hoặc người thực hiện"
+          placeholder="Nội dung, người thực hiện…"
           aria-label="Tìm lịch sử"
           autocomplete="off"
-        />
+        /></label>
+        <label class="filter-field"><span>Hoạt động</span>
+        <select id="log-action-filter" class="filter-select" aria-label="Loại hoạt động">
+          <option value="">Tất cả hoạt động</option>
+          ${ACTION_FILTERS.map((action) => `<option value="${action.value}">${action.label}</option>`).join('')}
+        </select></label>
+        ${DateRangeFields({ fromId: 'log-from-date', toId: 'log-to-date' })}
+        <button class="btn-secondary filter-disclosure" id="log-advanced-toggle" type="button" aria-expanded="false" aria-controls="log-advanced-filters">Nâng cao ${renderIcon('chevron')}</button>
+      `,
+      advanced: `<div class="admin-filter-advanced" id="log-advanced-filters" hidden><div class="admin-filter-row">
+        <label class="filter-field filter-field-search"><span>Người thực hiện</span>
         <input
           type="search"
           id="log-actor-filter"
@@ -86,24 +94,14 @@ export function LogsPage() {
           placeholder="Lọc người thực hiện, vai trò"
           aria-label="Lọc người thực hiện"
           autocomplete="off"
-        />
-        <select id="log-action-filter" class="filter-select" aria-label="Lọc hành động">
-          <option value="">Tất cả hành động</option>
-          ${ACTION_FILTERS.map((action) => `<option value="${action.value}">${action.label}</option>`).join('')}
-        </select>
-        <select id="log-module-filter" class="filter-select" aria-label="Lọc nhóm dữ liệu">
-          <option value="">Tất cả nhóm dữ liệu</option>
-          ${MODULE_FILTERS.map((table) => `<option value="${table.value}">${table.label}</option>`).join('')}
-        </select>
-        <label class="form-group compact">
-          <span>Từ ngày</span>
-          <input id="log-from-date" class="form-control" type="date" />
-        </label>
+        /></label>
+        <label class="filter-field"><span>Nguồn</span>
+        <select id="log-module-filter" class="filter-select" aria-label="Lọc nguồn sự kiện">
+          <option value="">Tất cả nguồn</option>
+          ${SOURCE_FILTERS.map((item) => `<option value="${item.value}">${item.label}</option>`).join('')}
+        </select></label>
         <label class="checkbox-field log-technical-toggle"><input id="log-show-technical" type="checkbox" /><span>Hiện thay đổi kỹ thuật</span></label>
-        <label class="form-group compact">
-          <span>Đến ngày</span>
-          <input id="log-to-date" class="form-control" type="date" />
-        </label>
+        </div></div>
       `,
     })}
     <div class="table-card logs-table-card">
@@ -153,6 +151,12 @@ function syncLogControls() {
 }
 
 function bindLogEvents() {
+  document.getElementById('log-advanced-toggle')?.addEventListener('click', (event) => {
+    const button = event.currentTarget;
+    const expanded = button.getAttribute('aria-expanded') !== 'true';
+    button.setAttribute('aria-expanded', String(expanded));
+    document.getElementById('log-advanced-filters').hidden = !expanded;
+  });
   document.getElementById('log-search')?.addEventListener('input', debounce((event) => {
     state.searchTerm = event.target.value.trim();
     state.page = 1;
@@ -199,7 +203,7 @@ function bindLogEvents() {
     const button = event.target.closest('[data-log-view]');
     if (!button) return;
 
-    const log = state.items.find((item) => String(item.id) === String(button.dataset.logView));
+    const log = state.items.find((item) => String(item.event_key || item.id) === String(button.dataset.logView));
     if (log) openLogDetail(log);
   });
 }
@@ -210,21 +214,25 @@ async function loadLogs() {
   setLoadingState();
 
   try {
-    const { data, count, page: responsePage } = await AuditLogService.list({
-      searchTerm: state.searchTerm,
-      actor: state.actor,
-      action: state.action,
-      module: state.module,
-      fromTime: dateBoundary(state.fromDate),
-      toTime: dateBoundary(state.toDate, true),
-      showTechnical: state.showTechnical,
-      pagination: { page: state.page, pageSize: state.pageSize },
-    });
+    const { data, count, page: responsePage } = state.showTechnical
+      ? await AuditLogService.list({
+        searchTerm: state.searchTerm, actor: state.actor, action: '', module: '',
+        fromTime: dateBoundary(state.fromDate), toTime: dateBoundary(state.toDate, true),
+        showTechnical: true, pagination: { page: state.page, pageSize: state.pageSize },
+      })
+      : await BusinessEventService.list({
+        context: 'logs', searchTerm: state.searchTerm, actor: state.actor,
+        activity: state.action, source: state.module,
+        fromTime: dateBoundary(state.fromDate), toTime: dateBoundary(state.toDate, true),
+        page: state.page, pageSize: state.pageSize,
+      });
 
     if (requestId !== state.requestId) return;
 
+    const items = state.showTechnical ? data || [] : await presentBusinessEvents(data || []);
+    if (requestId !== state.requestId) return;
     state.total = count || 0;
-    state.items = data || [];
+    state.items = items;
     state.page = responsePage || 1;
     const lastPage = Math.max(1, Math.ceil(state.total / state.pageSize));
     if (state.page > lastPage) {
@@ -232,12 +240,34 @@ async function loadLogs() {
       loadLogs();
       return;
     }
-    renderLogs(data || []);
+    renderLogs(items);
     renderPagination();
   } catch (error) {
     if (requestId !== state.requestId) return;
     renderError(error);
   }
+}
+
+async function presentBusinessEvents(events) {
+  const items = events.map((event) => ({ ...event, presentation: businessEventPresentation(event) }));
+  // Reuse the existing authorized detail read; limit concurrent historical lookups.
+  const pending = items.filter((event) => /^audit:\d+$/.test(event.event_key) && event.event_type !== 'payment');
+  for (let offset = 0; offset < pending.length; offset += 4) {
+    await Promise.all(pending.slice(offset, offset + 4).map(async (event) => {
+      try {
+        const { data } = await AuditLogService.getById(event.event_key.slice(6));
+        event.presentation = businessEventPresentation(event, data);
+      } catch {
+        // Missing or inaccessible historical metadata must not hide the journal entry.
+      }
+    }));
+  }
+  const reviews = items.filter(event => event.event_type === 'reconciliation');
+  if (reviews.length) {
+    const contexts = await ReviewContextService.resolve(reviews.map(eventReviewReference));
+    reviews.forEach((event, index) => { event.presentation = businessEventPresentation(event, contexts[index]); });
+  }
+  return items;
 }
 
 function renderLogs(logs) {
@@ -259,6 +289,7 @@ function renderLogs(logs) {
 }
 
 function renderLogRow(log) {
+  if (log.event_key) return renderBusinessEventRow(log);
   const item = formatAuditLog(log);
   return `
     <tr>
@@ -269,7 +300,25 @@ function renderLogRow(log) {
     </tr>`;
 }
 
+function renderBusinessEventRow(event) {
+  const item = event.presentation || businessEventPresentation(event);
+  return `<tr><td>${renderEventSummary(event, item)}</td><td><div class="log-actor"><strong>${escapeHtml(item.actorName)}</strong><span>${escapeHtml(item.source)}</span></div></td><td>${renderDateTime(event.occurred_at)}</td><td class="log-detail-cell"><button class="table-action-button" type="button" data-log-view="${escapeHtml(event.event_key)}">Xem chi tiết</button></td></tr>`;
+}
+
+function renderEventBadge(event, item) {
+  const tone = event.event_type === 'cancel' || event.event_type === 'reconciliation' ? 'danger' : 'info';
+  return `<span class="status-badge status-badge--${tone}"><span class="status-dot" aria-hidden="true"></span>${escapeHtml(item.activityLabel)}</span>`;
+}
+
+function renderEventSummary(event, item) {
+  return `<div class="log-business-activity">${renderEventBadge(event, item)}<strong>${escapeHtml(item.title)}</strong>${item.secondary ? `<span>${escapeHtml(item.secondary)}</span>` : ''}</div>`;
+}
+
 function renderLogCard(log) {
+  if (log.event_key) {
+    const item = log.presentation || businessEventPresentation(log);
+    return `<article class="log-mobile-card"><div class="log-mobile-card-head">${renderEventBadge(log, item)}${renderCompactDateTime(log.occurred_at)}</div><strong class="log-mobile-target">${escapeHtml(item.title)}</strong>${item.secondary ? `<span class="log-mobile-change">${escapeHtml(item.secondary)}</span>` : ''}<div class="log-mobile-footer"><span>${escapeHtml(item.actorName)}</span><button class="table-action-button" type="button" data-log-view="${escapeHtml(log.event_key)}">Xem chi tiết</button></div></article>`;
+  }
   const item = formatAuditLog(log);
   return `
     <article class="log-mobile-card">
@@ -294,11 +343,29 @@ function renderActionBadge(action, label = actionLabel(action), category = '') {
 }
 
 function openLogDetail(log) {
+  if (log.event_key) {
+    const item = log.presentation || businessEventPresentation(log);
+    Modal.open({
+      title: 'Chi tiết hoạt động', className: 'log-detail-modal',
+      body: `<section class="log-detail-summary">${renderEventBadge(log, item)}<h3>${escapeHtml(item.title)}</h3>${item.secondary ? `<p>${escapeHtml(item.secondary)}</p>` : ''}</section>
+        <dl class="log-event-meta">
+          ${eventMetaRow('Người thực hiện', item.actorName)}
+          ${eventMetaRow('Nguồn', item.source)}
+          ${eventMetaRow('Thời gian', formatDateTime(log.occurred_at))}
+          ${eventMetaRow('Kết quả', item.result)}
+        </dl>${item.reviewFields ? DetailFields(item.reviewFields, 'review-event-fields') : ''}`,
+    });
+    return;
+  }
   Modal.open({
     title: 'Chi tiết lịch sử',
     body: renderLogModal(log),
-    className: 'modal-wide',
+    className: 'modal-wide log-detail-modal log-detail-modal--technical',
   });
+}
+
+function eventMetaRow(label, value) {
+  return `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`;
 }
 
 function renderLogModal(log) {
@@ -414,16 +481,8 @@ function renderPagination() {
 }
 
 function formatDateTime(value) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
+  const parts = dateTimeParts(value);
+  return parts.time ? `${parts.date} · ${parts.time}` : parts.date;
 }
 
 function dateTimeParts(value) {
@@ -431,8 +490,8 @@ function dateTimeParts(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return { date: '—', time: '' };
   return {
-    date: new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date),
-    time: new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit' }).format(date),
+    date: new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric' }).format(date),
+    time: new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' }).format(date),
   };
 }
 
@@ -449,7 +508,7 @@ function renderCompactDateTime(value) {
 function dateBoundary(value, exclusiveEnd = false) {
   if (!value) return null;
   const [year, month, day] = String(value).split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
+  const date = new Date(Date.UTC(year, month - 1, day, -7));
   if (exclusiveEnd) date.setUTCDate(date.getUTCDate() + 1);
   return date;
 }

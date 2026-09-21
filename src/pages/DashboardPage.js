@@ -174,9 +174,16 @@ function renderRecentActivity(activities) {
 
 export function recentActivityPresentation(type) {
   const presentation = {
-    'Đăng ký mới': { label: 'Đăng ký', tone: 'info', icon: 'store' },
-    'Gia hạn': { label: 'Gia hạn', tone: 'success', icon: 'refresh' },
-    'Bổ sung Kiosk': { label: 'Bổ sung', tone: 'secondary', icon: 'user-plus' },
+    registration: { label: 'Đăng ký', tone: 'info', icon: 'store' },
+    renewal: { label: 'Gia hạn', tone: 'success', icon: 'refresh' },
+    legacy: { label: 'Bổ sung', tone: 'secondary', icon: 'user-plus' },
+    update: { label: 'Cập nhật', tone: 'info', icon: 'edit' },
+    payment: { label: 'Thanh toán', tone: 'success', icon: 'money' },
+    status: { label: 'Trạng thái', tone: 'warning', icon: 'pause' },
+    cancel: { label: 'Hủy', tone: 'danger', icon: 'x-circle' },
+    expense: { label: 'Chi phí', tone: 'warning', icon: 'receipt' },
+    website: { label: 'Website', tone: 'info', icon: 'home' },
+    reconciliation: { label: 'Đối soát', tone: 'danger', icon: 'warning' },
   }[type];
   if (!presentation) throw new Error(`Loại hoạt động gần đây không hợp lệ: ${type || 'unknown'}.`);
   return presentation;

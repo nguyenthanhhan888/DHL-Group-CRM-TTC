@@ -46,7 +46,7 @@ export const KioskService = {
     const supabase = requireSupabaseClient();
     return runQuery(
       supabase
-        .from('kiosks')
+        .from('registered_kiosks')
         .select('id, facebook_name, facebook_id, start_date, end_date, status, auto_approve, categories(name), business_types(name)')
         .eq('customer_id', customerId)
         .order('facebook_name'),
@@ -176,6 +176,7 @@ function normalizeSearchTerm(value) {
 function resolveKioskSort(status, sort) {
   if (sort?.column) return sort;
   if (status === 'warning') return { column: 'end_date', ascending: true };
+  if (status === 'expired') return { column: 'end_date', ascending: false };
   return { column: 'created_at', ascending: false };
 }
 

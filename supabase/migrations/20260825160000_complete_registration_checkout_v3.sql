@@ -7,7 +7,6 @@ alter table public.registration_requests
 alter table public.registration_requests
   add constraint registration_requests_status_check
   check (status in ('awaiting_payment', 'pending', 'approved', 'rejected', 'cancelled'));
-
 -- A provisional public intent must not block a separate Admin-review flow.
 -- Public intents still serialize against both public intents and real pending
 -- review requests for the same Facebook identity.
@@ -51,10 +50,8 @@ begin
   return new;
 end;
 $function$;
-
 revoke all on function private.prevent_duplicate_pending_registration()
   from public, anon, authenticated, service_role;
-
 -- Legacy/Additional may ignore an unmaterialized public intent, but it must
 -- not finalize over a live materialized checkout. Admin must first cancel the
 -- public checkout so its batch/payment/PayOS history is closed coherently.
@@ -93,16 +90,13 @@ begin
   return new;
 end;
 $function$;
-
 revoke all on function private.guard_legacy_approval_against_live_public_checkout()
   from public, anon, authenticated, service_role;
-
 drop trigger if exists guard_legacy_approval_against_live_public_checkout_trigger
   on public.registration_requests;
 create trigger guard_legacy_approval_against_live_public_checkout_trigger
 before update of status on public.registration_requests
 for each row execute function private.guard_legacy_approval_against_live_public_checkout();
-
 -- Once the public checkout is cancelled, the stable Legacy approval RPC may
 -- reuse its same-customer provisional Kiosk. Finish that explicit handoff so
 -- the completed Legacy payment cannot leave the reused Kiosk pending.
@@ -156,16 +150,13 @@ begin
   return new;
 end;
 $function$;
-
 revoke all on function private.finalize_cancelled_public_kiosk_from_legacy()
   from public, anon, authenticated, service_role;
-
 drop trigger if exists finalize_cancelled_public_kiosk_from_legacy_trigger
   on public.registration_requests;
 create trigger finalize_cancelled_public_kiosk_from_legacy_trigger
 after update of status on public.registration_requests
 for each row execute function private.finalize_cancelled_public_kiosk_from_legacy();
-
 -- Private base: the known-good pre-promotion materialization path plus one
 -- optional promotion evaluation in the same transaction.
 create or replace function private.materialize_registration_checkout_v3(
@@ -583,10 +574,8 @@ begin
   );
 end;
 $function$;
-
 revoke all on function private.materialize_registration_checkout_v3(bigint[], text, text)
   from public, anon, authenticated, service_role;
-
 create function public.prepare_registration_checkout_v3(
   request_ids_input bigint[],
   phone_input text,
@@ -608,12 +597,10 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.prepare_registration_checkout_v3(bigint[], text, text)
   from public, anon, authenticated;
 grant execute on function public.prepare_registration_checkout_v3(bigint[], text, text)
   to service_role;
-
 -- Retire old public checkout entry points from PostgREST execution. The
 -- functions remain for historical migration integrity, but v3 is the only
 -- executable current checkout RPC.
@@ -623,7 +610,6 @@ revoke all on function public.prepare_registration_batch_for_payos(bigint[], tex
   from public, anon, authenticated, service_role;
 revoke all on function public.prepare_registration_payment_for_payos(bigint, text)
   from public, anon, authenticated, service_role;
-
 create function public.admin_complete_awaiting_registration(
   request_id_input bigint,
   note_input text
@@ -801,12 +787,10 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.admin_complete_awaiting_registration(bigint, text)
   from public, anon, authenticated;
 grant execute on function public.admin_complete_awaiting_registration(bigint, text)
   to authenticated;
-
 create function public.admin_cancel_awaiting_registration(
   request_id_input bigint,
   reason_input text
@@ -928,12 +912,10 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.admin_cancel_awaiting_registration(bigint, text)
   from public, anon, authenticated;
 grant execute on function public.admin_cancel_awaiting_registration(bigint, text)
   to authenticated;
-
 create function public.get_registration_operations_summary()
 returns jsonb
 language plpgsql
@@ -958,12 +940,10 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.get_registration_operations_summary()
   from public, anon, authenticated;
 grant execute on function public.get_registration_operations_summary()
   to authenticated;
-
 create function public.admin_list_registration_requests(status_input text)
 returns jsonb
 language plpgsql
@@ -1053,7 +1033,6 @@ begin
   ), '[]'::jsonb);
 end;
 $function$;
-
 revoke all on function public.admin_list_registration_requests(text)
   from public, anon, authenticated;
 grant execute on function public.admin_list_registration_requests(text)

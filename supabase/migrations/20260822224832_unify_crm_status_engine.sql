@@ -21,7 +21,6 @@ as $function$
     else 'active'
   end
 $function$;
-
 create or replace function public.resolve_customer_status(
   stored_status text,
   kiosk_statuses text[]
@@ -44,12 +43,10 @@ as $function$
     else 'inactive'
   end
 $function$;
-
 revoke all on function public.resolve_kiosk_status(text, date, integer, date) from public, anon;
 revoke all on function public.resolve_customer_status(text, text[]) from public, anon;
 grant execute on function public.resolve_kiosk_status(text, date, integer, date) to authenticated;
 grant execute on function public.resolve_customer_status(text, text[]) to authenticated;
-
 create or replace function public.get_kiosk_status_data(
   p_search text default null,
   p_status text default null,
@@ -140,10 +137,8 @@ begin
   return coalesce(result, '{}'::jsonb);
 end
 $function$;
-
 revoke all on function public.get_kiosk_status_data(text,text,bigint,text,text,integer,integer) from public, anon;
 grant execute on function public.get_kiosk_status_data(text,text,bigint,text,text,integer,integer) to authenticated;
-
 create or replace function public.get_customer_status_data(
   p_search text default null,
   p_customer_status text default null,
@@ -218,10 +213,8 @@ begin
   return coalesce(result, '{}'::jsonb);
 end
 $function$;
-
 revoke all on function public.get_customer_status_data(text,text,text,bigint,text,text,integer,integer) from public, anon;
 grant execute on function public.get_customer_status_data(text,text,text,bigint,text,text,integer,integer) to authenticated;
-
 -- Make the effective report RPC use the shared classifier without copying or
 -- editing its already-applied migration. The guards fail if its known shape changed.
 do $migration$
@@ -277,10 +270,8 @@ begin
   execute changed;
 end
 $migration$;
-
 revoke all on function public.get_reports_data(text,date,date,bigint,bigint,bigint,bigint,text,text,text,text,integer,integer) from public, anon;
 grant execute on function public.get_reports_data(text,date,date,bigint,bigint,bigint,bigint,text,text,text,text,integer,integer) to authenticated;
-
 -- Dashboard retains its revenue and recent-registration behavior; only Kiosk
 -- classification is replaced with the same shared status contract.
 do $migration$
@@ -311,6 +302,5 @@ begin
   execute changed;
 end
 $migration$;
-
 revoke all on function public.get_dashboard_data(integer,integer) from public, anon;
 grant execute on function public.get_dashboard_data(integer,integer) to authenticated;

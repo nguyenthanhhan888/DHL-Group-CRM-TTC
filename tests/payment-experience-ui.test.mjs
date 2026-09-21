@@ -39,7 +39,8 @@ test('registration and renewal use the same payment component system for every r
     assert.match(renewal, new RegExp(component));
   }
   assert.match(registration, /PaymentKioskList/);
-  assert.match(registration, /Thanh toán qua PayOS/);
+  assert.match(registration, /window\.location\.assign\(payment\.checkoutUrl\)/);
+  assert.doesNotMatch(registration, /Sẵn sàng thanh toán/);
   assert.match(renewal, /Thanh toán qua PayOS/);
   assert.match(css, /@media\(max-width:620px\)[\s\S]*\.payment-actions/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);

@@ -1,0 +1,196 @@
+TAP version 13
+# (node:30798) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/layouts/AppLayout.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: sidebar preserves every route and permission, with CRM expanded and only TTC/System collapsible
+ok 1 - sidebar preserves every route and permission, with CRM expanded and only TTC/System collapsible
+  ---
+  duration_ms: 1.542833
+  type: 'test'
+  ...
+# Subtest: actual router navigation marks BOTH TTC destinations and opens active groups after navigation
+ok 2 - actual router navigation marks BOTH TTC destinations and opens active groups after navigation
+  ---
+  duration_ms: 0.821542
+  type: 'test'
+  ...
+# Subtest: new promotion defaults are runtime Vietnam time across year boundaries; editing empty limits stays empty
+ok 3 - new promotion defaults are runtime Vietnam time across year boundaries; editing empty limits stays empty
+  ---
+  duration_ms: 3.53925
+  type: 'test'
+  ...
+# Subtest: review contexts recover explicit payment, request, batch and kiosk ownership without inventing identities
+ok 4 - review contexts recover explicit payment, request, batch and kiosk ownership without inventing identities
+  ---
+  duration_ms: 0.6085
+  type: 'test'
+  ...
+# Subtest: integrity issues retain amount/status semantics and show actionable business copy
+ok 5 - integrity issues retain amount/status semantics and show actionable business copy
+  ---
+  duration_ms: 1.6825
+  type: 'test'
+  ...
+# Subtest: reconciliation journal translates technical terms, uses verified relationships and never treats an order ID as payment ID
+ok 6 - reconciliation journal translates technical terms, uses verified relationships and never treats an order ID as payment ID
+  ---
+  duration_ms: 0.394375
+  type: 'test'
+  ...
+# Subtest: status read models use only the narrow warning-days helper and retain private settings
+ok 7 - status read models use only the narrow warning-days helper and retain private settings
+  ---
+  duration_ms: 0.456417
+  type: 'test'
+  ...
+# Subtest: Kiosk list exposes only real business states with required semantics and sorting
+ok 8 - Kiosk list exposes only real business states with required semantics and sorting
+  ---
+  duration_ms: 0.169125
+  type: 'test'
+  ...
+# Subtest: admin history screens use runtime Vietnam year-to-date values and shared date fields
+ok 9 - admin history screens use runtime Vietnam year-to-date values and shared date fields
+  ---
+  duration_ms: 0.081625
+  type: 'test'
+  ...
+# Subtest: Expense workspace uses one date range for expense, revenue and net profit
+ok 10 - Expense workspace uses one date range for expense, revenue and net profit
+  ---
+  duration_ms: 0.054083
+  type: 'test'
+  ...
+# Subtest: managed expense categories support create rename archive and preserve historical FK rows
+ok 11 - managed expense categories support create rename archive and preserve historical FK rows
+  ---
+  duration_ms: 0.120708
+  type: 'test'
+  ...
+# Subtest: default Business Logs exclude mirrored audit rows while technical history remains available
+ok 12 - default Business Logs exclude mirrored audit rows while technical history remains available
+  ---
+  duration_ms: 0.089667
+  type: 'test'
+  ...
+# Subtest: Settings is the single sidebar workspace and reuses the canonical Homepage editor
+ok 13 - Settings is the single sidebar workspace and reuses the canonical Homepage editor
+  ---
+  duration_ms: 0.106125
+  type: 'test'
+  ...
+# Subtest: public footer uses local branded assets, removes duplicate destinations and has compact empty UI
+ok 14 - public footer uses local branded assets, removes duplicate destinations and has compact empty UI
+  ---
+  duration_ms: 0.078458
+  type: 'test'
+  ...
+# (node:30800) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/pages/ReportsPage.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: Reports renders three primary filters and nine advanced filters without losing fields
+ok 15 - Reports renders three primary filters and nine advanced filters without losing fields
+  ---
+  duration_ms: 21.772875
+  type: 'test'
+  ...
+# Subtest: existing filter state, refresh, export, and tab behavior remain bound
+ok 16 - existing filter state, refresh, export, and tab behavior remain bound
+  ---
+  duration_ms: 0.26325
+  type: 'test'
+  ...
+# Subtest: advanced filters open only on explicit disclosure without dropping stored filter values
+ok 17 - advanced filters open only on explicit disclosure without dropping stored filter values
+  ---
+  duration_ms: 0.106167
+  type: 'test'
+  ...
+# Subtest: all report tabs and full-filter CSV export remain present
+ok 18 - all report tabs and full-filter CSV export remain present
+  ---
+  duration_ms: 0.061334
+  type: 'test'
+  ...
+# Subtest: Reports uses the shared responsive FilterBar, with compact dates and a wider search
+ok 19 - Reports uses the shared responsive FilterBar, with compact dates and a wider search
+  ---
+  duration_ms: 0.198167
+  type: 'test'
+  ...
+# Subtest: Dashboard remains standalone and CRM is expanded while secondary groups use disclosures
+ok 20 - Dashboard remains standalone and CRM is expanded while secondary groups use disclosures
+  ---
+  duration_ms: 0.618834
+  type: 'test'
+  ...
+# (node:30801) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/constants/navigation.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: TTC keeps its operational items while unified users moves to system settings
+ok 21 - TTC keeps its operational items while unified users moves to system settings
+  ---
+  duration_ms: 7.962
+  type: 'test'
+  ...
+# Subtest: sidebar sections need no expand state while current route stays active
+ok 22 - sidebar sections need no expand state while current route stays active
+  ---
+  duration_ms: 0.141583
+  type: 'test'
+  ...
+# Subtest: sidebar uses the valid brand asset and compact accessible presentation
+ok 23 - sidebar uses the valid brand asset and compact accessible presentation
+  ---
+  duration_ms: 0.46025
+  type: 'test'
+  ...
+# Subtest: sidebar uses the unified direct-permission resolution
+ok 24 - sidebar uses the unified direct-permission resolution
+  ---
+  duration_ms: 0.101625
+  type: 'test'
+  ...
+# Subtest: Dashboard stays standalone and section labels keep permitted items visible
+ok 25 - Dashboard stays standalone and section labels keep permitted items visible
+  ---
+  duration_ms: 0.539166
+  type: 'test'
+  ...
+# Subtest: Reports overview contains exactly the six business-facing KPI cards
+ok 26 - Reports overview contains exactly the six business-facing KPI cards
+  ---
+  duration_ms: 0.230333
+  type: 'test'
+  ...
+# Subtest: notification popup is presentation-sorted and closes outside or with Escape without summary copy
+ok 27 - notification popup is presentation-sorted and closes outside or with Escape without summary copy
+  ---
+  duration_ms: 0.125291
+  type: 'test'
+  ...
+# Subtest: Promotions uses one overflow-safe accessible action menu with destructive styling
+ok 28 - Promotions uses one overflow-safe accessible action menu with destructive styling
+  ---
+  duration_ms: 0.176917
+  type: 'test'
+  ...
+# Subtest: inactive and cancelled records cannot inherit the active presentation
+ok 29 - inactive and cancelled records cannot inherit the active presentation
+  ---
+  duration_ms: 0.047375
+  type: 'test'
+  ...
+1..29
+# tests 29
+# suites 0
+# pass 29
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 58.297959

@@ -88,11 +88,11 @@ test('dashboard keeps the inclusive RPC expiry result instead of replacing it', 
   assert.equal(dashboard.lists.expiringKiosks.length, 3);
   assert.deepEqual(calls.filter(([method]) => method === 'rpc').map((call) => call.slice(0, 2)), [
     ['rpc', 'get_dashboard_data'],
+    ['rpc', 'get_business_events'],
+    ['rpc', 'get_business_events'],
+    ['rpc', 'get_business_events'],
   ]);
-  assert.deepEqual(calls.filter(([method]) => method === 'from').map((call) => call[1]), [
-    'payments',
-    'registration_requests',
-  ]);
+  assert.deepEqual(calls.filter(([method]) => method === 'from').map((call) => call[1]), []);
 
   replaceOrganizationSettings({});
 });
@@ -114,6 +114,8 @@ test('kiosk reports use only the authoritative report RPC result', async () => {
   assert.deepEqual(calls.filter(([method]) => method === 'rpc').map((call) => call.slice(0, 2)), [
     ['rpc', 'get_reports_data'],
     ['rpc', 'get_registration_operations_summary'],
+    ['rpc', 'get_expense_report_summary'],
+    ['rpc', 'get_current_financial_kpis'],
   ]);
   assert.deepEqual(calls.filter(([method]) => method === 'from'), []);
 

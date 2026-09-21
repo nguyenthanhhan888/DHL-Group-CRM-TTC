@@ -9,6 +9,8 @@
     LEGACY_REGISTRATION: 'legacy-registration',
     PAYMENTS: 'payments',
     PAYMENT_DETAIL: 'payment-detail',
+    EXPENSES: 'expenses',
+    HOMEPAGE_CONTENT: 'homepage-content',
     SOURCES: 'sources',
     CATEGORIES: 'categories',
     BUSINESS_TYPES: 'business-types',
@@ -37,6 +39,8 @@
     'legacy-registration': PERMISSIONS.LEGACY_REGISTRATION,
     payments: PERMISSIONS.PAYMENTS,
     'payment-detail': PERMISSIONS.PAYMENT_DETAIL,
+    expenses: PERMISSIONS.EXPENSES,
+    'homepage-content': PERMISSIONS.HOMEPAGE_CONTENT,
     categories: PERMISSIONS.CATEGORIES,
     'business-types': PERMISSIONS.BUSINESS_TYPES,
     'registration-requests': PERMISSIONS.REGISTRATION_REQUESTS,
@@ -75,7 +79,7 @@
         PERMISSIONS.REGISTRATION_REQUESTS,
       ],
     },
-    { label: 'Tài chính', permissions: [PERMISSIONS.PAYMENTS, PERMISSIONS.PAYMENT_DETAIL] },
+    { label: 'Tài chính', permissions: [PERMISSIONS.PAYMENTS, PERMISSIONS.PAYMENT_DETAIL, PERMISSIONS.EXPENSES] },
     {
       label: 'TTC',
       permissions: [
@@ -98,6 +102,7 @@
         PERMISSIONS.USER_MANAGEMENT,
         PERMISSIONS.LOGS,
         PERMISSIONS.SETTINGS,
+        PERMISSIONS.HOMEPAGE_CONTENT,
       ],
     },
   ]);
@@ -105,12 +110,12 @@
   const PERMISSION_LABELS = Object.freeze({
     dashboard: 'Dashboard', reports: 'Báo cáo', customers: 'Khách hàng',
     'customer-detail': 'Chi tiết khách hàng', kiosks: 'Kiosk', 'kiosk-detail': 'Chi tiết Kiosk',
-    'legacy-registration': 'Dữ liệu cũ', payments: 'Thanh toán', 'payment-detail': 'Chi tiết thanh toán',
+    'legacy-registration': 'Dữ liệu cũ', payments: 'Thanh toán', 'payment-detail': 'Chi tiết thanh toán', expenses: 'Chi phí',
     sources: 'Nguồn', categories: 'Danh mục', 'business-types': 'Loại hình kinh doanh',
     'registration-requests': 'Hồ sơ đăng ký', ttc: 'Tổng quan TTC', services: 'Dịch vụ TTC',
     notifications: 'Thông báo', tasks: 'Nhiệm vụ', 'user-management': 'Quản lý người dùng',
     wallet: 'Ví xu', pricing: 'Bảng giá', violations: 'Vi phạm', logs: 'Nhật ký',
-    settings: 'Cài đặt hệ thống', 'admin-ttc': 'Quản trị TTC',
+    settings: 'Cài đặt hệ thống', 'homepage-content': 'Nội dung trang chủ', 'admin-ttc': 'Quản trị TTC',
   });
 
   const model = Object.freeze({

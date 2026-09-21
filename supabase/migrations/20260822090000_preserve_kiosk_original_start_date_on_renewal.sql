@@ -144,12 +144,10 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.admin_manual_renew_kiosk(bigint, integer, date, numeric, numeric, text, text, text)
   from public, anon, authenticated;
 grant execute on function public.admin_manual_renew_kiosk(bigint, integer, date, numeric, numeric, text, text, text)
   to authenticated;
-
 create or replace function private.confirm_crm_payment_from_payos(
   payment_id_input bigint,
   reason_input text default 'PayOS paid'
@@ -227,7 +225,6 @@ begin
   );
 end;
 $function$;
-
 -- This deferred trigger remains a consistency backstop for completed service
 -- periods. It may reactivate and extend a Kiosk, but it never rewrites the
 -- original activation date (including a legacy NULL activation date).
@@ -249,5 +246,4 @@ begin
   return null;
 end;
 $function$;
-
 revoke all on function private.sync_completed_renewal_kiosk_period() from public;

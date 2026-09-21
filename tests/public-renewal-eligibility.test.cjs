@@ -14,7 +14,7 @@ async function lookupKiosk({ status, price }) {
   global.fetch = async (url) => {
     calls += 1;
     if (String(url).includes('/customers?')) return { ok: true, json: async () => [{ id: 7 }] };
-    if (String(url).includes('/kiosks?')) return { ok: true, json: async () => [{
+    if (String(url).includes('/registered_kiosks?')) return { ok: true, json: async () => [{
       id: 11, facebook_name: 'Kiosk A', status,
       start_date: '2026-01-01', end_date: '2026-12-31',
       categories: { name: 'Dịch vụ' }, business_types: { name: 'Loại A', price_per_month: price },

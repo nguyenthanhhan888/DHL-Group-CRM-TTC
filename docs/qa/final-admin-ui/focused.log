@@ -1,0 +1,176 @@
+TAP version 13
+# Subtest: expense route and menu use the unified permission model
+ok 1 - expense route and menu use the unified permission model
+  ---
+  duration_ms: 0.334041
+  type: 'test'
+  ...
+# Subtest: expense UI provides CRUD, requested filters, salary fields and duplicate warning
+ok 2 - expense UI provides CRUD, requested filters, salary fields and duplicate warning
+  ---
+  duration_ms: 0.202333
+  type: 'test'
+  ...
+# Subtest: expense mutations are transactional business events without generic update spam
+ok 3 - expense mutations are transactional business events without generic update spam
+  ---
+  duration_ms: 0.162541
+  type: 'test'
+  ...
+# Subtest: Reports applies the same date filters and computes estimated profit from unchanged revenue
+ok 4 - Reports applies the same date filters and computes estimated profit from unchanged revenue
+  ---
+  duration_ms: 0.181084
+  type: 'test'
+  ...
+# (node:27918) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/utils/businessEventPresentation.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: cancellation uses only known record identity and never turns a reason/audit ID into a profile ID
+ok 5 - cancellation uses only known record identity and never turns a reason/audit ID into a profile ID
+  ---
+  duration_ms: 0.922625
+  type: 'test'
+  ...
+# Subtest: payment correction preserves its known ID and labels its reason exactly once
+ok 6 - payment correction preserves its known ID and labels its reason exactly once
+  ---
+  duration_ms: 0.100291
+  type: 'test'
+  ...
+# Subtest: expense, website and Kiosk status sentences are grounded in audit snapshots
+ok 7 - expense, website and Kiosk status sentences are grounded in audit snapshots
+  ---
+  duration_ms: 1.920708
+  type: 'test'
+  ...
+# Subtest: success entries stay intact and technical/raw fallback values never become business content
+ok 8 - success entries stay intact and technical/raw fallback values never become business content
+  ---
+  duration_ms: 0.2125
+  type: 'test'
+  ...
+# Subtest: promotion search combines current statuses with code, title and description; keeps lifecycle boundaries
+ok 9 - promotion search combines current statuses with code, title and description; keeps lifecycle boundaries
+  ---
+  duration_ms: 0.509792
+  type: 'test'
+  ...
+# Subtest: footer resolves canonical URLs before choosing brand icons and removes duplicate destinations
+ok 10 - footer resolves canonical URLs before choosing brand icons and removes duplicate destinations
+  ---
+  duration_ms: 0.400875
+  type: 'test'
+  ...
+# Subtest: rendered filter markup uses one shared row, visible labels and collapsed advanced controls
+ok 11 - rendered filter markup uses one shared row, visible labels and collapsed advanced controls
+  ---
+  duration_ms: 0.487625
+  type: 'test'
+  ...
+# Subtest: public homepage is an anonymous data-backed route with loading, empty and error states
+ok 12 - public homepage is an anonymous data-backed route with loading, empty and error states
+  ---
+  duration_ms: 0.385125
+  type: 'test'
+  ...
+# Subtest: hero, featured businesses and rules render in the body while official channels render in the shared footer
+ok 13 - hero, featured businesses and rules render in the body while official channels render in the shared footer
+  ---
+  duration_ms: 0.125583
+  type: 'test'
+  ...
+# Subtest: public layout preserves service routes while homepage body stays focused
+ok 14 - public layout preserves service routes while homepage body stays focused
+  ---
+  duration_ms: 0.118458
+  type: 'test'
+  ...
+# Subtest: Admin editor provides content controls and featured-business CRUD
+ok 15 - Admin editor provides content controls and featured-business CRUD
+  ---
+  duration_ms: 0.101542
+  type: 'test'
+  ...
+# Subtest: homepage permission protects route, rows and mutation RPCs
+ok 16 - homepage permission protects route, rows and mutation RPCs
+  ---
+  duration_ms: 0.165541
+  type: 'test'
+  ...
+# Subtest: homepage layout has desktop and mobile grids without fixed viewport width
+ok 17 - homepage layout has desktop and mobile grids without fixed viewport width
+  ---
+  duration_ms: 0.515625
+  type: 'test'
+  ...
+# Subtest: business log mode is off by default and technical hints only render when explicitly enabled
+ok 18 - business log mode is off by default and technical hints only render when explicitly enabled
+  ---
+  duration_ms: 0.387916
+  type: 'test'
+  ...
+# Subtest: four-column activity UI keeps business summary before collapsed raw technical data
+ok 19 - four-column activity UI keeps business summary before collapsed raw technical data
+  ---
+  duration_ms: 0.19425
+  type: 'test'
+  ...
+# Subtest: status read models use only the narrow warning-days helper and retain private settings
+ok 20 - status read models use only the narrow warning-days helper and retain private settings
+  ---
+  duration_ms: 0.428167
+  type: 'test'
+  ...
+# Subtest: Kiosk list exposes only real business states with required semantics and sorting
+ok 21 - Kiosk list exposes only real business states with required semantics and sorting
+  ---
+  duration_ms: 0.165917
+  type: 'test'
+  ...
+# Subtest: admin history screens use runtime Vietnam year-to-date values and shared date fields
+ok 22 - admin history screens use runtime Vietnam year-to-date values and shared date fields
+  ---
+  duration_ms: 0.078292
+  type: 'test'
+  ...
+# Subtest: Expense workspace uses one date range for expense, revenue and net profit
+ok 23 - Expense workspace uses one date range for expense, revenue and net profit
+  ---
+  duration_ms: 0.053042
+  type: 'test'
+  ...
+# Subtest: managed expense categories support create rename archive and preserve historical FK rows
+ok 24 - managed expense categories support create rename archive and preserve historical FK rows
+  ---
+  duration_ms: 0.12225
+  type: 'test'
+  ...
+# Subtest: default Business Logs exclude mirrored audit rows while technical history remains available
+ok 25 - default Business Logs exclude mirrored audit rows while technical history remains available
+  ---
+  duration_ms: 0.086333
+  type: 'test'
+  ...
+# Subtest: Settings is the single sidebar workspace and reuses the canonical Homepage editor
+ok 26 - Settings is the single sidebar workspace and reuses the canonical Homepage editor
+  ---
+  duration_ms: 0.10875
+  type: 'test'
+  ...
+# Subtest: public footer uses local branded assets, removes duplicate destinations and has compact empty UI
+ok 27 - public footer uses local branded assets, removes duplicate destinations and has compact empty UI
+  ---
+  duration_ms: 0.078083
+  type: 'test'
+  ...
+1..27
+# tests 27
+# suites 0
+# pass 27
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 71.964042

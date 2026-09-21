@@ -4,6 +4,16 @@ import { requireSupabaseClient, runQuery } from './BaseService.js';
 const DEFAULT_PAYMENT_METHOD = 'transfer';
 
 export const RegistrationService = {
+  async retryPayos({ requestIds, phone, promotionCode = null }) {
+    const response = await fetch('/api/payos/create-registration-payment', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestIds, phone, promotionCode,
+        returnUrl: buildPublicRouteUrl('#/register'), cancelUrl: buildPublicRouteUrl('#/register') }),
+    });
+    const data = await safeJson(response);
+    if (!response.ok || data?.success === false) throw new Error(data?.message || 'Không tạo lại được thanh toán.');
+    return { data };
+  },
   calculatePreview(businessType, { months = 1, discount = 0 } = {}) {
     return buildRegistrationPreview(businessType, { months, discount });
   },

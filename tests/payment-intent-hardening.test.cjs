@@ -22,7 +22,7 @@ test('public renewal reuses one pending payment intent with a server-authoritati
   assert.match(sql, /where payment_intent_key=intent_key and payment_status='pending'/);
   assert.match(sql, /package_record\.price_per_month\*months_input/);
   const endpoint = await readFile(path.join(root, 'api/public/renew-kiosk.js'), 'utf8');
-  assert.match(endpoint, /readActiveOrder\(payment\.id\)/);
+  assert.match(endpoint, /prepareCheckoutRetry\(payment\.id\)/);
   assert.match(endpoint, /Bạn đang có một mã thanh toán còn hiệu lực/);
 });
 

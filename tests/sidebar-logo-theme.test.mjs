@@ -55,7 +55,7 @@ test('public, sidebar and mobile header logos have separate responsive sizing wi
 
 test('stylesheet cache key changes with the corrected logo layout', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(html, /app\.css\?v=20260830-logo-transparent/);
+  assert.match(html, /app\.css\?v=20260914-homepage/);
 });
 
 test('theme switching updates mounted logos immediately without re-render or reload', () => {

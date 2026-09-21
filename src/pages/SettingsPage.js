@@ -3,15 +3,9 @@ import { ConnectionNotice } from '../components/ConnectionNotice.js';
 import { settingsService } from '../services/SettingsService.js';
 import { Toast } from '../components/Toast.js';
 import { escapeHtml } from '../utils/html.js';
+import { HomepageContentAdmin, mountHomepageContentAdmin } from './HomepageContentPage.js';
 
 const fields = [
-  { key: 'official_group_name', label: 'Tên cộng đồng', required: true, help: 'Tên hiển thị trên các trang công khai.' },
-  { key: 'group_url', label: 'URL nhóm chính', type: 'url' },
-  { key: 'sub_group_url', label: 'URL nhóm cộng đồng / nhóm phụ', type: 'url' },
-  { key: 'recruitment_group_url', label: 'URL nhóm tuyển dụng', type: 'url' },
-  { key: 'fanpage_url', label: 'URL fanpage chính thức', type: 'url' },
-  { key: 'zalo_url', label: 'Zalo hỗ trợ', placeholder: 'Số Zalo hoặc URL Zalo' },
-  { key: 'support_phone', label: 'Số điện thoại liên hệ', type: 'tel' },
   { key: 'facebook_group_id', label: 'Mã nhóm Facebook', inputmode: 'numeric', pattern: '[0-9]+', help: 'Dùng để tạo liên kết thành viên Facebook.' },
   { key: 'warning_days', label: 'Cảnh báo trước khi hết hạn', type: 'number', min: '1', max: '365', required: true, help: 'Số ngày dùng chung cho Dashboard, danh sách Kiosk và báo cáo.' },
   { key: 'company_info', label: 'Thông tin đơn vị', type: 'textarea' },
@@ -44,11 +38,8 @@ async function loadAndRenderSettings(outlet) {
 function renderForm() {
   return `
     <form id="settings-form">
-      <section class="settings-section"><div class="settings-section-head"><h3>Thông tin công khai</h3><p>Tên cộng đồng và các kênh liên hệ chính thức.</p></div>
-      <div class="form-grid">${fields.slice(0, 8).map(renderSettingInput).join('')}</div></section>
-
       <section class="settings-section"><div class="settings-section-head"><h3>Vận hành</h3><p>Cảnh báo hết hạn và thông tin quản trị.</p></div>
-      <div class="form-grid">${fields.slice(8).map(renderSettingInput).join('')}</div></section>
+      <div class="form-grid">${fields.map(renderSettingInput).join('')}</div></section>
 
       <label class="form-group">
         <span>Lý do thay đổi</span>
@@ -115,17 +106,30 @@ export function SettingsPage() {
   return `
     ${PageHeader({
       title: 'Cài đặt',
-      description: 'Quản lý thông tin tổ chức, liên kết liên hệ và thời gian cảnh báo dùng chung.',
+      description: 'Quản lý cấu hình vận hành và nội dung Website công khai tại một nơi.',
+      actions: '<a class="btn-secondary" href="#/home" target="_blank" rel="noopener">Xem Website</a>',
     })}
     ${ConnectionNotice()}
     <div class="settings-page">
-      <section class="admin-card">
+      <div class="settings-workspace-tabs" role="tablist" aria-label="Nhóm cài đặt">
+        <button class="active" type="button" data-settings-workspace-tab="operations">Vận hành</button>
+        <button type="button" data-settings-workspace-tab="website">Website công khai</button>
+      </div>
+      <section class="admin-card" data-settings-workspace-panel="operations">
         <div id="settings-form-container"><p>Đang tải cài đặt...</p></div>
       </section>
+      <section class="hidden" data-settings-workspace-panel="website">${HomepageContentAdmin()}</section>
     </div>
   `;
 }
 
 SettingsPage.afterRender = ({ outlet }) => {
   loadAndRenderSettings(outlet);
+  let websiteLoaded = false;
+  outlet.querySelectorAll('[data-settings-workspace-tab]').forEach((button) => button.addEventListener('click', () => {
+    const active = button.dataset.settingsWorkspaceTab;
+    outlet.querySelectorAll('[data-settings-workspace-tab]').forEach((item) => item.classList.toggle('active', item === button));
+    outlet.querySelectorAll('[data-settings-workspace-panel]').forEach((panel) => panel.classList.toggle('hidden', panel.dataset.settingsWorkspacePanel !== active));
+    if (active === 'website' && !websiteLoaded) { websiteLoaded = true; mountHomepageContentAdmin(); }
+  }));
 };

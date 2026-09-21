@@ -25,16 +25,16 @@ const advancedIds = [
 test('Reports renders three primary filters and nine advanced filters without losing fields', async () => {
   const { ReportsPage } = await import(pathToFileURL(path.join(root, 'src/pages/ReportsPage.js')).href);
   const markup = ReportsPage();
-  const primary = markup.match(/class="report-filter-primary">([\s\S]*?)<\/div>\s*<details/)?.[1] || '';
-  const advanced = markup.match(/class="report-filter-advanced-grid">([\s\S]*?)<\/div>\s*<\/details>/)?.[1] || '';
+  const primary = markup.split('id="report-advanced-filters"')[0];
+  const advanced = markup.split('id="report-advanced-filters"')[1];
 
   for (const id of primaryIds) assert.match(primary, new RegExp(`id="${id}"`));
   for (const id of advancedIds) assert.match(advanced, new RegExp(`id="${id}"`));
   for (const id of [...primaryIds, ...advancedIds]) {
     assert.equal((markup.match(new RegExp(`id="${id}"`, 'g')) || []).length, 1);
   }
-  assert.match(markup, /<details class="report-advanced-filters"/);
-  assert.match(markup, /Bộ lọc nâng cao/);
+  assert.match(markup, /id="report-advanced-filters" hidden/);
+  assert.match(markup, /Nâng cao/);
   assert.match(markup, /Tìm khách hàng, Kiosk, trạng thái hoặc số tiền/);
 });
 
@@ -56,29 +56,28 @@ test('existing filter state, refresh, export, and tab behavior remain bound', ()
   assert.doesNotMatch(reports, /report-(?:apply|reset)-button/);
 });
 
-test('advanced filters auto-open from existing frontend state only', () => {
-  assert.match(reports, /hasActiveAdvancedFilters\(\) \? 'open' : ''/);
+test('advanced filters open only on explicit disclosure without dropping stored filter values', () => {
+  assert.match(reports, /id="report-advanced-filters" hidden/);
+  assert.match(reports, /panel.hidden = !panel.hidden/);
+  assert.match(reports, /setAttribute\('aria-expanded', String\(!panel.hidden\)\)/);
   for (const key of ['customerId', 'kioskId', 'categoryId', 'businessTypeId', 'paymentStatus', 'kioskStatus']) {
-    assert.match(reports, new RegExp(`state\\.filters\\.${key}`));
+    assert.ok(reports.includes(`state.filters.${key}`));
   }
-  assert.match(reports, /state\.sortBy/);
-  assert.match(reports, /state\.sortDirection !== 'desc'/);
-  assert.match(reports, /state\.pageSize !== 50/);
 });
 
-test('all report tabs and current-page CSV export remain present', () => {
-  for (const label of ['Tổng quan', 'Doanh thu', 'Kiosk', 'Khách hàng', 'Đối soát', 'Danh mục / Loại hình']) {
+test('all report tabs and full-filter CSV export remain present', () => {
+  for (const label of ['Tổng quan', 'Doanh thu', 'Kiosk', 'Khách hàng', 'Cần kiểm tra', 'Danh mục / Loại hình']) {
     assert.match(reports, new RegExp(label.replace('/', '\\/')));
   }
-  assert.match(reports, /Xuất CSV \(trang hiện tại\)/);
+  assert.match(reports, /Xuất CSV \(toàn bộ bộ lọc\)/);
+  assert.match(reports, /ReportService\.exportReportData/);
   assert.match(reports, /data-report-tab=/);
 });
 
-test('Reports filters use responsive non-overflowing grids and compact controls', () => {
-  assert.match(css, /\.report-filter-primary\{display:grid;grid-template-columns:/);
-  assert.match(css, /\.report-filter-advanced-grid\{[\s\S]*grid-template-columns:repeat\(12,minmax\(0,1fr\)\)/);
-  assert.match(css, /\.report-filter-panel \.filter-field\{[\s\S]*min-width:0/);
-  assert.match(css, /height:42px/);
-  assert.match(css, /@media\(max-width:1100px\)[\s\S]*report-filter-primary[\s\S]*repeat\(2,minmax\(0,1fr\)\)/);
-  assert.match(css, /@media\(max-width:640px\)[\s\S]*report-filter-primary,[\s\S]*grid-template-columns:1fr/);
+test('Reports uses the shared responsive FilterBar, with compact dates and a wider search', () => {
+  assert.match(reports, /FilterBar\(\{/);
+  assert.match(reports, /filter-field filter-field-search/);
+  assert.match(css, /\.admin-filter-row/);
+  assert.match(css, /\.admin-filter-row > \.filter-field-date/);
+  assert.match(css, /\.reports-filter-bar \.admin-filter-advanced \.filter-field/);
 });

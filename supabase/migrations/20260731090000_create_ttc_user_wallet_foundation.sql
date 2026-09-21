@@ -1,10 +1,8 @@
 create schema if not exists private;
-
 create table if not exists public.role_permissions (
   role text primary key,
   permissions text[] not null default '{}'::text[]
 );
-
 create table if not exists public.user_profiles (
   user_id uuid primary key references auth.users(id) on delete restrict,
   display_name text,
@@ -18,7 +16,6 @@ create table if not exists public.user_profiles (
   constraint user_profiles_status_check
     check (status in ('active', 'locked', 'pending_profile'))
 );
-
 create table if not exists public.user_facebook_accounts (
   id bigint primary key generated always as identity,
   user_id uuid not null references public.user_profiles(user_id) on delete restrict,
@@ -38,7 +35,6 @@ create table if not exists public.user_facebook_accounts (
   constraint user_facebook_accounts_status_check
     check (facebook_id_status in ('resolved', 'pending', 'failed', 'manual_verified'))
 );
-
 create table if not exists public.customer_user_links (
   id bigint primary key generated always as identity,
   user_id uuid not null references public.user_profiles(user_id) on delete restrict,
@@ -58,7 +54,6 @@ create table if not exists public.customer_user_links (
   constraint customer_user_links_status_check
     check (status in ('pending', 'approved', 'rejected', 'revoked'))
 );
-
 create table if not exists public.wallets (
   user_id uuid primary key references public.user_profiles(user_id) on delete restrict,
   balance numeric(14, 2) not null default 0,
@@ -69,7 +64,6 @@ create table if not exists public.wallets (
   constraint wallets_balance_non_negative_check check (balance >= 0),
   constraint wallets_totals_non_negative_check check (total_earned >= 0 and total_spent >= 0)
 );
-
 create table if not exists public.wallet_ledger (
   id bigint primary key generated always as identity,
   wallet_user_id uuid not null references public.wallets(user_id) on delete restrict,
@@ -100,7 +94,6 @@ create table if not exists public.wallet_ledger (
       'refund_kiosk'
     ))
 );
-
 create table if not exists public.ttc_interaction_types (
   code text primary key,
   label text not null,
@@ -120,7 +113,6 @@ create table if not exists public.ttc_interaction_types (
   constraint ttc_interaction_types_quantity_check
     check (min_quantity > 0 and max_quantity >= min_quantity)
 );
-
 create table if not exists public.ttc_campaigns (
   id bigint primary key generated always as identity,
   owner_user_id uuid not null references public.user_profiles(user_id) on delete restrict,
@@ -158,7 +150,6 @@ create table if not exists public.ttc_campaigns (
   constraint ttc_campaigns_target_facebook_id_digits_check
     check (target_facebook_id is null or target_facebook_id ~ '^[0-9]+$')
 );
-
 create table if not exists public.ttc_tasks (
   id bigint primary key generated always as identity,
   campaign_id bigint not null references public.ttc_campaigns(id) on delete restrict,
@@ -184,7 +175,6 @@ create table if not exists public.ttc_tasks (
   constraint ttc_tasks_status_check
     check (status in ('available', 'assigned', 'submitted', 'verifying', 'completed', 'rejected', 'expired'))
 );
-
 create table if not exists public.ttc_task_check_logs (
   id bigint primary key generated always as identity,
   task_id bigint not null references public.ttc_tasks(id) on delete restrict,
@@ -202,7 +192,6 @@ create table if not exists public.ttc_task_check_logs (
   constraint ttc_task_check_logs_result_check
     check (result in ('pending', 'success', 'failed', 'manual_review'))
 );
-
 create index if not exists user_profiles_status_idx
   on public.user_profiles(status);
 create unique index if not exists user_facebook_accounts_facebook_id_key
@@ -245,7 +234,6 @@ create index if not exists ttc_task_check_logs_task_created_idx
   on public.ttc_task_check_logs(task_id, created_at desc);
 create index if not exists ttc_task_check_logs_campaign_created_idx
   on public.ttc_task_check_logs(campaign_id, created_at desc);
-
 insert into public.ttc_interaction_types(code, label, unit_cost, worker_reward, min_quantity, max_quantity, hold_seconds)
 values
   ('like', 'Like', 1, 1, 1, 1000, 0),
@@ -255,7 +243,6 @@ values
   ('follow', 'Follow', 2, 1, 1, 500, 0),
   ('join_group', 'Join Group', 3, 2, 1, 300, 0)
 on conflict (code) do nothing;
-
 create or replace function private.touch_updated_at()
 returns trigger
 language plpgsql
@@ -266,42 +253,34 @@ begin
   return new;
 end;
 $function$;
-
 drop trigger if exists user_profiles_touch_updated_at on public.user_profiles;
 create trigger user_profiles_touch_updated_at
 before update on public.user_profiles
 for each row execute function private.touch_updated_at();
-
 drop trigger if exists user_facebook_accounts_touch_updated_at on public.user_facebook_accounts;
 create trigger user_facebook_accounts_touch_updated_at
 before update on public.user_facebook_accounts
 for each row execute function private.touch_updated_at();
-
 drop trigger if exists customer_user_links_touch_updated_at on public.customer_user_links;
 create trigger customer_user_links_touch_updated_at
 before update on public.customer_user_links
 for each row execute function private.touch_updated_at();
-
 drop trigger if exists wallets_touch_updated_at on public.wallets;
 create trigger wallets_touch_updated_at
 before update on public.wallets
 for each row execute function private.touch_updated_at();
-
 drop trigger if exists ttc_interaction_types_touch_updated_at on public.ttc_interaction_types;
 create trigger ttc_interaction_types_touch_updated_at
 before update on public.ttc_interaction_types
 for each row execute function private.touch_updated_at();
-
 drop trigger if exists ttc_campaigns_touch_updated_at on public.ttc_campaigns;
 create trigger ttc_campaigns_touch_updated_at
 before update on public.ttc_campaigns
 for each row execute function private.touch_updated_at();
-
 drop trigger if exists ttc_tasks_touch_updated_at on public.ttc_tasks;
 create trigger ttc_tasks_touch_updated_at
 before update on public.ttc_tasks
 for each row execute function private.touch_updated_at();
-
 alter table public.user_profiles enable row level security;
 alter table public.user_facebook_accounts enable row level security;
 alter table public.customer_user_links enable row level security;
@@ -311,7 +290,6 @@ alter table public.ttc_interaction_types enable row level security;
 alter table public.ttc_campaigns enable row level security;
 alter table public.ttc_tasks enable row level security;
 alter table public.ttc_task_check_logs enable row level security;
-
 create or replace function public.has_active_staff_permission(permission_input text default null)
 returns boolean
 language sql
@@ -338,7 +316,6 @@ as $function$
       )
   );
 $function$;
-
 create or replace function private.assert_ttc_staff(permission_input text default 'admin-ttc')
 returns public.user_roles
 language plpgsql
@@ -375,7 +352,6 @@ begin
   return actor;
 end;
 $function$;
-
 create or replace function private.ensure_wallet(wallet_user_id_input uuid)
 returns public.wallets
 language plpgsql
@@ -402,7 +378,6 @@ begin
   return wallet_record;
 end;
 $function$;
-
 create or replace function private.write_ttc_audit(
   module_input text,
   action_input text,
@@ -450,7 +425,6 @@ begin
   );
 end;
 $function$;
-
 create or replace function private.post_wallet_ledger(
   wallet_user_id_input uuid,
   amount_input numeric,
@@ -589,7 +563,6 @@ begin
   );
 end;
 $function$;
-
 create or replace function public.get_current_app_profile()
 returns jsonb
 language plpgsql
@@ -650,7 +623,6 @@ begin
   );
 end;
 $function$;
-
 create or replace function public.get_my_wallet()
 returns jsonb
 language plpgsql
@@ -678,7 +650,6 @@ begin
   return to_jsonb(wallet_record);
 end;
 $function$;
-
 create or replace function public.get_my_wallet_ledger(
   page_number integer default 1,
   page_size integer default 25
@@ -730,7 +701,6 @@ begin
   );
 end;
 $function$;
-
 create or replace function public.admin_post_wallet_ledger(
   wallet_user_id_input uuid,
   amount_input numeric,
@@ -773,7 +743,6 @@ begin
   );
 end;
 $function$;
-
 create or replace function public.create_ttc_campaign(
   interaction_type_input text,
   target_url_input text,
@@ -912,7 +881,6 @@ begin
   );
 end;
 $function$;
-
 create or replace function public.claim_ttc_task(
   campaign_id_input bigint,
   facebook_account_id_input bigint,
@@ -1027,7 +995,6 @@ begin
   return jsonb_build_object('task', to_jsonb(task_record), 'already_processed', false);
 end;
 $function$;
-
 create or replace function public.submit_ttc_task(
   task_id_input bigint,
   evidence_input jsonb default '{}'::jsonb
@@ -1071,7 +1038,6 @@ begin
   return jsonb_build_object('task', to_jsonb(task_record), 'credited', false);
 end;
 $function$;
-
 create or replace function public.verify_ttc_task(
   task_id_input bigint,
   action_input text,
@@ -1191,7 +1157,6 @@ begin
   );
 end;
 $function$;
-
 create or replace function public.cancel_ttc_campaign(
   campaign_id_input bigint,
   reason_input text,
@@ -1298,14 +1263,12 @@ begin
   );
 end;
 $function$;
-
 drop policy if exists user_profiles_select_own_or_staff on public.user_profiles;
 create policy user_profiles_select_own_or_staff
 on public.user_profiles
 for select
 to authenticated
 using (user_id = auth.uid() or public.has_active_staff_permission('admin-ttc'));
-
 drop policy if exists user_profiles_update_own on public.user_profiles;
 create policy user_profiles_update_own
 on public.user_profiles
@@ -1313,49 +1276,42 @@ for update
 to authenticated
 using (user_id = auth.uid() and status <> 'locked')
 with check (user_id = auth.uid() and status <> 'locked');
-
 drop policy if exists user_facebook_accounts_select_own_or_staff on public.user_facebook_accounts;
 create policy user_facebook_accounts_select_own_or_staff
 on public.user_facebook_accounts
 for select
 to authenticated
 using (user_id = auth.uid() or public.has_active_staff_permission('admin-ttc'));
-
 drop policy if exists customer_user_links_select_own_or_staff on public.customer_user_links;
 create policy customer_user_links_select_own_or_staff
 on public.customer_user_links
 for select
 to authenticated
 using (user_id = auth.uid() or public.has_active_staff_permission('admin-ttc'));
-
 drop policy if exists wallets_select_own_or_staff on public.wallets;
 create policy wallets_select_own_or_staff
 on public.wallets
 for select
 to authenticated
 using (user_id = auth.uid() or public.has_active_staff_permission('admin-ttc'));
-
 drop policy if exists wallet_ledger_select_own_or_staff on public.wallet_ledger;
 create policy wallet_ledger_select_own_or_staff
 on public.wallet_ledger
 for select
 to authenticated
 using (wallet_user_id = auth.uid() or public.has_active_staff_permission('admin-ttc'));
-
 drop policy if exists ttc_interaction_types_select_authenticated on public.ttc_interaction_types;
 create policy ttc_interaction_types_select_authenticated
 on public.ttc_interaction_types
 for select
 to authenticated
 using (true);
-
 drop policy if exists ttc_campaigns_select_own_or_staff on public.ttc_campaigns;
 create policy ttc_campaigns_select_own_or_staff
 on public.ttc_campaigns
 for select
 to authenticated
 using (owner_user_id = auth.uid() or public.has_active_staff_permission('admin-ttc'));
-
 drop policy if exists ttc_tasks_select_related_or_staff on public.ttc_tasks;
 create policy ttc_tasks_select_related_or_staff
 on public.ttc_tasks
@@ -1371,7 +1327,6 @@ using (
       and c.owner_user_id = auth.uid()
   )
 );
-
 drop policy if exists ttc_task_check_logs_select_related_or_staff on public.ttc_task_check_logs;
 create policy ttc_task_check_logs_select_related_or_staff
 on public.ttc_task_check_logs
@@ -1387,7 +1342,6 @@ using (
       and (t.assignee_user_id = auth.uid() or c.owner_user_id = auth.uid())
   )
 );
-
 revoke all on table public.user_profiles from public, anon;
 revoke all on table public.user_facebook_accounts from public, anon;
 revoke all on table public.customer_user_links from public, anon;
@@ -1397,7 +1351,6 @@ revoke all on table public.ttc_interaction_types from public, anon;
 revoke all on table public.ttc_campaigns from public, anon;
 revoke all on table public.ttc_tasks from public, anon;
 revoke all on table public.ttc_task_check_logs from public, anon;
-
 grant select on table public.user_profiles to authenticated;
 grant select on table public.user_facebook_accounts to authenticated;
 grant select on table public.customer_user_links to authenticated;
@@ -1407,7 +1360,6 @@ grant select on table public.ttc_interaction_types to authenticated;
 grant select on table public.ttc_campaigns to authenticated;
 grant select on table public.ttc_tasks to authenticated;
 grant select on table public.ttc_task_check_logs to authenticated;
-
 revoke all on function public.has_active_staff_permission(text) from public, anon, authenticated;
 grant execute on function public.has_active_staff_permission(text) to authenticated;
 revoke all on function public.get_current_app_profile() from public, anon, authenticated;
@@ -1428,5 +1380,4 @@ revoke all on function public.verify_ttc_task(bigint, text, text, jsonb) from pu
 grant execute on function public.verify_ttc_task(bigint, text, text, jsonb) to authenticated;
 revoke all on function public.cancel_ttc_campaign(bigint, text, text) from public, anon, authenticated;
 grant execute on function public.cancel_ttc_campaign(bigint, text, text) to authenticated;
-
 notify pgrst, 'reload schema';

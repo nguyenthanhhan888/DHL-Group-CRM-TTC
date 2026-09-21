@@ -5,7 +5,6 @@
 -- payments.kiosk_id as the payment's only kiosk. Modern confirmation functions
 -- and synchronization triggers fully replace it for single-kiosk payments.
 drop trigger if exists trg_payment_success on public.payments;
-
 create or replace function private.recalculate_kiosk_payment_total(kiosk_id_input bigint)
 returns void
 language sql
@@ -46,7 +45,6 @@ as $function$
   from totals
   where k.id = kiosk_id_input;
 $function$;
-
 create or replace function private.sync_completed_payment_totals()
 returns trigger
 language plpgsql
@@ -94,7 +92,6 @@ begin
   return old;
 end;
 $function$;
-
 create or replace function private.sync_completed_renewal_kiosk_period()
 returns trigger
 language plpgsql
@@ -113,7 +110,6 @@ begin
   return null;
 end;
 $function$;
-
 create or replace function private.sync_registration_period_from_completed_payment()
 returns trigger
 language plpgsql
@@ -134,7 +130,6 @@ begin
   return new;
 end;
 $function$;
-
 revoke all on function private.recalculate_kiosk_payment_total(bigint) from public;
 revoke all on function private.sync_completed_payment_totals() from public;
 revoke all on function private.sync_completed_renewal_kiosk_period() from public;

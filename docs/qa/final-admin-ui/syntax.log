@@ -1,0 +1,11 @@
+PASS src/components/FilterBar.js
+PASS src/components/PublicLayout.js
+PASS src/pages/ExpensesPage.js
+PASS src/pages/LogsPage.js
+PASS src/pages/PromotionsPage.js
+PASS src/utils/businessEventPresentation.js
+PASS tests/final-admin-presentation.test.mjs
+PASS tests/qa-round2-stabilization.test.mjs
+PASS tests/homepage-redesign.test.cjs
+PASS tests/visual/final-admin-ui-fixture.js
+PASS tests/visual/run-final-admin-ui.mjs

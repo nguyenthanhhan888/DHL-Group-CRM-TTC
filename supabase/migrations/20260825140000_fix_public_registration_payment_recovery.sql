@@ -3,7 +3,6 @@
 alter table public.registration_requests drop constraint registration_requests_status_check;
 alter table public.registration_requests add constraint registration_requests_status_check
   check (status in ('awaiting_payment', 'pending', 'approved', 'rejected'));
-
 -- Reclassify only untouched modern public requests. Legacy/manual requests
 -- retain request_type=legacy and remain Admin-review pending.
 update public.registration_requests
@@ -13,7 +12,6 @@ where status = 'pending'
   and coalesce(metadata->>'request_type', '') <> 'legacy'
   and customer_id is null and kiosk_id is null
   and registration_batch_id is null and payment_id is null;
-
 -- Explicit authoritative base implementation. This preserves the complete
 -- pre-promotion batch contract and initializes every Promotion Engine V1
 -- NOT NULL item column at materialization time.
@@ -167,7 +165,6 @@ end;
 $function$;
 revoke all on function private.prepare_registration_batch_for_payos(bigint[], text) from public, anon, authenticated;
 grant execute on function private.prepare_registration_batch_for_payos(bigint[], text) to service_role;
-
 -- Duplicate protection covers both explicit workflow states.
 create or replace function private.prevent_duplicate_pending_registration()
 returns trigger language plpgsql security definer set search_path = '' as $function$
@@ -188,7 +185,6 @@ begin
 end;
 $function$;
 revoke all on function private.prevent_duplicate_pending_registration() from public, anon, authenticated;
-
 -- Explicit modern public writer. Legacy registration inserts its own rows and
 -- therefore retains pending/Admin-review behavior.
 create or replace function public.submit_registration_request(
@@ -232,7 +228,6 @@ begin
   return request_id;
 end;
 $function$;
-
 -- Explicit public orchestrator with exact-match request reuse.
 create or replace function public.submit_public_registration(
   customer_input jsonb, kiosks_input jsonb, bill_input jsonb default null
@@ -314,14 +309,12 @@ begin
     'bill_received', bill_input is not null and bill_input <> 'null'::jsonb);
 end;
 $function$;
-
 revoke all on function public.submit_public_registration(jsonb, jsonb, jsonb) from public, anon, authenticated;
 grant execute on function public.submit_public_registration(jsonb, jsonb, jsonb) to anon, authenticated;
 revoke all on function public.submit_registration_request(text, text, text, text, text, text, bigint, bigint, integer, numeric, text)
   from public, anon, authenticated;
 grant execute on function public.submit_registration_request(text, text, text, text, text, text, bigint, bigint, integer, numeric, text)
   to anon, authenticated;
-
 -- Release only an unmaterialized active reservation after PayOS creation or
 -- local recording fails. Paid/completed records can never match this guard.
 create or replace function public.fail_registration_payos_order(

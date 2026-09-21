@@ -30,7 +30,6 @@ as $function$
     updated_at = pg_catalog.now()
   where c.id = customer_id_input;
 $function$;
-
 create or replace function private.recalculate_kiosk_payment_total(kiosk_id_input bigint)
 returns void
 language sql
@@ -62,7 +61,6 @@ as $function$
     )
   where k.id = kiosk_id_input;
 $function$;
-
 create or replace function private.sync_completed_payment_totals()
 returns trigger
 language plpgsql
@@ -92,14 +90,12 @@ begin
   return old;
 end;
 $function$;
-
 drop trigger if exists sync_customer_payment_totals_trigger on public.payments;
 drop trigger if exists sync_completed_payment_totals_trigger on public.payments;
 create trigger sync_completed_payment_totals_trigger
 after insert or update or delete on public.payments
 for each row
 execute function private.sync_completed_payment_totals();
-
 create or replace function public.review_public_legacy_registration_request(
   request_id_input bigint,
   action_input text,
@@ -426,12 +422,10 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.review_public_legacy_registration_request(bigint, text, text)
   from public, anon, authenticated;
 grant execute on function public.review_public_legacy_registration_request(bigint, text, text)
   to authenticated;
-
 do $backfill$
 declare
   kiosk_record record;
@@ -533,7 +527,6 @@ begin
   where c.id = payment_totals.id;
 end;
 $backfill$;
-
 revoke all on function private.recalculate_customer_payment_total(bigint) from public;
 revoke all on function private.recalculate_kiosk_payment_total(bigint) from public;
 revoke all on function private.sync_completed_payment_totals() from public;

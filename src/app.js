@@ -2,13 +2,14 @@ import { Modal } from './components/Modal.js';
 import { Toast } from './components/Toast.js';
 import { NAV_SECTIONS, PAGE_TITLES } from './constants/navigation.js';
 import { PERMISSIONS, canAccessPermission, canAccessRoute } from './constants/permissions.js';
-import { AppLayout } from './layouts/AppLayout.js';
+import { AppLayout, bindSidebarPresentation, syncNavigationGroups } from './layouts/AppLayout.js';
 import { createRouter } from './router/index.js';
 import { getSupabaseStatus } from './supabase/client.js';
 import { AuthService } from './services/AuthService.js';
 import { settingsService } from './services/SettingsService.js';
 import { WalletService } from './services/WalletService.js';
 import { AdminNotificationService } from './services/AdminNotificationService.js';
+import { HomepageContentService } from './services/HomepageContentService.js';
 import { formatToday } from './utils/date.js';
 import { escapeHtml } from './utils/html.js';
 import { renderIcon } from './utils/icons.js';
@@ -28,8 +29,11 @@ import { PaymentsPage } from './pages/PaymentsPage.js';
 import { PaymentDetailPage } from './pages/PaymentDetailPage.js';
 import { RegisterPage } from './pages/RegisterPage.js';
 import { ReportsPage } from './pages/ReportsPage.js';
+import { ExpensesPage } from './pages/ExpensesPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
+import { HomepageContentPage } from './pages/HomepageContentPage.js';
 import { LoginPage } from './pages/LoginPage.js';
+import { AccountRegisterPage } from './pages/AccountRegisterPage.js';
 import { RegistrationRequestsPage } from './pages/RegistrationRequestsPage.js';
 import { StaffPage } from './pages/StaffPage.js';
 import { UserHomePage } from './pages/UserHomePage.js';
@@ -37,7 +41,7 @@ import { TtcPage } from './pages/TtcPage.js';
 import { AdminTtcPage } from './pages/AdminTtcPage.js';
 import { HomePage } from './pages/HomePage.js';
 import { LookupPage } from './pages/LookupPage.js';
-import { bindPublicLayout, PublicLayout } from './components/PublicLayout.js';
+import { applyPublicHomepageContent, bindPublicLayout, PublicLayout } from './components/PublicLayout.js';
 
 const routes = {
   dashboard: DashboardPage,
@@ -52,7 +56,9 @@ const routes = {
   'business-types': BusinessTypesPage,
   logs: LogsPage,
   settings: SettingsPage,
+  'homepage-content': HomepageContentPage,
   reports: ReportsPage,
+  expenses: ExpensesPage,
   'registration-requests': RegistrationRequestsPage,
   'user-management': StaffPage,
   staff: StaffPage,
@@ -83,7 +89,7 @@ const routes = {
   'admin-ttc-logs': AdminTtcPage,
 };
 
-const PUBLIC_ROUTES = new Set(['home', 'register', 'legacy-registration', 'lookup', 'login']);
+const PUBLIC_ROUTES = new Set(['home', 'register', 'legacy-registration', 'lookup', 'login', 'signup']);
 const HIDDEN_WEB_ROUTES = new Set();
 const THEME_STORAGE_KEY = 'dhlThemePreference';
 
@@ -167,6 +173,7 @@ function renderAuthenticatedApp(root, profile) {
   const navSections = getNavSections();
 
   root.innerHTML = AppLayout({ navSections, user: profile });
+  bindSidebarPresentation();
   Modal.mount();
   Toast.mount();
 
@@ -182,7 +189,8 @@ function renderAuthenticatedApp(root, profile) {
   bindThemeToggle();
   updateSupabaseBadge(supabaseBadge);
   refreshTopbarWallet(profile);
-  if (canAccessPermission(profile, PERMISSIONS.NOTIFICATIONS)) refreshAdminNotifications();
+  if (canAccessPermission(profile, PERMISSIONS.NOTIFICATIONS) || canAccessPermission(profile, PERMISSIONS.REGISTRATION_REQUESTS)) refreshAdminNotifications();
+  window.addEventListener('dhl:actionable-registration-changed', refreshAdminNotifications);
   window.addEventListener('dhl-wallet-updated', (event) => {
     if (!canAccessPermission(profile, PERMISSIONS.WALLET)) return;
     const wallet = event?.detail?.wallet;
@@ -476,22 +484,12 @@ function renderAuthenticatedApp(root, profile) {
 
   menuToggle?.addEventListener('click', () => setSidebarOpen(!sidebar?.classList.contains('open')));
   sidebarOverlay?.addEventListener('click', () => setSidebarOpen(false));
-  const collapsibleNavSections = [...document.querySelectorAll('[data-nav-section-collapsible]')];
-  collapsibleNavSections.forEach((section) => {
-    section.addEventListener('toggle', () => {
-      section.querySelector('[data-nav-section-toggle]')?.setAttribute('aria-expanded', String(section.open));
-      if (!section.open) return;
-      collapsibleNavSections.forEach((otherSection) => {
-        if (otherSection !== section) otherSection.open = false;
-      });
-    });
-  });
   document.addEventListener('click', (event) => {
     if (notificationCenter?.open && !notificationCenter.contains(event.target)) notificationCenter.open = false;
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
+    if (event.key !== 'Escape' || event.defaultPrevented) return;
     if (notificationCenter?.open) {
       notificationCenter.open = false;
       notificationCenter.querySelector('summary')?.focus();
@@ -604,19 +602,18 @@ function filterNavItems(items, profile, canAccess) {
 function isProfileAllowed(profile) {
   if (!profile) return false;
   return profile.status === 'active'
-    && profile.web_access_enabled === true
-    && (profile.is_system_admin === true || (Array.isArray(profile.permissions) && profile.permissions.length > 0));
+    && profile.web_access_enabled === true;
 }
 
 function firstAllowedRoute(profile) {
   const preferred = [
     'dashboard', 'reports', 'customers', 'customer-detail', 'kiosks', 'kiosk-detail',
-    'registration-requests', 'payments', 'payment-detail', 'categories', 'business-types',
+    'registration-requests', 'payments', 'payment-detail', 'expenses', 'categories', 'business-types',
     'ttc', 'admin-ttc-campaigns', 'admin-ttc-announcements', 'admin-ttc-tasks',
     'admin-ttc-wallets', 'admin-ttc-settings', 'admin-ttc-logs', 'admin',
-    'user-management', 'logs', 'settings',
+    'user-management', 'logs', 'settings', 'homepage-content', 'user',
   ];
-  return preferred.find((route) => canAccessRoute(profile, route)) || 'dashboard';
+  return preferred.find((route) => canAccessRoute(profile, route)) || 'user';
 }
 
 function normalizePublicPathRoute() {
@@ -633,10 +630,11 @@ function renderLogin(root, message = '') {
 
 function renderPublicSite(root, requestedRoute = 'home', message = '') {
   const route = PUBLIC_ROUTES.has(requestedRoute) ? requestedRoute : 'home';
-  const pages = { home: HomePage, register: RegisterPage, 'legacy-registration': LegacyRegistrationPage, lookup: LookupPage, login: LoginPage };
+  const pages = { home: HomePage, register: RegisterPage, 'legacy-registration': LegacyRegistrationPage, lookup: LookupPage, login: LoginPage, signup: AccountRegisterPage };
   const page = pages[route];
   root.innerHTML = PublicLayout({ route, content: page({ message }) });
   bindPublicLayout(root);
+  HomepageContentService.getPublic().then(({ content }) => applyPublicHomepageContent(content, root)).catch(() => {});
   Modal.mount();
   Toast.mount();
   settingsService.getPublicSettings().catch(() => {
@@ -667,6 +665,7 @@ function setActiveNavigation(route) {
   const currentFullRoute = window.location.hash.replace(/^#\/?/, '').split('&_ts=')[0] || route;
   const activeRoute = {
     'customer-detail': 'customers',
+    'homepage-content': 'settings',
     'kiosk-detail': 'kiosks',
     'payment-detail': 'payments',
     'payments-mine': 'payments-mine',
@@ -674,11 +673,11 @@ function setActiveNavigation(route) {
     'user-kiosks': 'user-kiosks',
     'user-register-kiosk': 'user-register-kiosk',
     'user-facebook': 'user-facebook',
-    'ttc-earn': 'ttc-earn',
-    'ttc-campaign-create': 'ttc-campaign-create',
-    'ttc-campaigns': 'ttc-campaigns',
-    'ttc-wallet': 'ttc-wallet',
-    'ttc-wallet-history': 'ttc-wallet-history',
+    'ttc-earn': 'ttc',
+    'ttc-campaign-create': 'ttc',
+    'ttc-campaigns': 'ttc',
+    'ttc-wallet': 'ttc',
+    'ttc-wallet-history': 'ttc',
     'admin-ttc-campaigns': 'admin-ttc-campaigns',
     'admin-ttc-announcements': 'admin-ttc-announcements',
     'admin-ttc-tasks': 'admin-ttc-tasks',
@@ -692,7 +691,7 @@ function setActiveNavigation(route) {
   document.querySelectorAll('[data-nav-route]').forEach((link) => {
     const navRoute = link.dataset.navMatchRoute || link.dataset.navRoute;
     const hasQuery = (link.dataset.navRoute || '').includes('?');
-    const active = hasQuery ? link.dataset.navRoute === currentFullRoute : navRoute === activeRoute;
+    const active = hasQuery ? link.dataset.navRoute === currentFullRoute : link.dataset.navRoute === activeRoute || navRoute === activeRoute;
     link.classList.toggle('active', active);
     if (active) {
       link.setAttribute('aria-current', 'page');
@@ -700,21 +699,7 @@ function setActiveNavigation(route) {
       link.removeAttribute('aria-current');
     }
   });
-  document.querySelectorAll('[data-nav-group]').forEach((group) => {
-    const hasActiveChild = Boolean(group.querySelector('.nav-subitem.active'));
-    group.classList.toggle('has-active-child', hasActiveChild);
-    const toggle = group.querySelector('[data-nav-group-toggle]');
-    if (toggle) toggle.setAttribute('aria-expanded', String(hasActiveChild || group.open));
-    if (hasActiveChild) group.open = true;
-  });
-  const collapsibleSections = [...document.querySelectorAll('[data-nav-section-collapsible]')];
-  const activeSection = collapsibleSections.find((section) => section.querySelector('.nav-item.active'));
-  collapsibleSections.forEach((section) => {
-    const hasActiveChild = Boolean(section.querySelector('.nav-item.active'));
-    if (activeSection) section.open = section === activeSection;
-    section.classList.toggle('has-active-child', hasActiveChild);
-    section.querySelector('[data-nav-section-toggle]')?.setAttribute('aria-expanded', String(section.open));
-  });
+  syncNavigationGroups();
 }
 
 function updateSupabaseBadge(element) {

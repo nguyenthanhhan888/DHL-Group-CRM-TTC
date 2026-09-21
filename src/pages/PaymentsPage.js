@@ -5,6 +5,7 @@ import { StatusBadge } from '../components/StatusBadge.js';
 import { bindPagination, Pagination, updatePagination } from '../components/Pagination.js';
 import { bindPayosCopyButtons, PayosResultCard, watchPayosPaymentStatus } from '../components/PayosResultCard.js';
 import { StatCard } from '../components/StatCard.js';
+import { DateRangeFields } from '../components/DateRangeFields.js';
 import { Toast } from '../components/Toast.js';
 import { Toolbar } from '../components/Toolbar.js';
 import { openPaymentEditForm } from '../components/PaymentEditForm.js';
@@ -15,6 +16,7 @@ import { PaymentService } from '../services/PaymentService.js';
 import { bindCurrencyInput, formatCurrency, parseCurrencyInput } from '../utils/currency.js';
 import { debounce } from '../utils/dom.js';
 import { escapeHtml } from '../utils/html.js';
+import { vietnamDateRangeYearToDate } from '../utils/date.js';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
 const PAYMENT_COLUMNS = [
@@ -28,7 +30,7 @@ const PAYMENT_COLUMNS = [
   { label: 'Tổng tiền', key: 'total_amount' },
   { label: 'Trạng thái thanh toán', key: 'payment_status' },
   { label: 'Người xác nhận', key: null },
-  { label: 'Ngày tạo', key: 'created_at' },
+  { label: 'Ngày ghi nhận (giờ VN)', key: 'business_at' },
   { label: 'Hành động', key: null },
 ];
 
@@ -39,13 +41,15 @@ const PAYMENT_STATUSES = [
   { value: 'cancelled', label: 'Đã hủy' },
 ];
 
+const initialRange = vietnamDateRangeYearToDate();
 const state = {
   searchTerm: '',
   status: '',
   businessTypeId: '',
+  fromDate: initialRange.from, toDate: initialRange.to,
   page: 1,
   pageSize: 10,
-  sort: { column: 'created_at', ascending: false },
+  sort: { column: 'business_at', ascending: false },
   total: 0,
   requestId: 0,
   businessTypes: [],
@@ -76,6 +80,7 @@ export function PaymentsPage() {
         <select id="payment-business-type-filter" class="filter-select" aria-label="Lọc loại hình kinh doanh">
           <option value="">Tất cả loại hình KD</option>
         </select>
+        ${DateRangeFields({ fromId: 'payment-from-date', toId: 'payment-to-date', fromLabel: 'Từ ngày (giờ VN)', toLabel: 'Đến ngày (giờ VN)', fieldClass: 'form-group compact', inputClass: 'form-control compact-date' })}
       `,
     })}
     <div class="payments-summary">
@@ -110,6 +115,7 @@ PaymentsPage.afterRender = function afterRenderPayments() {
 };
 
 function syncPaymentControls() {
+  for (const [id,key] of [['payment-from-date','fromDate'],['payment-to-date','toDate']]) { const input=document.getElementById(id); if(input) input.value=state[key]; }
   const searchInput = document.getElementById('payment-search');
   const statusFilter = document.getElementById('payment-status-filter');
   const businessTypeFilter = document.getElementById('payment-business-type-filter');
@@ -122,6 +128,7 @@ function syncPaymentControls() {
 }
 
 function bindPaymentEvents() {
+  for (const [id,key] of [['payment-from-date','fromDate'],['payment-to-date','toDate']]) document.getElementById(id)?.addEventListener('change', (event) => { state[key]=event.target.value; state.page=1; loadPayments(); });
   const searchInput = document.getElementById('payment-search');
   const statusFilter = document.getElementById('payment-status-filter');
   const businessTypeFilter = document.getElementById('payment-business-type-filter');
@@ -220,6 +227,7 @@ async function loadPayments() {
       searchTerm: state.searchTerm,
       status: state.status,
       businessTypeId: state.businessTypeId,
+      fromDate: state.fromDate, toDate: state.toDate,
     };
     const { data, count, summary } = await PaymentService.listWithSummary({
       ...filters,
@@ -279,7 +287,7 @@ function renderPayments(payments) {
       <td class="strong-cell">${formatCurrency(payment.total_amount || 0)}</td>
       <td>${renderPaymentStatusBadge(payment.payment_status)}</td>
       <td>${escapeHtml(confirmedBy(payment))}</td>
-      <td>${formatDateTime(payment.created_at)}</td>
+      <td>${formatDateTime(payment.payment_status === 'completed' ? payment.confirmed_at : payment.created_at)}</td>
       <td>${renderApprovalAction(payment)}</td>
     </tr>
   `).join('');
@@ -697,7 +705,7 @@ function renderPaymentStatusBadge(status) {
 
 function formatDateTime(value) {
   if (!value) return '—';
-  return new Intl.DateTimeFormat('vi-VN', {
+  return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

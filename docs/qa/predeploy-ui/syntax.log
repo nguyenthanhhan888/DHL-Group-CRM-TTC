@@ -1,0 +1,17 @@
+src/app.js: PASS
+src/constants/navigation.js: PASS
+src/utils/businessEventPresentation.js: PASS
+src/layouts/AppLayout.js: PASS
+src/pages/PromotionsPage.js: PASS
+src/pages/LogsPage.js: PASS
+src/pages/ReportsPage.js: PASS
+tests/ui-ux-presentation-polish.test.cjs: PASS
+tests/qa-round2-stabilization.test.mjs: PASS
+tests/reports-filter-ui.test.cjs: PASS
+tests/sidebar-redesign.test.cjs: PASS
+src/utils/reviewPresentation.js: PASS
+src/components/DetailFields.js: PASS
+src/services/ReviewContextService.js: PASS
+tests/predeploy-presentation.test.mjs: PASS
+tests/visual/run-predeploy-ui.mjs: PASS
+tests/visual/predeploy-ui-fixture.js: PASS

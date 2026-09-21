@@ -61,7 +61,7 @@ test('stored active and warning states share the same inclusive derived rule', a
 test('ReportService never applies a frontend expiring override', async () => {
   const source = await readFile(new URL('../src/services/ReportService.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /KioskService|patchExpiringKioskReport|getExpiringKiosks|deriveKioskStatus|daysUntil/);
-  assert.match(source, /return \{ data: normalizeResponse\(data, normalizedTab, page, pageSize, operations\) \}/);
+  assert.match(source, /return \{ data: normalizeResponse\(data, normalizedTab, page, pageSize, operations, expenseSummary, financialKpis\) \}/);
   assert.match(source, /get_registration_operations_summary/);
   assert.match(source, /warningDays: nonNegativeNumber\(report\.warningDays\)/);
 });

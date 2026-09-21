@@ -158,3 +158,4 @@ grant execute on function public.submit_public_registration(jsonb, jsonb, jsonb)
 
 revoke all on function public.submit_public_legacy_registration(jsonb, jsonb) from public, anon, authenticated;
 grant execute on function public.submit_public_legacy_registration(jsonb, jsonb) to anon, authenticated;
+;

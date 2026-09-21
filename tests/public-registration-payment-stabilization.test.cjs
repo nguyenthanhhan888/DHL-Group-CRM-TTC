@@ -60,15 +60,15 @@ test('retry reuses request ownership, batch, payment, Kiosk and active provider 
   assert.match(batchFoundation, /payments_registration_batch_uidx/);
   assert.match(batchFoundation, /registration_batches_payment_uidx/);
   assert.match(intentHardening, /payos_orders_one_active_payment_uidx/);
-  assert.match(api, /fetchExistingPayosOrder\(payment\.id\)/);
+  assert.match(api, /prepareCheckoutRetry\(payment\.id\)/);
   assert.match(api, /failReservedOrder\(diagnostic\.paymentId, diagnostic\.orderCode/);
 });
 
 test('awaiting-payment is visible but remains separate from Admin review', () => {
   assert.match(requestService, /admin_list_registration_requests/);
-  assert.match(notifications, /\.eq\('status', 'pending'\)/);
-  assert.match(notifications, /\.eq\('status', 'awaiting_payment'\)/);
-  assert.match(notifications, /registrationCount: pendingCount/);
+  assert.match(notifications, /get_registration_actionable_summary/);
+  assert.match(notifications, /registrationCount: pendingCount \+ reconciliationCount/);
+  assert.doesNotMatch(notifications, /request:awaiting_payment:/);
   assert.match(completion, /'pendingReviewRequests'/);
   assert.match(completion, /'awaitingPaymentRequests'/);
   assert.match(legacy, /'request_type', 'legacy'/);

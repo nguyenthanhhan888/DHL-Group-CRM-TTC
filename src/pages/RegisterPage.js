@@ -1,6 +1,6 @@
 import { PageHeader } from '../components/PageHeader.js';
 import { PublicSupport } from '../components/PublicSupport.js';
-import { PaymentActionButtons, PaymentKioskList, PaymentProgress, PaymentSecureNote, PaymentStatusHero, PaymentSummaryCard } from '../components/PaymentExperience.js';
+import { PaymentActionButtons, PaymentKioskList, PaymentProgress, PaymentStatusHero, PaymentSummaryCard } from '../components/PaymentExperience.js';
 import { fetchPayosStatus } from '../components/PayosResultCard.js';
 import { Toast } from '../components/Toast.js';
 import { bindFacebookIdResolvers, FacebookIdResolverFields, validateFacebookResolver } from '../components/FacebookIdResolver.js';
@@ -27,8 +27,8 @@ export function RegisterPage() {
     <section class="registration-card registration-wizard">
       <ol class="registration-stepper" aria-label="Tiến trình đăng ký">
         <li class="registration-step active" data-step-indicator="1"><span>1</span><strong>Thông tin</strong></li>
-        <li class="registration-step" data-step-indicator="2"><span>2</span><strong>Ngành nghề & gói</strong></li>
-        <li class="registration-step" data-step-indicator="3"><span>3</span><strong>Xác nhận</strong></li>
+        <li class="registration-step" data-step-indicator="2"><span>2</span><strong>Chọn gói</strong></li>
+        <li class="registration-step" data-step-indicator="3"><span>3</span><strong>Thanh toán</strong></li>
       </ol>
       <form id="public-registration-form" novalidate>
         <div id="registration-form-error" class="form-error hidden" role="alert"></div>
@@ -414,7 +414,7 @@ function renderReview() {
     const promoItem = state.promotion?.items?.[index]; const bonus = Number(promoItem?.bonusMonths || 0); const effective = Number(promoItem?.effectiveMonths || value(card, 'months'));
     return `<article class="review-kiosk"><strong>Kiosk ${index + 1}: ${escapeHtml(identity.facebook_name)}</strong><span>${escapeHtml(type?.name || '')} · ${escapeHtml(category?.name || '')}</span><span>${value(card, 'months')} tháng${bonus ? ` + ${bonus} tháng ưu đãi = ${effective} tháng sử dụng` : ''}</span><b>${formatCurrency(card.dataset.subtotal || 0)}</b></article>`;
   }).join('')}</section>
-    <section class="review-total" aria-label="Thanh toán"><h3><span class="registration-section-icon">${renderIcon('wallet')}</span>Thanh toán</h3><div><span>Tạm tính</span><strong>${formatCurrency(total)}</strong></div>${Number(state.promotion?.discountAmount || 0) > 0 ? `<div><span>Ưu đãi</span><strong>-${formatCurrency(state.promotion.discountAmount)}</strong></div>` : ''}<div><span>Tổng thanh toán</span><strong>${formatCurrency(total - Number(state.promotion?.discountAmount || 0))}</strong></div></section>`;
+    <section class="review-total" aria-label="Thanh toán"><h3><span class="registration-section-icon">${renderIcon('wallet')}</span>Thanh toán</h3>${state.promotion?.code ? `<div><span>Mã ưu đãi</span><strong>${escapeHtml(state.promotion.code)}</strong></div>` : ''}<div><span>Tạm tính</span><strong>${formatCurrency(total)}</strong></div>${Number(state.promotion?.discountAmount || 0) > 0 ? `<div><span>Ưu đãi</span><strong>-${formatCurrency(state.promotion.discountAmount)}</strong></div>` : ''}<div><span>Tổng thanh toán</span><strong>${formatCurrency(total - Number(state.promotion?.discountAmount || 0))}</strong></div></section>`;
   const button = document.getElementById('register-submit-button');
   if (button) button.innerHTML = `${renderIcon('shield')} Thanh toán ${formatCurrency(total - Number(state.promotion?.discountAmount || 0))}`;
 }
@@ -426,6 +426,7 @@ async function submitRegistration(event) {
   if (!confirmation.checked) { showFormError('Vui lòng xác nhận thông tin trước khi thanh toán.', confirmation); return; }
   state.submitting = true;
   const button = document.getElementById('register-submit-button');
+  let redirecting = false;
   setButtonBusy(button, true, { busyLabel: 'Đang tạo thanh toán...' });
   try {
     const { data } = await RegistrationService.submitWithPayos({
@@ -434,14 +435,17 @@ async function submitRegistration(event) {
       promotionCode: state.promotion?.code || null,
     });
     const payment = data?.payosPayment;
-    if (!payment?.checkoutUrl) throw new Error(data?.payosError || 'Chưa tạo được link thanh toán PayOS.');
-    sessionStorage.setItem(`registration-payos:${payment.orderCode}`, JSON.stringify({ paymentLinkId: payment.paymentLinkId, batchId: data?.registrationBatch?.id, requestIds: (data?.kiosks || []).map((item) => item?.request?.id).filter(Boolean), phone: read('register-phone') }));
-    renderCheckoutConfirmation(data?.registrationBatch, payment, data?.kiosks || []);
+    const saved = { paymentLinkId: payment?.paymentLinkId, batchId: data?.registrationBatch?.id, requestIds: (data?.kiosks || []).map((item) => item?.request?.id).filter(Boolean), phone: read('register-phone'), promotionCode: state.promotion?.code || null };
+    sessionStorage.setItem('registration-checkout-pending', JSON.stringify(saved));
+    if (!payment?.checkoutUrl) { hideRegistrationForm(); const target = document.getElementById('registration-success'); target?.classList.remove('hidden'); renderTerminal(target, 'failed', saved); return; }
+    sessionStorage.setItem(`registration-payos:${payment.orderCode}`, JSON.stringify(saved));
+    redirecting = true;
+    window.location.assign(payment.checkoutUrl);
   } catch (error) {
     console.error('Public registration submission failed', error);
     showFormError('Không thể tạo thanh toán lúc này. Dữ liệu của bạn vẫn được giữ để thử lại.');
   } finally {
-    state.submitting = false; setButtonBusy(button, false);
+    if (!redirecting) { state.submitting = false; setButtonBusy(button, false); }
   }
 }
 
@@ -450,29 +454,18 @@ function readKiosk(card) {
   return { ...identity, category_id: card.querySelector('[data-kiosk-category]')?.value || '', business_type_id: value(card, 'business-type'), months: Number(value(card, 'months')), discount: 0, discount_reason: '', note: '' };
 }
 
-function renderCheckoutConfirmation(batch, payment, submittedKiosks = []) {
-  hideRegistrationForm();
-  const target = document.getElementById('registration-success');
-  target?.classList.remove('hidden');
-  if (!target) return;
-  const kiosks = (batch?.kiosks || []).map((item, index) => ({ ...item, businessType: submittedKiosks[index]?.businessType?.name || submittedKiosks[index]?.preview?.businessTypeName }));
-  const amount = batch?.amount || payment.amount || 0;
-  target.innerHTML = `<div class="payment-experience payment-checkout">${PaymentStatusHero({ status: 'checkout', eyebrow: 'Thanh toán đăng ký', title: 'Sẵn sàng thanh toán', description: 'Bạn sẽ được chuyển sang cổng PayOS an toàn.' })}${PaymentProgress({ activeStep: 1 })}${PaymentSummaryCard([{ label: 'Số lượng Kiosk', value: kiosks.length }, { label: 'Phương thức', value: 'PayOS' }, { label: 'Tổng thanh toán', value: formatCurrency(amount), emphasis: true }])}${PaymentKioskList(kiosks, { showAmounts: true })}${PaymentSecureNote()}${PaymentActionButtons([{ label: `Thanh toán qua PayOS · ${formatCurrency(amount)}`, icon: 'checkout', attrs: 'id="registration-checkout-button"' }])}</div>`;
-  document.getElementById('registration-checkout-button')?.addEventListener('click', (clickEvent) => { clickEvent.currentTarget.disabled = true; clickEvent.currentTarget.textContent = 'Đang chuyển đến PayOS...'; window.location.assign(payment.checkoutUrl); });
-}
-
 async function handleRegistrationReturn() {
   const params = payosReturnParams();
   const orderCode = params.get('orderCode');
-  if (!orderCode) return false;
-  const stored = JSON.parse(sessionStorage.getItem(`registration-payos:${orderCode}`) || '{}');
+  if (!orderCode) {
+    const saved = readCheckoutState('registration-checkout-pending');
+    if (!saved.requestIds?.length) return false;
+    hideRegistrationForm(); const target = document.getElementById('registration-success'); target?.classList.remove('hidden'); renderTerminal(target, 'pending', saved); return true;
+  }
+  const stored = readCheckoutState(`registration-payos:${orderCode}`);
   const paymentLinkId = params.get('id') || params.get('paymentLinkId') || stored.paymentLinkId;
   const success = document.getElementById('registration-success');
   hideRegistrationForm(); success?.classList.remove('hidden');
-  if (String(params.get('cancel')).toLowerCase() === 'true' || String(params.get('status')).toLowerCase() === 'cancelled') {
-    success.innerHTML = `<div class="payment-experience">${PaymentStatusHero({ status: 'cancelled', eyebrow: 'Giao dịch chưa hoàn tất', title: 'Bạn đã huỷ thanh toán', description: 'Giao dịch chưa được hoàn tất và Kiosk chưa được kích hoạt.' })}${PaymentActionButtons([{ label: 'Thử thanh toán lại', href: '#/register', icon: 'checkout' }, { label: 'Về trang đăng ký', href: '#/register', secondary: true }])}</div>`;
-    return true;
-  }
   success.innerHTML = pendingMarkup();
   if (!paymentLinkId) { renderPending(success); return true; }
   for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -480,7 +473,7 @@ async function handleRegistrationReturn() {
       const status = await fetchPayosStatus(orderCode, paymentLinkId);
       if (String(status.status).toLowerCase() === 'paid') { renderSuccess(status, stored.phone); return true; }
       const terminal = String(status.status).toLowerCase();
-      if (['cancelled', 'canceled', 'failed', 'expired'].includes(terminal)) { renderTerminal(success, terminal); return true; }
+      if (['cancelled', 'canceled', 'failed', 'expired', 'review_required'].includes(terminal)) { renderTerminal(success, terminal, stored); return true; }
     } catch { /* A friendly pending state is shown after the bounded polling window. */ }
     await new Promise((resolve) => window.setTimeout(resolve, 3000));
   }
@@ -488,6 +481,7 @@ async function handleRegistrationReturn() {
 }
 
 function renderSuccess(data, phone = '') {
+  sessionStorage.removeItem('registration-checkout-pending');
   const success = document.getElementById('registration-success');
   const kiosks = data?.kiosks || [];
   success.innerHTML = `<div class="payment-experience payment-receipt">${PaymentStatusHero({ status: 'success', eyebrow: 'Giao dịch hoàn tất', title: 'Thanh toán thành công', description: 'PayOS đã xác nhận giao dịch và Kiosk của bạn đã được kích hoạt.' })}${PaymentProgress({ activeStep: 4 })}${PaymentSummaryCard([{ label: 'Tổng đã thanh toán', value: formatCurrency(data?.amount || 0), emphasis: true }, { label: 'Số Kiosk đã kích hoạt', value: kiosks.length }])}${PaymentKioskList(kiosks, { success: true })}${PaymentActionButtons([{ label: 'Tra cứu Kiosk', href: '#/lookup', icon: 'kiosk', attrs: 'data-registration-lookup' }, { label: 'Về trang chủ', href: '#/', secondary: true }])}</div>`;
@@ -496,8 +490,26 @@ function renderSuccess(data, phone = '') {
 
 function hideRegistrationForm() { document.getElementById('public-registration-form')?.classList.add('hidden'); document.querySelector('.registration-stepper')?.classList.add('hidden'); }
 function renderPending(target) { target.innerHTML = `${pendingMarkup(true)}${PaymentActionButtons([{ label: 'Tra cứu Kiosk', href: '#/lookup', secondary: true }])}`; }
-function pendingMarkup(timedOut = false) { return `<div class="payment-experience payment-processing" role="status" aria-live="polite">${PaymentStatusHero({ status: 'pending', eyebrow: 'Đang xử lý an toàn', title: 'Đang xác nhận thanh toán', description: timedOut ? 'Giao dịch đang chờ PayOS xác nhận. Bạn có thể kiểm tra lại sau ít phút.' : 'Ngân hàng đã tiếp nhận giao dịch. Hệ thống đang xác nhận với PayOS.', helper: 'Quá trình này thường chỉ mất vài giây.' })}${PaymentProgress({ activeStep: 2 })}</div>`; }
-function renderTerminal(target, status) { target.innerHTML = `<div class="payment-experience">${PaymentStatusHero({ status: ['cancelled', 'canceled'].includes(status) ? 'cancelled' : 'warning', eyebrow: 'Giao dịch chưa hoàn tất', title: status === 'expired' ? 'Liên kết thanh toán đã hết hạn' : 'Thanh toán chưa hoàn tất', description: 'Kiosk chưa được kích hoạt. Yêu cầu đăng ký của bạn vẫn được giữ an toàn.' })}${PaymentActionButtons([{ label: 'Thử thanh toán lại', href: '#/register', icon: 'checkout' }, { label: 'Liên hệ hỗ trợ', href: '#/contact', secondary: true }])}</div>`; }
+function pendingMarkup(timedOut = false) { return `<div class="payment-experience payment-processing" role="status" aria-live="polite">${PaymentStatusHero({ status: 'pending', eyebrow: 'Đang xử lý an toàn', title: 'Đang xác nhận thanh toán', description: timedOut ? 'Giao dịch đang chờ PayOS xác nhận. Bạn có thể kiểm tra lại sau ít phút.' : 'Hệ thống đang kiểm tra trạng thái thanh toán với PayOS.', helper: 'Quá trình này thường chỉ mất vài giây.' })}${PaymentProgress({ activeStep: 2 })}</div>`; }
+function readCheckoutState(key) { try { return JSON.parse(sessionStorage.getItem(key) || '{}'); } catch { return {}; } }
+function renderTerminal(target, status, saved = readCheckoutState('registration-checkout-pending')) {
+  if (!target) return;
+  const review = status === 'review_required';
+  const canRetry = !review && saved.requestIds?.length && saved.phone;
+  target.innerHTML = `<div class="payment-experience">${PaymentStatusHero({ status: 'warning', eyebrow: 'Thanh toán đăng ký', title: review ? 'Thanh toán cần đối soát' : status === 'expired' ? 'Liên kết thanh toán đã hết hạn' : 'Yêu cầu đang chờ thanh toán', description: review ? 'Hệ thống đã ghi nhận giao dịch cần Admin kiểm tra. Không chuyển khoản thêm.' : 'Hồ sơ của bạn vẫn được giữ. Nếu đã chuyển tiền bằng mã trước, hệ thống vẫn tiếp tục đối chiếu; hãy kiểm tra trạng thái trước khi thanh toán thêm.' })}<p data-registration-retry-error class="form-error" role="alert"></p>${PaymentActionButtons([...(canRetry ? [{ label: 'Tạo lại mã thanh toán', icon: 'checkout', attrs: 'data-registration-regenerate' }] : []), { label: 'Liên hệ hỗ trợ', href: '#/contact', secondary: true }])}</div>`;
+  target.querySelector('[data-registration-regenerate]')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget; button.disabled = true;
+    try {
+      const { data } = await RegistrationService.retryPayos(saved);
+      if (!data.payment?.checkoutUrl) throw new Error('Link đang được tạo. Vui lòng thử lại sau.');
+      const next = { ...saved, paymentLinkId: data.payment.paymentLinkId, batchId: data.batch.id };
+      sessionStorage.setItem('registration-checkout-pending', JSON.stringify(next));
+      sessionStorage.setItem(`registration-payos:${data.payment.orderCode}`, JSON.stringify(next));
+      button.textContent = 'Đang chuyển đến PayOS...';
+      window.location.assign(data.payment.checkoutUrl);
+    } catch (error) { target.querySelector('[data-registration-retry-error]').textContent = error.message; button.disabled = false; }
+  });
+}
 function payosReturnParams() { const params = new URLSearchParams(window.location.search); const hashQuery = String(window.location.hash || '').split('?')[1]; if (hashQuery) new URLSearchParams(hashQuery).forEach((item, key) => params.set(key, item)); return params; }
 function field(label, id, options = {}) { const attrs = [id ? `id="${id}"` : '', options.data || '', options.required ? 'required' : '', `type="${options.type || 'text'}"`, options.inputmode ? `inputmode="${options.inputmode}"` : '', options.autocomplete ? `autocomplete="${options.autocomplete}"` : 'autocomplete="off"', options.readonly ? 'readonly' : ''].filter(Boolean).join(' '); return `<label class="form-group"><span>${escapeHtml(label)}${options.required ? ' *' : ''}</span><input class="form-control" ${attrs} /><span class="field-error hidden"></span></label>`; }
 function findBusinessType(card) { return state.businessTypes.find((item) => String(item.id) === String(value(card, 'business-type'))) || null; }

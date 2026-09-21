@@ -26,7 +26,6 @@ where k.status = 'pending'
     where live_request.kiosk_id = k.id
       and live_request.status in ('awaiting_payment', 'pending', 'approved')
   );
-
 create or replace function private.finalize_cancelled_public_kiosk_from_legacy()
 returns trigger
 language plpgsql
@@ -77,10 +76,8 @@ begin
   return new;
 end;
 $function$;
-
 revoke all on function private.finalize_cancelled_public_kiosk_from_legacy()
   from public, anon, authenticated, service_role;
-
 create or replace function public.admin_cancel_awaiting_registration(
   request_id_input bigint,
   reason_input text
@@ -215,7 +212,6 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.admin_cancel_awaiting_registration(bigint, text)
   from public, anon, authenticated;
 grant execute on function public.admin_cancel_awaiting_registration(bigint, text)

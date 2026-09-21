@@ -4,7 +4,6 @@
 
 drop trigger if exists normalize_payos_renewal_period_trigger on public.payments;
 drop function if exists private.normalize_payos_renewal_period();
-
 create or replace function private.confirm_crm_payment_from_payos(
   payment_id_input bigint,
   reason_input text default 'PayOS paid'
@@ -63,7 +62,6 @@ begin
   perform private.write_ttc_audit('Payment','confirm_payos','payments',payment_record.id::text,to_jsonb(before_record),to_jsonb(payment_record),reason_input);
   return jsonb_build_object('payment',to_jsonb(payment_record),'kiosk',(select to_jsonb(k) from public.kiosks k where k.id=kiosk_record.id),'customer',(select to_jsonb(c) from public.customers c where c.id=customer_record.id));
 end;$function$;
-
 -- Registration requests use the same inclusive calendar rule at creation and
 -- are synchronized again from the authoritative completed payment.
 create or replace function private.normalize_registration_requested_period()
@@ -77,7 +75,6 @@ end;$function$;
 drop trigger if exists normalize_registration_requested_period_trigger on public.registration_requests;
 create trigger normalize_registration_requested_period_trigger before insert or update of requested_start_date,requested_end_date,months
 on public.registration_requests for each row execute function private.normalize_registration_requested_period();
-
 create or replace function private.sync_registration_period_from_completed_payment()
 returns trigger language plpgsql security definer set search_path='' as $function$
 begin
@@ -91,7 +88,6 @@ end;$function$;
 drop trigger if exists sync_registration_period_from_completed_payment_trigger on public.payments;
 create trigger sync_registration_period_from_completed_payment_trigger after update of payment_status,start_date,end_date
 on public.payments for each row execute function private.sync_registration_period_from_completed_payment();
-
 -- Distinguish a retry for the same paid order from a genuinely late paid
 -- sibling. Both are idempotent; only the latter is flagged for reconciliation.
 create or replace function public.handle_payos_webhook(order_code_input bigint,amount_input numeric,payment_link_id_input text default null,reference_input text default null,provider_payload_input jsonb default '{}'::jsonb,signature_input text default null,event_key_input text default null)
@@ -130,7 +126,6 @@ begin
 end;$function$;
 revoke all on function public.handle_payos_webhook(bigint,numeric,text,text,jsonb,text,text) from public,anon,authenticated;
 grant execute on function public.handle_payos_webhook(bigint,numeric,text,text,jsonb,text,text) to service_role;
-
 -- Admin PayOS renewal preparation is also an idempotent business-intent
 -- operation. Manual renewal continues to use admin_manual_renew_kiosk and
 -- never calls this function or creates a PayOS order.

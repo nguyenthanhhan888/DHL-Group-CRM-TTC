@@ -7,7 +7,6 @@ alter table public.payments add column if not exists payment_intent_key text;
 alter table public.payos_orders add column if not exists expires_at timestamptz;
 alter table public.payos_orders add column if not exists active_slot boolean;
 alter table public.payos_orders add column if not exists superseded_by_order_id bigint references public.payos_orders(id) on delete set null;
-
 create unique index if not exists payments_registration_request_intent_uidx
   on public.payments(registration_request_id)
   where registration_request_id is not null;
@@ -17,10 +16,8 @@ create unique index if not exists payments_pending_intent_key_uidx
 create unique index if not exists payos_orders_one_active_payment_uidx
   on public.payos_orders(payment_id)
   where purpose = 'crm_payment' and status = 'pending' and active_slot is true;
-
 create index if not exists payos_orders_payment_expiry_idx
   on public.payos_orders(payment_id, expires_at desc);
-
 create or replace function private.claim_payos_active_slot()
 returns trigger language plpgsql security definer set search_path='' as $function$
 begin
@@ -35,7 +32,6 @@ end;$function$;
 drop trigger if exists claim_payos_active_slot_trigger on public.payos_orders;
 create trigger claim_payos_active_slot_trigger before insert on public.payos_orders
 for each row execute function private.claim_payos_active_slot();
-
 -- Block a second public request for the same pending kiosk identity. Existing
 -- historical duplicates are not changed by this trigger.
 create or replace function private.prevent_duplicate_pending_registration()
@@ -64,7 +60,6 @@ end;$function$;
 drop trigger if exists prevent_duplicate_pending_registration_trigger on public.registration_requests;
 create trigger prevent_duplicate_pending_registration_trigger before insert or update of facebook_id, facebook_link, status
 on public.registration_requests for each row execute function private.prevent_duplicate_pending_registration();
-
 -- Deterministically link a registration request to its one business payment.
 create or replace function private.sync_registration_payment_intent()
 returns trigger language plpgsql security definer set search_path = '' as $function$
@@ -81,7 +76,6 @@ end;$function$;
 drop trigger if exists sync_registration_payment_intent_trigger on public.registration_requests;
 create trigger sync_registration_payment_intent_trigger after insert or update of payment_id
 on public.registration_requests for each row execute function private.sync_registration_payment_intent();
-
 -- Public renewal preparation reuses the same pending business intent. A new
 -- lookup token authorizes access but does not create a new financial liability.
 create or replace function public.prepare_public_kiosk_renewal(kiosk_id_input bigint, months_input integer, nonce_hash_input text)
@@ -114,7 +108,6 @@ begin
 end;$function$;
 revoke all on function public.prepare_public_kiosk_renewal(bigint,integer,text) from public,anon,authenticated;
 grant execute on function public.prepare_public_kiosk_renewal(bigint,integer,text) to service_role;
-
 -- Both server-side checkout paths reserve one active order. A replacement
 -- closes the old database order before the new order becomes payable.
 create or replace function private.reserve_crm_payos_order(
@@ -140,7 +133,6 @@ begin
   if old_order.id is not null and old_order.id<>order_record.id then update public.payos_orders set superseded_by_order_id=order_record.id where id=old_order.id; end if;
   return order_record;
 end;$function$;
-
 create or replace function public.record_public_renewal_payos_order(payment_id_input bigint,order_code_input bigint,amount_input numeric,description_input text,checkout_url_input text default null,qr_code_input text default null,payment_link_id_input text default null,provider_payload_input jsonb default '{}'::jsonb)
 returns jsonb language plpgsql security definer set search_path='' as $function$
 declare order_record public.payos_orders%rowtype;
@@ -152,7 +144,6 @@ begin
 end;$function$;
 revoke all on function public.record_public_renewal_payos_order(bigint,bigint,numeric,text,text,text,text,jsonb) from public,anon,authenticated;
 grant execute on function public.record_public_renewal_payos_order(bigint,bigint,numeric,text,text,text,text,jsonb) to service_role;
-
 -- Finalization locks the business payment, accepts a valid late payment on an
 -- old order, and closes every sibling without applying service twice.
 create or replace function public.handle_payos_webhook(order_code_input bigint,amount_input numeric,payment_link_id_input text default null,reference_input text default null,provider_payload_input jsonb default '{}'::jsonb,signature_input text default null,event_key_input text default null)
@@ -190,7 +181,6 @@ begin
 end;$function$;
 revoke all on function public.handle_payos_webhook(bigint,numeric,text,text,jsonb,text,text) from public,anon,authenticated;
 grant execute on function public.handle_payos_webhook(bigint,numeric,text,text,jsonb,text,text) to service_role;
-
 create or replace function public.record_registration_payos_order(payment_id_input bigint,order_code_input bigint,amount_input numeric,description_input text,checkout_url_input text default null,qr_code_input text default null,payment_link_id_input text default null,provider_payload_input jsonb default '{}'::jsonb)
 returns jsonb language plpgsql security definer set search_path='' as $function$
 declare order_record public.payos_orders%rowtype;

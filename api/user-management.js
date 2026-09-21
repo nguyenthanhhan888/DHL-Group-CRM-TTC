@@ -140,7 +140,7 @@ async function syncPermissions(req, body) {
   const beforePermissions = await getDirectPermissions(userId);
 
   await replacePermissions(userId, requested, actor.user.id, beforePermissions);
-  const webAccess = requested.length > 0;
+  const webAccess = target.status === 'active';
   const now = new Date().toISOString();
   await serviceFetch(`/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}`, {
     method: 'PATCH',
@@ -210,10 +210,9 @@ async function setLocked(req, body) {
   if (!target) throw httpError(404, 'Không tìm thấy người dùng.');
   if (target.is_system_admin) throw httpError(403, 'Không thể khóa hoặc mở khóa System Admin.');
   const locked = body.locked === true;
-  const permissionCount = (await getDirectPermissions(userId)).length;
   const next = {
     status: locked ? 'locked' : 'active',
-    web_access_enabled: locked ? false : permissionCount > 0,
+    web_access_enabled: !locked,
     updated_at: new Date().toISOString(),
   };
   await serviceFetch(`/auth/v1/admin/users/${encodeURIComponent(userId)}`, {

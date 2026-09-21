@@ -82,12 +82,10 @@ $new$
   execute updated_sql;
 end;
 $migration$;
-
 revoke all on function public.submit_public_registration(jsonb, jsonb, jsonb)
   from public, anon, authenticated;
 grant execute on function public.submit_public_registration(jsonb, jsonb, jsonb)
   to anon, authenticated;
-
 revoke all on function public.submit_public_legacy_registration(jsonb, jsonb)
   from public, anon, authenticated;
 grant execute on function public.submit_public_legacy_registration(jsonb, jsonb)

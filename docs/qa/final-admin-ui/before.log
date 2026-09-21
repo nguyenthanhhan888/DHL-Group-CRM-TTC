@@ -1,0 +1,3090 @@
+
+> test
+> node --test tests/*.test.*
+
+TAP version 13
+# (node:24624) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/utils/auditLogPresentation.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: technical action and module codes are translated without leaking internal vocabulary
+ok 1 - technical action and module codes are translated without leaking internal vocabulary
+  ---
+  duration_ms: 0.410542
+  type: 'test'
+  ...
+# Subtest: manual renewal summary uses Kiosk, period, package and currency in business format
+ok 2 - manual renewal summary uses Kiosk, period, package and currency in business format
+  ---
+  duration_ms: 13.706834
+  type: 'test'
+  ...
+# Subtest: PayOS and automatic actors have explicit business source labels
+ok 3 - PayOS and automatic actors have explicit business source labels
+  ---
+  duration_ms: 0.201292
+  type: 'test'
+  ...
+# Subtest: missing entity name falls back to stored payment data without fabrication
+ok 4 - missing entity name falls back to stored payment data without fabrication
+  ---
+  duration_ms: 0.751083
+  type: 'test'
+  ...
+# Subtest: resolved Kiosk and promotion names replace database ids in primary copy
+ok 5 - resolved Kiosk and promotion names replace database ids in primary copy
+  ---
+  duration_ms: 0.730334
+  type: 'test'
+  ...
+# Subtest: business type and category ids resolve on both sides of a change
+ok 6 - business type and category ids resolve on both sides of a change
+  ---
+  duration_ms: 0.809416
+  type: 'test'
+  ...
+# Subtest: user permissions, wallet and backward-compatible unknown logs stay readable
+ok 7 - user permissions, wallet and backward-compatible unknown logs stay readable
+  ---
+  duration_ms: 1.204916
+  type: 'test'
+  ...
+# Subtest: unresolved foreign keys are clearly marked as ids and raw payload stays technical
+ok 8 - unresolved foreign keys are clearly marked as ids and raw payload stays technical
+  ---
+  duration_ms: 0.153292
+  type: 'test'
+  ...
+# (node:24625) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/services/KioskService.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: Admin Kiosk form exposes Category and Business Type as separate persisted controls
+ok 9 - Admin Kiosk form exposes Category and Business Type as separate persisted controls
+  ---
+  duration_ms: 1.724
+  type: 'test'
+  ...
+# Subtest: Admin Kiosk editable payload persists all approved fields and rejects payment or renewal fields
+ok 10 - Admin Kiosk editable payload persists all approved fields and rejects payment or renewal fields
+  ---
+  duration_ms: 0.349709
+  type: 'test'
+  ...
+# Subtest: Admin date edit remains a direct audited Kiosk update without payment or renewal mutation
+ok 11 - Admin date edit remains a direct audited Kiosk update without payment or renewal mutation
+  ---
+  duration_ms: 1.088417
+  type: 'test'
+  ...
+# Subtest: Kiosk detail exposes one labelled action menu and keeps the existing handlers
+ok 12 - Kiosk detail exposes one labelled action menu and keeps the existing handlers
+  ---
+  duration_ms: 0.930334
+  type: 'test'
+  ...
+# Subtest: Kiosk suspension is destructive, lives in overflow and requires modal confirmation
+ok 13 - Kiosk suspension is destructive, lives in overflow and requires modal confirmation
+  ---
+  duration_ms: 0.45325
+  type: 'test'
+  ...
+# Subtest: Revenue summary includes expense-backed operational KPIs without changing its revenue source
+ok 14 - Revenue summary includes expense-backed operational KPIs without changing its revenue source
+  ---
+  duration_ms: 0.929042
+  type: 'test'
+  ...
+# Subtest: Admin UX remains usable on narrow screens and money values do not wrap
+ok 15 - Admin UX remains usable on narrow screens and money values do not wrap
+  ---
+  duration_ms: 0.567625
+  type: 'test'
+  ...
+# (node:24627) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/services/AuditLogService.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: batch enrichment resolves payment, Kiosk, user and both sides of reference changes
+ok 16 - batch enrichment resolves payment, Kiosk, user and both sides of reference changes
+  ---
+  duration_ms: 1.055042
+  type: 'test'
+  ...
+# Subtest: lookup failures and deleted records preserve the original log with an explicit missing fallback
+ok 17 - lookup failures and deleted records preserve the original log with an explicit missing fallback
+  ---
+  duration_ms: 0.431
+  type: 'test'
+  ...
+# Subtest: OFF mode whitelist exactly matches the formatter business event catalog
+ok 18 - OFF mode whitelist exactly matches the formatter business event catalog
+  ---
+  duration_ms: 2.400875
+  type: 'test'
+  ...
+# Subtest: canonical category filters include historical module and entity aliases
+ok 19 - canonical category filters include historical module and entity aliases
+  ---
+  duration_ms: 0.45625
+  type: 'test'
+  ...
+# Subtest: RPC remains authorized, immutable-data compatible and pagination-safe
+ok 20 - RPC remains authorized, immutable-data compatible and pagination-safe
+  ---
+  duration_ms: 0.493583
+  type: 'test'
+  ...
+# Subtest: normalized category is returned while internal normalization fields are removed
+ok 21 - normalized category is returned while internal normalization fields are removed
+  ---
+  duration_ms: 0.226875
+  type: 'test'
+  ...
+# Subtest: admin username login normalizes lowercase and never exposes internal email
+ok 22 - admin username login normalizes lowercase and never exposes internal email
+  ---
+  duration_ms: 15.661
+  type: 'test'
+  ...
+# Subtest: wrong username and wrong password return the same generic response
+ok 23 - wrong username and wrong password return the same generic response
+  ---
+  duration_ms: 0.413292
+  type: 'test'
+  ...
+# Subtest: locked account is denied after valid password with a generic response
+ok 24 - locked account is denied after valid password with a generic response
+  ---
+  duration_ms: 0.494542
+  type: 'test'
+  ...
+# Subtest: active permissionless account can login to the personal area
+ok 25 - active permissionless account can login to the personal area
+  ---
+  duration_ms: 0.349875
+  type: 'test'
+  ...
+# Subtest: public account registration creates a normal web user without CRM permissions
+ok 26 - public account registration creates a normal web user without CRM permissions
+  ---
+  duration_ms: 0.305833
+  type: 'test'
+  ...
+# Subtest: legacy email resolver is disabled and cannot disclose an auth email
+ok 27 - legacy email resolver is disabled and cannot disclose an auth email
+  ---
+  duration_ms: 0.071916
+  type: 'test'
+  ...
+# (node:24630) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/utils/kioskStatus.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: inclusive warning boundary holds for warning_days=5
+ok 28 - inclusive warning boundary holds for warning_days=5
+  ---
+  duration_ms: 1.659875
+  type: 'test'
+  ...
+# Subtest: inclusive warning boundary holds for warning_days=10
+ok 29 - inclusive warning boundary holds for warning_days=10
+  ---
+  duration_ms: 0.249625
+  type: 'test'
+  ...
+# Subtest: inclusive warning boundary holds for warning_days=20
+ok 30 - inclusive warning boundary holds for warning_days=20
+  ---
+  duration_ms: 0.329041
+  type: 'test'
+  ...
+# Subtest: inclusive warning boundary holds for warning_days=30
+ok 31 - inclusive warning boundary holds for warning_days=30
+  ---
+  duration_ms: 0.124417
+  type: 'test'
+  ...
+# Subtest: warning range crosses month and year boundaries as calendar dates
+ok 32 - warning range crosses month and year boundaries as calendar dates
+  ---
+  duration_ms: 0.236333
+  type: 'test'
+  ...
+# Subtest: RPC uses settings warning_days and one Vietnam report date
+ok 33 - RPC uses settings warning_days and one Vietnam report date
+  ---
+  duration_ms: 3.916291
+  type: 'test'
+  ...
+# Subtest: kiosk card count, rows, filters, and pagination use one filtered CTE
+ok 34 - kiosk card count, rows, filters, and pagination use one filtered CTE
+  ---
+  duration_ms: 0.910167
+  type: 'test'
+  ...
+# Subtest: stored active and warning states share the same inclusive derived rule
+ok 35 - stored active and warning states share the same inclusive derived rule
+  ---
+  duration_ms: 1.706958
+  type: 'test'
+  ...
+# Subtest: ReportService never applies a frontend expiring override
+ok 36 - ReportService never applies a frontend expiring override
+  ---
+  duration_ms: 1.038708
+  type: 'test'
+  ...
+# Subtest: report RPC retains permissions and pagination validation
+ok 37 - report RPC retains permissions and pagination validation
+  ---
+  duration_ms: 0.981042
+  type: 'test'
+  ...
+# Subtest: Hồ sơ Kiosk copy keeps payment, review and Kiosk states distinct
+ok 38 - Hồ sơ Kiosk copy keeps payment, review and Kiosk states distinct
+  ---
+  duration_ms: 0.608416
+  type: 'test'
+  ...
+# Subtest: global toast and reusable busy button expose accessible compact states
+ok 39 - global toast and reusable busy button expose accessible compact states
+  ---
+  duration_ms: 0.308417
+  type: 'test'
+  ...
+# Subtest: notification badge counts unread lifecycle-deduped items and supports mark all read
+ok 40 - notification badge counts unread lifecycle-deduped items and supports mark all read
+  ---
+  duration_ms: 0.073083
+  type: 'test'
+  ...
+# Subtest: business logs name Admin cancellation while raw identifiers stay in technical details
+ok 41 - business logs name Admin cancellation while raw identifiers stay in technical details
+  ---
+  duration_ms: 0.051333
+  type: 'test'
+  ...
+# Subtest: cancelled public provisional Kiosks become inactive without touching completed Kiosks
+ok 42 - cancelled public provisional Kiosks become inactive without touching completed Kiosks
+  ---
+  duration_ms: 0.176334
+  type: 'test'
+  ...
+# (node:24632) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/utils/currency.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: VND formatter and parser keep raw integer values
+ok 43 - VND formatter and parser keep raw integer values
+  ---
+  duration_ms: 15.092625
+  type: 'test'
+  ...
+# Subtest: currency input stays empty and never keeps a leading zero
+ok 44 - currency input stays empty and never keeps a leading zero
+  ---
+  duration_ms: 0.63375
+  type: 'test'
+  ...
+# (node:24633) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/services/DashboardService.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: dashboard normalizes single and multi-Kiosk registrations without replacing item amounts
+ok 45 - dashboard normalizes single and multi-Kiosk registrations without replacing item amounts
+  ---
+  duration_ms: 1.314459
+  type: 'test'
+  ...
+# Subtest: dashboard migration uses batch-item amount with registration-request fallback and newest-first order
+ok 46 - dashboard migration uses batch-item amount with registration-request fallback and newest-first order
+  ---
+  duration_ms: 7.938084
+  type: 'test'
+  ...
+# Subtest: recent activity UI is limited to completed business events
+ok 47 - recent activity UI is limited to completed business events
+  ---
+  duration_ms: 1.02325
+  type: 'test'
+  ...
+# (node:24634) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/pages/DashboardPage.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: recent activity maps only explicit business event types to semantic badges
+ok 48 - recent activity maps only explicit business event types to semantic badges
+  ---
+  duration_ms: 0.785166
+  type: 'test'
+  ...
+# Subtest: recent activity always renders exactly one badge from the normalized presentation
+ok 49 - recent activity always renders exactly one badge from the normalized presentation
+  ---
+  duration_ms: 2.295167
+  type: 'test'
+  ...
+# Subtest: shared business events preserve registration, renewal and legacy types
+ok 50 - shared business events preserve registration, renewal and legacy types
+  ---
+  duration_ms: 8.361375
+  type: 'test'
+  ...
+# Subtest: dashboard excludes business-log-only activity without reclassifying it
+ok 51 - dashboard excludes business-log-only activity without reclassifying it
+  ---
+  duration_ms: 0.0635
+  type: 'test'
+  ...
+# Subtest: dashboard deduplicates shared transactions, sorts by business date and limits the report to five
+ok 52 - dashboard deduplicates shared transactions, sorts by business date and limits the report to five
+  ---
+  duration_ms: 0.18175
+  type: 'test'
+  ...
+# Subtest: recent activity reads the shared permission-checked business event model only
+ok 53 - recent activity reads the shared permission-checked business event model only
+  ---
+  duration_ms: 0.763667
+  type: 'test'
+  ...
+# Subtest: category chart centers one bounded stage and stacks legend below on compact screens
+ok 54 - category chart centers one bounded stage and stacks legend below on compact screens
+  ---
+  duration_ms: 1.789333
+  type: 'test'
+  ...
+# Subtest: expiring kiosk row is a native accessible deep-link using the existing kiosk id route
+ok 55 - expiring kiosk row is a native accessible deep-link using the existing kiosk id route
+  ---
+  duration_ms: 1.251375
+  type: 'test'
+  ...
+# Subtest: expiring kiosk link has pointer, hover, and keyboard focus states
+ok 56 - expiring kiosk link has pointer, hover, and keyboard focus states
+  ---
+  duration_ms: 1.392625
+  type: 'test'
+  ...
+# Subtest: Phase UI-1 — Global Theme & Design System Foundation
+    # Subtest: defines the required semantic tokens in dark and light themes
+    ok 1 - defines the required semantic tokens in dark and light themes
+      ---
+      duration_ms: 5.262459
+      type: 'test'
+      ...
+    # Subtest: maintains strict token parity between Dark and Light theme blocks
+    ok 2 - maintains strict token parity between Dark and Light theme blocks
+      ---
+      duration_ms: 1.439083
+      type: 'test'
+      ...
+    # Subtest: keeps exactly one html[data-theme="light"] token block and avoids stacked override passes
+    ok 3 - keeps exactly one html[data-theme="light"] token block and avoids stacked override passes
+      ---
+      duration_ms: 1.605708
+      type: 'test'
+      ...
+    # Subtest: provides complete button variants consuming semantic tokens
+    ok 4 - provides complete button variants consuming semantic tokens
+      ---
+      duration_ms: 1.88875
+      type: 'test'
+      ...
+    # Subtest: provides complete status badge and chip variants with WCAG tokens
+    ok 5 - provides complete status badge and chip variants with WCAG tokens
+      ---
+      duration_ms: 3.628959
+      type: 'test'
+      ...
+    # Subtest: provides table hover and selected states consuming semantic tokens
+    ok 6 - provides table hover and selected states consuming semantic tokens
+      ---
+      duration_ms: 2.131167
+      type: 'test'
+      ...
+    # Subtest: provides main content icon foundation with semantic families
+    ok 7 - provides main content icon foundation with semantic families
+      ---
+      duration_ms: 1.529916
+      type: 'test'
+      ...
+    # Subtest: maintains low !important usage in stylesheet
+    ok 8 - maintains low !important usage in stylesheet
+      ---
+      duration_ms: 1.449416
+      type: 'test'
+      ...
+    # Subtest: dispatches dhl:themechange on PublicLayout theme toggle
+    ok 9 - dispatches dhl:themechange on PublicLayout theme toggle
+      ---
+      duration_ms: 0.947375
+      type: 'test'
+      ...
+    1..9
+ok 57 - Phase UI-1 — Global Theme & Design System Foundation
+  ---
+  duration_ms: 21.265667
+  type: 'suite'
+  ...
+# Subtest: category chart canvas height is at least 210px (larger than Phase 3 180px)
+ok 58 - category chart canvas height is at least 210px (larger than Phase 3 180px)
+  ---
+  duration_ms: 5.40975
+  type: 'test'
+  ...
+# Subtest: category donut radius cap is at least 80px (larger than Phase 3 70px)
+ok 59 - category donut radius cap is at least 80px (larger than Phase 3 70px)
+  ---
+  duration_ms: 1.017
+  type: 'test'
+  ...
+# Subtest: category donut inner radius ratio is between 0.50 and 0.60
+ok 60 - category donut inner radius ratio is between 0.50 and 0.60
+  ---
+  duration_ms: 1.728375
+  type: 'test'
+  ...
+# Subtest: category legend is vertically centered relative to canvas height, not fixed at y=10
+ok 61 - category legend is vertically centered relative to canvas height, not fixed at y=10
+  ---
+  duration_ms: 1.03325
+  type: 'test'
+  ...
+# Subtest: chart-container.small uses flex alignment for vertical centering
+ok 62 - chart-container.small uses flex alignment for vertical centering
+  ---
+  duration_ms: 0.949958
+  type: 'test'
+  ...
+# Subtest: chart-container.small min-height matches canvas height
+ok 63 - chart-container.small min-height matches canvas height
+  ---
+  duration_ms: 1.224375
+  type: 'test'
+  ...
+# Subtest: canvas theme tokens are all present and no hardcoded colors in fill/stroke assignments
+ok 64 - canvas theme tokens are all present and no hardcoded colors in fill/stroke assignments
+  ---
+  duration_ms: 0.643542
+  type: 'test'
+  ...
+# Subtest: dashboard category card HTML still uses chart-container small class
+ok 65 - dashboard category card HTML still uses chart-container small class
+  ---
+  duration_ms: 0.59675
+  type: 'test'
+  ...
+# Subtest: expense route and menu use the unified permission model
+ok 66 - expense route and menu use the unified permission model
+  ---
+  duration_ms: 0.702458
+  type: 'test'
+  ...
+# Subtest: expense UI provides CRUD, requested filters, salary fields and duplicate warning
+ok 67 - expense UI provides CRUD, requested filters, salary fields and duplicate warning
+  ---
+  duration_ms: 0.44125
+  type: 'test'
+  ...
+# Subtest: expense mutations are transactional business events without generic update spam
+ok 68 - expense mutations are transactional business events without generic update spam
+  ---
+  duration_ms: 0.330667
+  type: 'test'
+  ...
+# Subtest: Reports applies the same date filters and computes estimated profit from unchanged revenue
+ok 69 - Reports applies the same date filters and computes estimated profit from unchanged revenue
+  ---
+  duration_ms: 0.385833
+  type: 'test'
+  ...
+# Subtest: create, edit and archive expense produce one business log each
+ok 70 - create, edit and archive expense produce one business log each
+  ---
+  duration_ms: 2667.574
+  type: 'test'
+  ...
+# Subtest: amount at or below zero is rejected by RPC and table constraint
+ok 71 - amount at or below zero is rejected by RPC and table constraint
+  ---
+  duration_ms: 7.4645
+  type: 'test'
+  ...
+# Subtest: salary requires employee and month while duplicate salary remains a warning
+ok 72 - salary requires employee and month while duplicate salary remains a warning
+  ---
+  duration_ms: 22.035125
+  type: 'test'
+  ...
+# Subtest: RLS and RPC enforce expense permission while System Admin retains access
+ok 73 - RLS and RPC enforce expense permission while System Admin retains access
+  ---
+  duration_ms: 25.710334
+  type: 'test'
+  ...
+# Subtest: expense report uses the inclusive date filter without mutating payments
+ok 74 - expense report uses the inclusive date filter without mutating payments
+  ---
+  duration_ms: 22.053625
+  type: 'test'
+  ...
+# (node:24639) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/config/organization.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: public settings reload preserves warning_days in the shared cache
+ok 75 - public settings reload preserves warning_days in the shared cache
+  ---
+  duration_ms: 1.025375
+  type: 'test'
+  ...
+# Subtest: forward migration exposes warning_days and preserves public RPC grants
+ok 76 - forward migration exposes warning_days and preserves public RPC grants
+  ---
+  duration_ms: 3.541791
+  type: 'test'
+  ...
+# (node:24640) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/components/FacebookIdResolver.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: manual fallback never hides manual copy and keeps ID readonly after resolve
+ok 77 - manual fallback never hides manual copy and keeps ID readonly after resolve
+  ---
+  duration_ms: 0.891542
+  type: 'test'
+  ...
+# Subtest: double-click sends one request and does not submit the form
+ok 78 - double-click sends one request and does not submit the form
+  ---
+  duration_ms: 0.14175
+  type: 'test'
+  ...
+# Subtest: failed request exposes retry state and keeps manual ID editable
+ok 79 - failed request exposes retry state and keeps manual ID editable
+  ---
+  duration_ms: 0.151042
+  type: 'test'
+  ...
+# Subtest: URL changed during a request is resolved after debounce and stale data cannot overwrite it
+ok 80 - URL changed during a request is resolved after debounce and stale data cannot overwrite it
+  ---
+  duration_ms: 705.7045
+  type: 'test'
+  ...
+# Subtest: rejects non-POST requests
+ok 81 - rejects non-POST requests
+  ---
+  duration_ms: 0.520125
+  type: 'test'
+  ...
+# Subtest: rejects invalid URL and non-Facebook domain
+ok 82 - rejects invalid URL and non-Facebook domain
+  ---
+  duration_ms: 0.229583
+  type: 'test'
+  ...
+# Subtest: rejects malformed JSON
+ok 83 - rejects malformed JSON
+  ---
+  duration_ms: 0.60225
+  type: 'test'
+  ...
+# Subtest: returns Facebook ID for a valid URL using form-urlencoded upstream body
+ok 84 - returns Facebook ID for a valid URL using form-urlencoded upstream body
+  ---
+  duration_ms: 1.326875
+  type: 'test'
+  ...
+# Subtest: handles an unresolved Facebook ID
+ok 85 - handles an unresolved Facebook ID
+  ---
+  duration_ms: 0.760541
+  type: 'test'
+  ...
+# Subtest: handles upstream HTTP and invalid JSON errors
+ok 86 - handles upstream HTTP and invalid JSON errors
+  ---
+  duration_ms: 0.549083
+  type: 'test'
+  ...
+# Subtest: handles timeout without retrying
+ok 87 - handles timeout without retrying
+  ---
+  duration_ms: 5.452208
+  type: 'test'
+  ...
+# Subtest: overview presents business KPIs while the notification RPC keeps request states separate
+ok 88 - overview presents business KPIs while the notification RPC keeps request states separate
+  ---
+  duration_ms: 0.48125
+  type: 'test'
+  ...
+# Subtest: Recent Activity consumes shared business events instead of inferring payment lifecycle again
+ok 89 - Recent Activity consumes shared business events instead of inferring payment lifecycle again
+  ---
+  duration_ms: 0.099083
+  type: 'test'
+  ...
+# Subtest: shared registration, renewal and legacy event types have semantic presentations
+ok 90 - shared registration, renewal and legacy event types have semantic presentations
+  ---
+  duration_ms: 0.078417
+  type: 'test'
+  ...
+# Subtest: notification badge counts only Admin-actionable review and reconciliation states
+ok 91 - notification badge counts only Admin-actionable review and reconciliation states
+  ---
+  duration_ms: 0.058125
+  type: 'test'
+  ...
+# Subtest: business log view uses business events by default and raw audit only in technical mode
+ok 92 - business log view uses business events by default and raw audit only in technical mode
+  ---
+  duration_ms: 0.517125
+  type: 'test'
+  ...
+# Subtest: brand, registration, compact badge, data-backed Home and TTC copy contracts are corrected
+ok 93 - brand, registration, compact badge, data-backed Home and TTC copy contracts are corrected
+  ---
+  duration_ms: 0.17975
+  type: 'test'
+  ...
+# Subtest: Kiosk status is a compact fixed top-right grid item independent of title wrapping
+ok 94 - Kiosk status is a compact fixed top-right grid item independent of title wrapping
+  ---
+  duration_ms: 0.647208
+  type: 'test'
+  ...
+# Subtest: business visibility is applied before count, bounds, offset and limit
+ok 95 - business visibility is applied before count, bounds, offset and limit
+  ---
+  duration_ms: 0.123125
+  type: 'test'
+  ...
+# Subtest: technical mode and every filter are RPC inputs and page changes are clamped safely
+ok 96 - technical mode and every filter are RPC inputs and page changes are clamped safely
+  ---
+  duration_ms: 0.424375
+  type: 'test'
+  ...
+# Subtest: entity enrichment stays batched and technical details remain available
+ok 97 - entity enrichment stays batched and technical details remain available
+  ---
+  duration_ms: 0.089917
+  type: 'test'
+  ...
+# Subtest: desktop hierarchy and mobile activity cards avoid technical IDs in primary markup
+ok 98 - desktop hierarchy and mobile activity cards avoid technical IDs in primary markup
+  ---
+  duration_ms: 0.2065
+  type: 'test'
+  ...
+# Subtest: semantic theme tokens cover readable text, borders, notices, and statuses
+ok 99 - semantic theme tokens cover readable text, borders, notices, and statuses
+  ---
+  duration_ms: 4.989375
+  type: 'test'
+  ...
+# Subtest: theme architecture uses one token definition instead of light-only correction passes
+ok 100 - theme architecture uses one token definition instead of light-only correction passes
+  ---
+  duration_ms: 1.452167
+  type: 'test'
+  ...
+# Subtest: dashboard canvas resolves semantic theme colors and redraws after theme changes
+ok 101 - dashboard canvas resolves semantic theme colors and redraws after theme changes
+  ---
+  duration_ms: 0.477291
+  type: 'test'
+  ...
+# Subtest: detail headings, tabs, and information banners use semantic colors
+ok 102 - detail headings, tabs, and information banners use semantic colors
+  ---
+  duration_ms: 4.048583
+  type: 'test'
+  ...
+# Subtest: login is a username/password portal with restored self-registration
+ok 103 - login is a username/password portal with restored self-registration
+  ---
+  duration_ms: 3.106583
+  type: 'test'
+  ...
+# Subtest: mobile login places the auth form before the compact intro panel
+ok 104 - mobile login places the auth form before the compact intro panel
+  ---
+  duration_ms: 1.593625
+  type: 'test'
+  ...
+# Subtest: public renewal uses the canonical secret and application URL settings
+ok 105 - public renewal uses the canonical secret and application URL settings
+  ---
+  duration_ms: 1.421042
+  type: 'test'
+  ...
+# Subtest: lookup always renders renewal entry point and blocks unavailable flows before PayOS
+ok 106 - lookup always renders renewal entry point and blocks unavailable flows before PayOS
+  ---
+  duration_ms: 1.694958
+  type: 'test'
+  ...
+# Subtest: only dhlThemePreference is used as a theme storage key
+ok 107 - only dhlThemePreference is used as a theme storage key
+  ---
+  duration_ms: 2.115792
+  type: 'test'
+  ...
+# (node:24645) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/utils/formValidation.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: validates Vietnamese-compatible phone input without exposing records
+ok 108 - validates Vietnamese-compatible phone input without exposing records
+  ---
+  duration_ms: 0.370208
+  type: 'test'
+  ...
+# Subtest: requires digit-only Facebook IDs and detects duplicates in one form
+ok 109 - requires digit-only Facebook IDs and detects duplicates in one form
+  ---
+  duration_ms: 0.32775
+  type: 'test'
+  ...
+# Subtest: validates real date-only values and date ranges can compare lexically
+ok 110 - validates real date-only values and date ranges can compare lexically
+  ---
+  duration_ms: 0.096875
+  type: 'test'
+  ...
+# Subtest: production build generates valid browser config from only public Supabase values
+ok 111 - production build generates valid browser config from only public Supabase values
+  ---
+  duration_ms: 39.511834
+  type: 'test'
+  ...
+# Subtest: production build fails clearly when required variables are missing
+ok 112 - production build fails clearly when required variables are missing
+  ---
+  duration_ms: 39.572375
+  type: 'test'
+  ...
+# (node:24646) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/supabase/client.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: Supabase client reads generated config and local config keeps the same contract
+ok 113 - Supabase client reads generated config and local config keeps the same contract
+  ---
+  duration_ms: 4.117
+  type: 'test'
+  ...
+# Subtest: authenticated chrome leaves the primary page title to PageHeader
+ok 114 - authenticated chrome leaves the primary page title to PageHeader
+  ---
+  duration_ms: 2.896166
+  type: 'test'
+  ...
+# Subtest: admin data status uses operational copy without vendor terminology
+ok 115 - admin data status uses operational copy without vendor terminology
+  ---
+  duration_ms: 1.633
+  type: 'test'
+  ...
+# Subtest: active non-TTC page copy does not expose implementation wording
+ok 116 - active non-TTC page copy does not expose implementation wording
+  ---
+  duration_ms: 6.40025
+  type: 'test'
+  ...
+# (node:24648) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/components/Pagination.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: pagination uses compact ranges with ellipsis for many pages
+ok 117 - pagination uses compact ranges with ellipsis for many pages
+  ---
+  duration_ms: 1.547958
+  type: 'test'
+  ...
+# Subtest: pagination exposes active, disabled, result and page-size states
+ok 118 - pagination exposes active, disabled, result and page-size states
+  ---
+  duration_ms: 0.495083
+  type: 'test'
+  ...
+# Subtest: all server-paginated CRM routes use the shared component
+ok 119 - all server-paginated CRM routes use the shared component
+  ---
+  duration_ms: 5.456917
+  type: 'test'
+  ...
+# Subtest: shared spacing tokens and mobile pagination are defined
+ok 120 - shared spacing tokens and mobile pagination are defined
+  ---
+  duration_ms: 1.305125
+  type: 'test'
+  ...
+# (node:24649) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/components/HistoricalPaymentEditForm.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: case 450k/30-08 to 950k/30-12 is submitted as one in-place RPC correction
+ok 121 - case 450k/30-08 to 950k/30-12 is submitted as one in-place RPC correction
+  ---
+  duration_ms: 2.859
+  type: 'test'
+  ...
+# Subtest: RPC is System Admin-only and rejects locked/web-disabled users through canonical access
+ok 122 - RPC is System Admin-only and rejects locked/web-disabled users through canonical access
+  ---
+  duration_ms: 3.778208
+  type: 'test'
+  ...
+# Subtest: RPC validates completed status, reason, amount, dates, months, and related records
+ok 123 - RPC validates completed status, reason, amount, dates, months, and related records
+  ---
+  duration_ms: 1.874792
+  type: 'test'
+  ...
+# Subtest: newer completed payment or batch period cannot be shortened by correcting an older payment
+ok 124 - newer completed payment or batch period cannot be shortened by correcting an older payment
+  ---
+  duration_ms: 3.024584
+  type: 'test'
+  ...
+# Subtest: payment totals and audit remain in the same database transaction
+ok 125 - payment totals and audit remain in the same database transaction
+  ---
+  duration_ms: 0.967459
+  type: 'test'
+  ...
+# Subtest: historical workflow guard permits only the four audited fields
+ok 126 - historical workflow guard permits only the four audited fields
+  ---
+  duration_ms: 1.480916
+  type: 'test'
+  ...
+# Subtest: frontend resolves System Admin authoritatively and renders a visible payment action
+ok 127 - frontend resolves System Admin authoritatively and renders a visible payment action
+  ---
+  duration_ms: 2.894708
+  type: 'test'
+  ...
+# Subtest: missing migration is surfaced as a clear form error instead of failing silently
+ok 128 - missing migration is surfaced as a clear form error instead of failing silently
+  ---
+  duration_ms: 0.226666
+  type: 'test'
+  ...
+# Subtest: payment editor keeps the requested field order and remains separate from Kiosk/customer forms
+ok 129 - payment editor keeps the requested field order and remains separate from Kiosk/customer forms
+  ---
+  duration_ms: 4.10175
+  type: 'test'
+  ...
+# Subtest: client validation rejects empty reason and invalid historical values
+ok 130 - client validation rejects empty reason and invalid historical values
+  ---
+  duration_ms: 1.220375
+  type: 'test'
+  ...
+# Subtest: audit presentation is business-readable and remains visible with technical mode off
+ok 131 - audit presentation is business-readable and remains visible with technical mode off
+  ---
+  duration_ms: 13.882125
+  type: 'test'
+  ...
+# Subtest: anonymous public homepage returns seeded safe content without authentication
+ok 132 - anonymous public homepage returns seeded safe content without authentication
+  ---
+  duration_ms: 2620.582
+  type: 'test'
+  ...
+# Subtest: public businesses honor enabled, visibility window and display order
+ok 133 - public businesses honor enabled, visibility window and display order
+  ---
+  duration_ms: 20.317916
+  type: 'test'
+  ...
+# Subtest: System Admin and permitted editor can CRUD while normal user is denied
+ok 134 - System Admin and permitted editor can CRUD while normal user is denied
+  ---
+  duration_ms: 16.196791
+  type: 'test'
+  ...
+# Subtest: permitted editor can update Hero, rules and contact while public receives only whitelisted fields
+ok 135 - permitted editor can update Hero, rules and contact while public receives only whitelisted fields
+  ---
+  duration_ms: 5.675042
+  type: 'test'
+  ...
+# Subtest: anonymous callers cannot mutate homepage content
+ok 136 - anonymous callers cannot mutate homepage content
+  ---
+  duration_ms: 3.030083
+  type: 'test'
+  ...
+# Subtest: public homepage is an anonymous data-backed route with loading, empty and error states
+ok 137 - public homepage is an anonymous data-backed route with loading, empty and error states
+  ---
+  duration_ms: 0.402584
+  type: 'test'
+  ...
+# Subtest: hero, featured businesses and rules render in the body while official channels render in the shared footer
+ok 138 - hero, featured businesses and rules render in the body while official channels render in the shared footer
+  ---
+  duration_ms: 0.134375
+  type: 'test'
+  ...
+# Subtest: public layout preserves service routes while homepage body stays focused
+ok 139 - public layout preserves service routes while homepage body stays focused
+  ---
+  duration_ms: 0.121917
+  type: 'test'
+  ...
+# Subtest: Admin editor provides content controls and featured-business CRUD
+ok 140 - Admin editor provides content controls and featured-business CRUD
+  ---
+  duration_ms: 0.103959
+  type: 'test'
+  ...
+# Subtest: homepage permission protects route, rows and mutation RPCs
+ok 141 - homepage permission protects route, rows and mutation RPCs
+  ---
+  duration_ms: 0.1675
+  type: 'test'
+  ...
+# Subtest: homepage layout has desktop and mobile grids without fixed viewport width
+ok 142 - homepage layout has desktop and mobile grids without fixed viewport width
+  ---
+  duration_ms: 0.468458
+  type: 'test'
+  ...
+# (node:24653) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/utils/icons.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: renderIcon
+    # Subtest: exports a function
+    ok 1 - exports a function
+      ---
+      duration_ms: 0.338625
+      type: 'test'
+      ...
+    # Subtest: returns non-empty string for known names
+    ok 2 - returns non-empty string for known names
+      ---
+      duration_ms: 0.131416
+      type: 'test'
+      ...
+    # Subtest: returns empty string for unknown names
+    ok 3 - returns empty string for unknown names
+      ---
+      duration_ms: 0.0445
+      type: 'test'
+      ...
+    # Subtest: every result contains an <svg> element
+    ok 4 - every result contains an <svg> element
+      ---
+      duration_ms: 0.045916
+      type: 'test'
+      ...
+    # Subtest: SVGs have aria-hidden="true"
+    ok 5 - SVGs have aria-hidden="true"
+      ---
+      duration_ms: 0.043916
+      type: 'test'
+      ...
+    # Subtest: SVGs have focusable="false"
+    ok 6 - SVGs have focusable="false"
+      ---
+      duration_ms: 2.92725
+      type: 'test'
+      ...
+    1..6
+ok 143 - renderIcon
+  ---
+  duration_ms: 4.004708
+  type: 'suite'
+  ...
+# Subtest: icons.js color hygiene
+    # Subtest: contains no hardcoded fill or stroke color values
+    ok 1 - contains no hardcoded fill or stroke color values
+      ---
+      duration_ms: 0.360584
+      type: 'test'
+      ...
+    1..1
+ok 144 - icons.js color hygiene
+  ---
+  duration_ms: 0.562208
+  type: 'suite'
+  ...
+# Subtest: functional emoji removal
+    # Subtest: no functional emoji in src/pages/DashboardPage.js
+    ok 1 - no functional emoji in src/pages/DashboardPage.js
+      ---
+      duration_ms: 0.236167
+      type: 'test'
+      ...
+    # Subtest: no functional emoji in src/pages/PaymentsPage.js
+    ok 2 - no functional emoji in src/pages/PaymentsPage.js
+      ---
+      duration_ms: 0.221084
+      type: 'test'
+      ...
+    # Subtest: no functional emoji in src/pages/ReportsPage.js
+    ok 3 - no functional emoji in src/pages/ReportsPage.js
+      ---
+      duration_ms: 0.254792
+      type: 'test'
+      ...
+    # Subtest: no functional emoji in src/components/RenewKioskForm.js
+    ok 4 - no functional emoji in src/components/RenewKioskForm.js
+      ---
+      duration_ms: 0.106958
+      type: 'test'
+      ...
+    # Subtest: no functional emoji in src/pages/LegacyRegistrationPage.js
+    ok 5 - no functional emoji in src/pages/LegacyRegistrationPage.js
+      ---
+      duration_ms: 0.244375
+      type: 'test'
+      ...
+    # Subtest: no functional emoji in src/layouts/AppLayout.js
+    ok 6 - no functional emoji in src/layouts/AppLayout.js
+      ---
+      duration_ms: 0.240666
+      type: 'test'
+      ...
+    # Subtest: no functional emoji in src/components/PublicLayout.js
+    ok 7 - no functional emoji in src/components/PublicLayout.js
+      ---
+      duration_ms: 0.19525
+      type: 'test'
+      ...
+    1..7
+ok 145 - functional emoji removal
+  ---
+  duration_ms: 1.670292
+  type: 'suite'
+  ...
+# Subtest: shared icon imports
+    # Subtest: DashboardPage imports renderIcon from utils/icons
+    ok 1 - DashboardPage imports renderIcon from utils/icons
+      ---
+      duration_ms: 0.236875
+      type: 'test'
+      ...
+    # Subtest: PaymentsPage imports renderIcon from utils/icons
+    ok 2 - PaymentsPage imports renderIcon from utils/icons
+      ---
+      duration_ms: 0.184208
+      type: 'test'
+      ...
+    # Subtest: ReportsPage imports renderIcon from utils/icons
+    ok 3 - ReportsPage imports renderIcon from utils/icons
+      ---
+      duration_ms: 0.702625
+      type: 'test'
+      ...
+    # Subtest: RenewKioskForm imports renderIcon from utils/icons
+    ok 4 - RenewKioskForm imports renderIcon from utils/icons
+      ---
+      duration_ms: 0.144292
+      type: 'test'
+      ...
+    # Subtest: LegacyRegistrationPage imports renderIcon from utils/icons
+    ok 5 - LegacyRegistrationPage imports renderIcon from utils/icons
+      ---
+      duration_ms: 0.134875
+      type: 'test'
+      ...
+    # Subtest: AppLayout re-exports renderIcon from utils/icons
+    ok 6 - AppLayout re-exports renderIcon from utils/icons
+      ---
+      duration_ms: 0.112
+      type: 'test'
+      ...
+    # Subtest: PublicLayout imports renderIcon from utils/icons
+    ok 7 - PublicLayout imports renderIcon from utils/icons
+      ---
+      duration_ms: 0.096
+      type: 'test'
+      ...
+    # Subtest: UserHomePage imports renderIcon from utils/icons
+    ok 8 - UserHomePage imports renderIcon from utils/icons
+      ---
+      duration_ms: 0.261
+      type: 'test'
+      ...
+    1..8
+ok 146 - shared icon imports
+  ---
+  duration_ms: 2.032292
+  type: 'suite'
+  ...
+# Subtest: modal close button
+    # Subtest: AppLayout modal-close does not use bare ✕ character
+    ok 1 - AppLayout modal-close does not use bare ✕ character
+      ---
+      duration_ms: 0.215333
+      type: 'test'
+      ...
+    # Subtest: PublicLayout modal-close does not use bare ✕ character
+    ok 2 - PublicLayout modal-close does not use bare ✕ character
+      ---
+      duration_ms: 0.151666
+      type: 'test'
+      ...
+    1..2
+ok 147 - modal close button
+  ---
+  duration_ms: 0.524417
+  type: 'suite'
+  ...
+# Subtest: success state icons
+    # Subtest: RenewKioskForm uses renderIcon for success icon
+    ok 1 - RenewKioskForm uses renderIcon for success icon
+      ---
+      duration_ms: 0.101625
+      type: 'test'
+      ...
+    # Subtest: LegacyRegistrationPage uses renderIcon for success icon
+    ok 2 - LegacyRegistrationPage uses renderIcon for success icon
+      ---
+      duration_ms: 0.093792
+      type: 'test'
+      ...
+    1..2
+ok 148 - success state icons
+  ---
+  duration_ms: 0.226208
+  type: 'suite'
+  ...
+# Subtest: no external icon dependencies
+    # Subtest: package.json adds no icon library
+    ok 1 - package.json adds no icon library
+      ---
+      duration_ms: 0.11225
+      type: 'test'
+      ...
+    1..1
+ok 149 - no external icon dependencies
+  ---
+  duration_ms: 0.130209
+  type: 'suite'
+  ...
+# Subtest: stat-icon CSS
+    # Subtest: app.css .stat-icon uses width/height not font-size for sizing
+    ok 1 - app.css .stat-icon uses width/height not font-size for sizing
+      ---
+      duration_ms: 0.478208
+      type: 'test'
+      ...
+    1..1
+ok 150 - stat-icon CSS
+  ---
+  duration_ms: 0.498166
+  type: 'suite'
+  ...
+# (node:24654) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/config/organization.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: kiosk list delegates warning and active sorting to the authoritative status RPC
+ok 151 - kiosk list delegates warning and active sorting to the authoritative status RPC
+  ---
+  duration_ms: 1.449041
+  type: 'test'
+  ...
+# Subtest: kiosk status filters use only the authoritative status RPC
+ok 152 - kiosk status filters use only the authoritative status RPC
+  ---
+  duration_ms: 0.378917
+  type: 'test'
+  ...
+# Subtest: customer kiosk-state filters use only the authoritative customer status RPC
+ok 153 - customer kiosk-state filters use only the authoritative customer status RPC
+  ---
+  duration_ms: 0.278625
+  type: 'test'
+  ...
+# Subtest: dashboard keeps the inclusive RPC expiry result instead of replacing it
+ok 154 - dashboard keeps the inclusive RPC expiry result instead of replacing it
+  ---
+  duration_ms: 2.316791
+  type: 'test'
+  ...
+# Subtest: kiosk reports use only the authoritative report RPC result
+ok 155 - kiosk reports use only the authoritative report RPC result
+  ---
+  duration_ms: 1.251666
+  type: 'test'
+  ...
+# Subtest: route initialization does not write textContent to the removed page-title element
+ok 156 - route initialization does not write textContent to the removed page-title element
+  ---
+  duration_ms: 5.994292
+  type: 'test'
+  ...
+# Subtest: login initialization helpers guard optional DOM targets before text updates
+ok 157 - login initialization helpers guard optional DOM targets before text updates
+  ---
+  duration_ms: 1.643083
+  type: 'test'
+  ...
+# Subtest: business log mode is off by default and technical hints only render when explicitly enabled
+ok 158 - business log mode is off by default and technical hints only render when explicitly enabled
+  ---
+  duration_ms: 0.385958
+  type: 'test'
+  ...
+# Subtest: four-column activity UI keeps business summary before collapsed raw technical data
+ok 159 - four-column activity UI keeps business summary before collapsed raw technical data
+  ---
+  duration_ms: 0.779
+  type: 'test'
+  ...
+# (node:24658) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/config/organization.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: expiry warning days follows organization settings with a safe fallback
+ok 160 - expiry warning days follows organization settings with a safe fallback
+  ---
+  duration_ms: 0.345333
+  type: 'test'
+  ...
+# Subtest: expiry warning labels render from organization settings
+ok 161 - expiry warning labels render from organization settings
+  ---
+  duration_ms: 0.341208
+  type: 'test'
+  ...
+# Subtest: kiosk status label is derived from end date before stored status
+ok 162 - kiosk status label is derived from end date before stored status
+  ---
+  duration_ms: 8.787542
+  type: 'test'
+  ...
+# Subtest: inclusive expiry contract uses every boundary for warning_days = 5
+ok 163 - inclusive expiry contract uses every boundary for warning_days = 5
+  ---
+  duration_ms: 1.048625
+  type: 'test'
+  ...
+# Subtest: inclusive expiry contract uses every boundary for warning_days = 10
+ok 164 - inclusive expiry contract uses every boundary for warning_days = 10
+  ---
+  duration_ms: 1.132708
+  type: 'test'
+  ...
+# (node:24659) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/components/PaymentExperience.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: shared payment status system renders semantic states with inline SVG icons
+ok 165 - shared payment status system renders semantic states with inline SVG icons
+  ---
+  duration_ms: 1.003583
+  type: 'test'
+  ...
+# Subtest: payment summaries, kiosk rows, and actions escape customer-facing values
+ok 166 - payment summaries, kiosk rows, and actions escape customer-facing values
+  ---
+  duration_ms: 13.885375
+  type: 'test'
+  ...
+# Subtest: registration and renewal use the same payment component system for every result state
+ok 167 - registration and renewal use the same payment component system for every result state
+  ---
+  duration_ms: 6.37675
+  type: 'test'
+  ...
+# Subtest: registration has one deterministic business payment and duplicate requests are blocked
+ok 168 - registration has one deterministic business payment and duplicate requests are blocked
+  ---
+  duration_ms: 8.2535
+  type: 'test'
+  ...
+# Subtest: public renewal reuses one pending payment intent with a server-authoritative price
+ok 169 - public renewal reuses one pending payment intent with a server-authoritative price
+  ---
+  duration_ms: 2.038333
+  type: 'test'
+  ...
+# Subtest: one active PayOS order is enforced and replacement retains the business payment
+ok 170 - one active PayOS order is enforced and replacement retains the business payment
+  ---
+  duration_ms: 1.970375
+  type: 'test'
+  ...
+# Subtest: webhook finalization approves registration and closes sibling orders transactionally
+ok 171 - webhook finalization approves registration and closes sibling orders transactionally
+  ---
+  duration_ms: 0.889083
+  type: 'test'
+  ...
+# Subtest: duplicate and late old-order webhooks cannot apply service or revenue twice
+ok 172 - duplicate and late old-order webhooks cannot apply service or revenue twice
+  ---
+  duration_ms: 0.686875
+  type: 'test'
+  ...
+# Subtest: manual admin renewal stays PayOS-free while admin PayOS remains pending until webhook
+ok 173 - manual admin renewal stays PayOS-free while admin PayOS remains pending until webhook
+  ---
+  duration_ms: 4.053917
+  type: 'test'
+  ...
+# Subtest: checkout APIs reuse active orders and never trust return URL or polling to complete payment
+ok 174 - checkout APIs reuse active orders and never trust return URL or polling to complete payment
+  ---
+  duration_ms: 3.271834
+  type: 'test'
+  ...
+# Subtest: PayOS finalizer owns the single inclusive calendar calculation
+ok 175 - PayOS finalizer owns the single inclusive calendar calculation
+  ---
+  duration_ms: 4.247375
+  type: 'test'
+  ...
+# Subtest: registration requested period is inclusive and synchronized to completed payment
+ok 176 - registration requested period is inclusive and synchronized to completed payment
+  ---
+  duration_ms: 1.924
+  type: 'test'
+  ...
+# Subtest: same paid order retry differs from late paid sibling reconciliation
+ok 177 - same paid order retry differs from late paid sibling reconciliation
+  ---
+  duration_ms: 5.472875
+  type: 'test'
+  ...
+# Subtest: public PayOS errors are sanitized and active checkout copy is friendly
+ok 178 - public PayOS errors are sanitized and active checkout copy is friendly
+  ---
+  duration_ms: 1.872
+  type: 'test'
+  ...
+# Subtest: admin PayOS preparation reuses one pending business intent
+ok 179 - admin PayOS preparation reuses one pending business intent
+  ---
+  duration_ms: 0.493334
+  type: 'test'
+  ...
+# Subtest: unpaid registration is retained but absent from business Kiosk list and dashboard
+ok 180 - unpaid registration is retained but absent from business Kiosk list and dashboard
+  ---
+  duration_ms: 2632.009291
+  type: 'test'
+  ...
+# Subtest: cancelled registration is absent even though compatibility kiosk remains inactive
+ok 181 - cancelled registration is absent even though compatibility kiosk remains inactive
+  ---
+  duration_ms: 13.434209
+  type: 'test'
+  ...
+# Subtest: expired QR regeneration preserves request, Customer, Kiosks and business payment
+ok 182 - expired QR regeneration preserves request, Customer, Kiosks and business payment
+  ---
+  duration_ms: 13.602
+  type: 'test'
+  ...
+# Subtest: duplicate webhook activates a batch and recognizes its money only once
+ok 183 - duplicate webhook activates a batch and recognizes its money only once
+  ---
+  duration_ms: 29.903291
+  type: 'test'
+  ...
+# Subtest: old expired QR can complete intent; money on new QR is retained without a second activation
+ok 184 - old expired QR can complete intent; money on new QR is retained without a second activation
+  ---
+  duration_ms: 14.999916
+  type: 'test'
+  ...
+# Subtest: wrong paymentLinkId fails safe and retains signed evidence
+ok 185 - wrong paymentLinkId fails safe and retains signed evidence
+  ---
+  duration_ms: 9.598458
+  type: 'test'
+  ...
+# Subtest: unpaid renewal and same-token retry keep expiry and one pending transaction
+ok 186 - unpaid renewal and same-token retry keep expiry and one pending transaction
+  ---
+  duration_ms: 6.201459
+  type: 'test'
+  ...
+# Subtest: paid renewal extends expiry once and editing an older paid note cannot replay its period
+ok 187 - paid renewal extends expiry once and editing an older paid note cannot replay its period
+  ---
+  duration_ms: 9.012583
+  type: 'test'
+  ...
+# Subtest: renewal uses the existing coupon engine and records usage exactly once
+ok 188 - renewal uses the existing coupon engine and records usage exactly once
+  ---
+  duration_ms: 9.29175
+  type: 'test'
+  ...
+# Subtest: bonus-month renewal extends service months without inflating money
+ok 189 - bonus-month renewal extends service months without inflating money
+  ---
+  duration_ms: 10.1415
+  type: 'test'
+  ...
+# Subtest: Vietnam month boundary: dashboard, report rows, summary and monthly chart agree
+ok 190 - Vietnam month boundary: dashboard, report rows, summary and monthly chart agree
+  ---
+  duration_ms: 39.262667
+  type: 'test'
+  ...
+# Subtest: one registration produces one default business event; technical audit remains available
+ok 191 - one registration produces one default business event; technical audit remains available
+  ---
+  duration_ms: 9.683334
+  type: 'test'
+  ...
+# Subtest: new QR wins, then old expired QR money is retained for review only
+ok 192 - new QR wins, then old expired QR money is retained for review only
+  ---
+  duration_ms: 8.882875
+  type: 'test'
+  ...
+# Subtest: expired renewal wins once; new QR and extra bank reference cannot extend or count twice
+ok 193 - expired renewal wins once; new QR and extra bank reference cannot extend or count twice
+  ---
+  duration_ms: 9.229375
+  type: 'test'
+  ...
+# Subtest: manual coupon renewal uses the same evaluator and usage ledger
+ok 194 - manual coupon renewal uses the same evaluator and usage ledger
+  ---
+  duration_ms: 8.014917
+  type: 'test'
+  ...
+# Subtest: checkout status sync never completes service and preserves late-payable mapping
+ok 195 - checkout status sync never completes service and preserves late-payable mapping
+  ---
+  duration_ms: 23.404333
+  type: 'test'
+  ...
+# Subtest: completed business payment remains paid even when its checkout UI expired
+ok 196 - completed business payment remains paid even when its checkout UI expired
+  ---
+  duration_ms: 0.46325
+  type: 'test'
+  ...
+# Subtest: a retained second transfer takes review priority over a paid display
+ok 197 - a retained second transfer takes review priority over a paid display
+  ---
+  duration_ms: 0.057208
+  type: 'test'
+  ...
+# Subtest: regeneration checks provider state and never cancels the old PayOS order
+ok 198 - regeneration checks provider state and never cancels the old PayOS order
+  ---
+  duration_ms: 0.488125
+  type: 'test'
+  ...
+# Subtest: registration creates checkout then redirects without inline payment presentation
+ok 199 - registration creates checkout then redirects without inline payment presentation
+  ---
+  duration_ms: 5.628958
+  type: 'test'
+  ...
+# Subtest: return hints never finalize and completed registration renders kiosk details
+ok 200 - return hints never finalize and completed registration renders kiosk details
+  ---
+  duration_ms: 2.066333
+  type: 'test'
+  ...
+# Subtest: public renewal redirects and polls read-only status for at most 30 seconds
+ok 201 - public renewal redirects and polls read-only status for at most 30 seconds
+  ---
+  duration_ms: 6.085834
+  type: 'test'
+  ...
+# Subtest: signed PayOS webhook probe order 123 is ignored before business RPC
+ok 202 - signed PayOS webhook probe order 123 is ignored before business RPC
+  ---
+  duration_ms: 4.042292
+  type: 'test'
+  ...
+# (node:24664) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/components/PayosResultCard.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: PayosResultCard exposes only checkout and optional link copy actions
+ok 203 - PayosResultCard exposes only checkout and optional link copy actions
+  ---
+  duration_ms: 0.906584
+  type: 'test'
+  ...
+# Subtest: authenticated CRM table access follows canonical per-user permission
+ok 204 - authenticated CRM table access follows canonical per-user permission
+  ---
+  duration_ms: 2579.512125
+  type: 'test'
+  ...
+# Subtest: legitimate service_role claim passes prepare renewal role guard
+ok 205 - legitimate service_role claim passes prepare renewal role guard
+  ---
+  duration_ms: 4.150792
+  type: 'test'
+  ...
+# Subtest: prepare renewal remains executable only by service_role
+ok 206 - prepare renewal remains executable only by service_role
+  ---
+  duration_ms: 1.897875
+  type: 'test'
+  ...
+# Subtest: renewal authorization is consumed exactly once before payment creation
+ok 207 - renewal authorization is consumed exactly once before payment creation
+  ---
+  duration_ms: 1.707375
+  type: 'test'
+  ...
+# Subtest: price remains server authoritative and invalid prices are rejected
+ok 208 - price remains server authoritative and invalid prices are rejected
+  ---
+  duration_ms: 1.108375
+  type: 'test'
+  ...
+# Subtest: valid preparation creates the expected pending transfer payment and JSON contract
+ok 209 - valid preparation creates the expected pending transfer payment and JSON contract
+  ---
+  duration_ms: 2.239792
+  type: 'test'
+  ...
+# Subtest: prepare renewal errors do not log service credentials or secrets
+ok 210 - prepare renewal errors do not log service credentials or secrets
+  ---
+  duration_ms: 0.445792
+  type: 'test'
+  ...
+# Subtest: admin renewal migration uses type-safe inclusive calendar arithmetic
+ok 211 - admin renewal migration uses type-safe inclusive calendar arithmetic
+  ---
+  duration_ms: 5.79425
+  type: 'test'
+  ...
+# Subtest: PayOS creation paths send a 15-minute expiredAt independent of renewal token TTL
+ok 212 - PayOS creation paths send a 15-minute expiredAt independent of renewal token TTL
+  ---
+  duration_ms: 6.43525
+  type: 'test'
+  ...
+# Subtest: public renewal return polling is bounded and offers retry for terminal orders
+ok 213 - public renewal return polling is bounded and offers retry for terminal orders
+  ---
+  duration_ms: 1.3425
+  type: 'test'
+  ...
+# Subtest: semantic theme roles cover notices and Customer Detail headings
+ok 214 - semantic theme roles cover notices and Customer Detail headings
+  ---
+  duration_ms: 4.174125
+  type: 'test'
+  ...
+# Subtest: theme preference is shared and applied before the stylesheet loads
+ok 215 - theme preference is shared and applied before the stylesheet loads
+  ---
+  duration_ms: 3.13175
+  type: 'test'
+  ...
+# Subtest: production NUMERIC 2000.00 shape is accepted at the evaluator bigint boundary
+ok 216 - production NUMERIC 2000.00 shape is accepted at the evaluator bigint boundary
+  ---
+  duration_ms: 0.407833
+  type: 'test'
+  ...
+# Subtest: scaled-numeric correction replaces only the private evaluator contract
+ok 217 - scaled-numeric correction replaces only the private evaluator contract
+  ---
+  duration_ms: 0.149625
+  type: 'test'
+  ...
+# Subtest: Kiosk cards use the shared badge with a compact card-specific visual rule
+ok 218 - Kiosk cards use the shared badge with a compact card-specific visual rule
+  ---
+  duration_ms: 0.775542
+  type: 'test'
+  ...
+# Subtest: log names are batch-resolved and raw technical data remains expandable
+ok 219 - log names are batch-resolved and raw technical data remains expandable
+  ---
+  duration_ms: 0.167166
+  type: 'test'
+  ...
+# Subtest: CRM scope persistence is normalized and transactional
+ok 220 - CRM scope persistence is normalized and transactional
+  ---
+  duration_ms: 1.600709
+  type: 'test'
+  ...
+# Subtest: promotion audit actions are human-readable in the primary log view
+ok 221 - promotion audit actions are human-readable in the primary log view
+  ---
+  duration_ms: 3.036666
+  type: 'test'
+  ...
+# Subtest: zero payable is rejected server-side before PayOS creation
+ok 222 - zero payable is rejected server-side before PayOS creation
+  ---
+  duration_ms: 0.735875
+  type: 'test'
+  ...
+# Subtest: validity boundaries are inclusive and timestamps are authored in Vietnam time
+ok 223 - validity boundaries are inclusive and timestamps are authored in Vietnam time
+  ---
+  duration_ms: 0.576125
+  type: 'test'
+  ...
+# Subtest: security grants deny anon and gate CRM mutations by authoritative role
+ok 224 - security grants deny anon and gate CRM mutations by authoritative role
+  ---
+  duration_ms: 0.250375
+  type: 'test'
+  ...
+# Subtest: reference calculations cover percentage, fixed, bonus and mixed eligibility
+ok 225 - reference calculations cover percentage, fixed, bonus and mixed eligibility
+  ---
+  duration_ms: 0.20025
+  type: 'test'
+  ...
+# Subtest: promotion schema preserves normalized configuration and immutable usage snapshots
+ok 226 - promotion schema preserves normalized configuration and immutable usage snapshots
+  ---
+  duration_ms: 0.71025
+  type: 'test'
+  ...
+# Subtest: authoritative engine supports all V1 types, scopes and deterministic integer rounding
+ok 227 - authoritative engine supports all V1 types, scopes and deterministic integer rounding
+  ---
+  duration_ms: 0.182458
+  type: 'test'
+  ...
+# Subtest: promotion engine is called through the unique current checkout RPC
+ok 228 - promotion engine is called through the unique current checkout RPC
+  ---
+  duration_ms: 0.15375
+  type: 'test'
+  ...
+# Subtest: successful webhook finalizes one usage transaction-safely and bonus months remain separate
+ok 229 - successful webhook finalizes one usage transaction-safely and bonus months remain separate
+  ---
+  duration_ms: 3.227125
+  type: 'test'
+  ...
+# Subtest: public UI previews and submits optional promotion codes
+ok 230 - public UI previews and submits optional promotion codes
+  ---
+  duration_ms: 0.321667
+  type: 'test'
+  ...
+# Subtest: promotion value label, placeholder, suffix and helper are dynamic
+ok 231 - promotion value label, placeholder, suffix and helper are dynamic
+  ---
+  duration_ms: 0.457416
+  type: 'test'
+  ...
+# Subtest: all applicable promotion inputs use meaningful examples
+ok 232 - all applicable promotion inputs use meaningful examples
+  ---
+  duration_ms: 0.143833
+  type: 'test'
+  ...
+# Subtest: integer inputs and friendly validation preserve payload semantics
+ok 233 - integer inputs and friendly validation preserve payload semantics
+  ---
+  duration_ms: 0.091125
+  type: 'test'
+  ...
+# Subtest: Promotion RLS uses a narrow definer helper instead of caller access to user_roles
+ok 234 - Promotion RLS uses a narrow definer helper instead of caller access to user_roles
+  ---
+  duration_ms: 0.559083
+  type: 'test'
+  ...
+# Subtest: all Promotion Admin policies use the helper and no policy queries user_roles directly
+ok 235 - all Promotion Admin policies use the helper and no policy queries user_roles directly
+  ---
+  duration_ms: 0.189458
+  type: 'test'
+  ...
+# Subtest: Admin can read and pause while ordinary authenticated and anon users remain denied by RLS
+ok 236 - Admin can read and pause while ordinary authenticated and anon users remain denied by RLS
+  ---
+  duration_ms: 0.295084
+  type: 'test'
+  ...
+# Subtest: helper execution and save RPC remain restricted correctly
+ok 237 - helper execution and save RPC remain restricted correctly
+  ---
+  duration_ms: 0.243167
+  type: 'test'
+  ...
+# Subtest: safe delete RPC is admin-only and cannot be replaced by table DELETE
+ok 238 - safe delete RPC is admin-only and cannot be replaced by table DELETE
+  ---
+  duration_ms: 0.526042
+  type: 'test'
+  ...
+# Subtest: safe delete blocks every promotion usage, batch snapshot and completed payment reference
+ok 239 - safe delete blocks every promotion usage, batch snapshot and completed payment reference
+  ---
+  duration_ms: 0.124959
+  type: 'test'
+  ...
+# Subtest: Promotion Admin exposes branded confirmation and server-authoritative failure copy
+ok 240 - Promotion Admin exposes branded confirmation and server-authoritative failure copy
+  ---
+  duration_ms: 0.105583
+  type: 'test'
+  ...
+# Subtest: redesigned Promotion form keeps five sections, compact scope chips and immutable code affordance
+ok 241 - redesigned Promotion form keeps five sections, compact scope chips and immutable code affordance
+  ---
+  duration_ms: 0.07675
+  type: 'test'
+  ...
+# Subtest: promotion save corrective migration replaces only the affected RPC
+ok 242 - promotion save corrective migration replaces only the affected RPC
+  ---
+  duration_ms: 1.8
+  type: 'test'
+  ...
+# Subtest: promotion save scope IDs are explicitly qualified
+ok 243 - promotion save scope IDs are explicitly qualified
+  ---
+  duration_ms: 0.521875
+  type: 'test'
+  ...
+# Subtest: affected RPC contains no known unqualified ambiguous references
+ok 244 - affected RPC contains no known unqualified ambiguous references
+  ---
+  duration_ms: 1.357041
+  type: 'test'
+  ...
+# Subtest: corrective RPC preserves authorization and execute grants
+ok 245 - corrective RPC preserves authorization and execute grants
+  ---
+  duration_ms: 1.404042
+  type: 'test'
+  ...
+# Public renewal unavailable: MISSING_RENEWAL_SECRET
+# Subtest: ordinary lookup succeeds when public renewal secret is absent
+ok 246 - ordinary lookup succeeds when public renewal secret is absent
+  ---
+  duration_ms: 43.424333
+  type: 'test'
+  ...
+# Subtest: lookup diagnostics expose only a safe category when renewal prerequisites fail
+ok 247 - lookup diagnostics expose only a safe category when renewal prerequisites fail
+  ---
+  duration_ms: 2.151375
+  type: 'test'
+  ...
+# Subtest: lookup exposes renewal only when a valid server secret can issue authorization
+ok 248 - lookup exposes renewal only when a valid server secret can issue authorization
+  ---
+  duration_ms: 2.081125
+  type: 'test'
+  ...
+# (node:24677) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/pages/RegisterPage.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: public Kiosk registration exposes exactly three requested steps
+ok 249 - public Kiosk registration exposes exactly three requested steps
+  ---
+  duration_ms: 0.846334
+  type: 'test'
+  ...
+# Subtest: step-three payment and regenerated checkout redirect directly to PayOS
+ok 250 - step-three payment and regenerated checkout redirect directly to PayOS
+  ---
+  duration_ms: 3.166583
+  type: 'test'
+  ...
+# Subtest: registration protects submit re-entry and preserves reusable checkout state
+ok 251 - registration protects submit re-entry and preserves reusable checkout state
+  ---
+  duration_ms: 1.590875
+  type: 'test'
+  ...
+# Subtest: promotion and late-payment guidance remain present in the direct checkout flow
+ok 252 - promotion and late-payment guidance remain present in the direct checkout flow
+  ---
+  duration_ms: 1.156625
+  type: 'test'
+  ...
+# Subtest: registration stepper stays aligned across desktop and mobile rules
+ok 253 - registration stepper stays aligned across desktop and mobile rules
+  ---
+  duration_ms: 3.213417
+  type: 'test'
+  ...
+# Subtest: self-registration form uses username/password and does not require email
+ok 254 - self-registration form uses username/password and does not require email
+  ---
+  duration_ms: 0.492625
+  type: 'test'
+  ...
+# Subtest: normal users see personal routes only, granted users gain their module, and System Admin sees all
+ok 255 - normal users see personal routes only, granted users gain their module, and System Admin sees all
+  ---
+  duration_ms: 0.456625
+  type: 'test'
+  ...
+# Subtest: CRM Data API policies remove authenticated-wide access and use canonical permissions
+ok 256 - CRM Data API policies remove authenticated-wide access and use canonical permissions
+  ---
+  duration_ms: 2.58875
+  type: 'test'
+  ...
+# Subtest: Promotion Engine batch columns are populated before their NOT NULL constraints
+ok 257 - Promotion Engine batch columns are populated before their NOT NULL constraints
+  ---
+  duration_ms: 0.512917
+  type: 'test'
+  ...
+# Subtest: migration uses explicit function bodies and no definition text rewriting
+ok 258 - migration uses explicit function bodies and no definition text rewriting
+  ---
+  duration_ms: 0.594166
+  type: 'test'
+  ...
+# Subtest: private base preserves the authoritative batch contract and public wrapper topology
+ok 259 - private base preserves the authoritative batch contract and public wrapper topology
+  ---
+  duration_ms: 0.169167
+  type: 'test'
+  ...
+# Subtest: public PayOS requests use a separate waiting-for-payment state
+ok 260 - public PayOS requests use a separate waiting-for-payment state
+  ---
+  duration_ms: 0.067125
+  type: 'test'
+  ...
+# Subtest: Admin queue exposes awaiting-payment separately from Admin-review pending
+ok 261 - Admin queue exposes awaiting-payment separately from Admin-review pending
+  ---
+  duration_ms: 0.244667
+  type: 'test'
+  ...
+# Subtest: identical retry reuses request, batch, payment, and active provider order
+ok 262 - identical retry reuses request, batch, payment, and active provider order
+  ---
+  duration_ms: 0.293458
+  type: 'test'
+  ...
+# Subtest: failed provider creation releases only an unpaid empty reservation
+ok 263 - failed provider creation releases only an unpaid empty reservation
+  ---
+  duration_ms: 4.171834
+  type: 'test'
+  ...
+# Subtest: safe server diagnostics expose every registration payment stage
+ok 264 - safe server diagnostics expose every registration payment stage
+  ---
+  duration_ms: 1.277291
+  type: 'test'
+  ...
+# Subtest: legacy registrations keep explicit Admin review semantics
+ok 265 - legacy registrations keep explicit Admin review semantics
+  ---
+  duration_ms: 0.855917
+  type: 'test'
+  ...
+# Subtest: stabilization exposes one unique two-argument service-role RPC
+ok 266 - stabilization exposes one unique two-argument service-role RPC
+  ---
+  duration_ms: 1.659708
+  type: 'test'
+  ...
+# Subtest: browser and Node checkout pass optional promotion explicitly to v3
+ok 267 - browser and Node checkout pass optional promotion explicitly to v3
+  ---
+  duration_ms: 1.581125
+  type: 'test'
+  ...
+# Subtest: single and multi-Kiosk totals remain authoritative with one payment
+ok 268 - single and multi-Kiosk totals remain authoritative with one payment
+  ---
+  duration_ms: 0.231541
+  type: 'test'
+  ...
+# Subtest: current Promotion Engine NOT NULL columns receive neutral values
+ok 269 - current Promotion Engine NOT NULL columns receive neutral values
+  ---
+  duration_ms: 0.203
+  type: 'test'
+  ...
+# Subtest: retry reuses request ownership, batch, payment, Kiosk and active provider order
+ok 270 - retry reuses request ownership, batch, payment, Kiosk and active provider order
+  ---
+  duration_ms: 0.897791
+  type: 'test'
+  ...
+# Subtest: awaiting-payment is visible but remains separate from Admin review
+ok 271 - awaiting-payment is visible but remains separate from Admin review
+  ---
+  duration_ms: 0.228792
+  type: 'test'
+  ...
+# Subtest: signed webhook remains the only completion path and is idempotent
+ok 272 - signed webhook remains the only completion path and is idempotent
+  ---
+  duration_ms: 0.49425
+  type: 'test'
+  ...
+# Subtest: forward-only migration does not rewrite functions dynamically or touch history
+ok 273 - forward-only migration does not rewrite functions dynamically or touch history
+  ---
+  duration_ms: 0.31825
+  type: 'test'
+  ...
+# (node:24680) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/services/RegistrationService.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: business discovery is accent and case insensitive
+ok 274 - business discovery is accent and case insensitive
+  ---
+  duration_ms: 0.565208
+  type: 'test'
+  ...
+# Subtest: business discovery matches type, category, and description while preserving their IDs
+ok 275 - business discovery matches type, category, and description while preserving their IDs
+  ---
+  duration_ms: 3.126083
+  type: 'test'
+  ...
+# Subtest: registration V2 keeps category and business type separate and preserves production integrations
+ok 276 - registration V2 keeps category and business type separate and preserves production integrations
+  ---
+  duration_ms: 5.606375
+  type: 'test'
+  ...
+# Subtest: arbitrary registration months preserve the existing pricing calculation
+ok 277 - arbitrary registration months preserve the existing pricing calculation
+  ---
+  duration_ms: 2.7845
+  type: 'test'
+  ...
+# Subtest: single Kiosk reuses the Step 1 Facebook identity without rendering a second resolver
+ok 278 - single Kiosk reuses the Step 1 Facebook identity without rendering a second resolver
+  ---
+  duration_ms: 5.674084
+  type: 'test'
+  ...
+# Subtest: multi Kiosk first card can switch between customer and independent Facebook
+ok 279 - multi Kiosk first card can switch between customer and independent Facebook
+  ---
+  duration_ms: 5.575375
+  type: 'test'
+  ...
+# Subtest: resolver success explicitly clears stale name and ID validity state
+ok 280 - resolver success explicitly clears stale name and ID validity state
+  ---
+  duration_ms: 1.966833
+  type: 'test'
+  ...
+# Subtest: discount checkout previews optional promotion while submitted kiosk discounts remain zero
+ok 281 - discount checkout previews optional promotion while submitted kiosk discounts remain zero
+  ---
+  duration_ms: 2.035959
+  type: 'test'
+  ...
+# Subtest: active Kiosk shows the renewal button and receives secure authorization
+ok 282 - active Kiosk shows the renewal button and receives secure authorization
+  ---
+  duration_ms: 20.026667
+  type: 'test'
+  ...
+# Subtest: warning Kiosk shows the renewal button and receives secure authorization
+ok 283 - warning Kiosk shows the renewal button and receives secure authorization
+  ---
+  duration_ms: 0.595958
+  type: 'test'
+  ...
+# Subtest: expired Kiosk shows the renewal button and receives secure authorization
+ok 284 - expired Kiosk shows the renewal button and receives secure authorization
+  ---
+  duration_ms: 0.426125
+  type: 'test'
+  ...
+# Subtest: pending Kiosk shows the button without creating renewal authorization
+ok 285 - pending Kiosk shows the button without creating renewal authorization
+  ---
+  duration_ms: 2.214625
+  type: 'test'
+  ...
+# Subtest: invalid price 0 shows the button without creating authorization or payment
+ok 286 - invalid price 0 shows the button without creating authorization or payment
+  ---
+  duration_ms: 1.554084
+  type: 'test'
+  ...
+# Subtest: invalid price null shows the button without creating authorization or payment
+ok 287 - invalid price null shows the button without creating authorization or payment
+  ---
+  duration_ms: 1.0965
+  type: 'test'
+  ...
+# Subtest: invalid price not-a-price shows the button without creating authorization or payment
+ok 288 - invalid price not-a-price shows the button without creating authorization or payment
+  ---
+  duration_ms: 2.88675
+  type: 'test'
+  ...
+# (node:24682) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/pages/LookupPage.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: public renewal confirmation shows authoritative price, periods, and checkout action
+ok 289 - public renewal confirmation shows authoritative price, periods, and checkout action
+  ---
+  duration_ms: 16.141875
+  type: 'test'
+  ...
+# Subtest: legacy renewal payment renderer contains no inline QR or transfer data
+ok 290 - legacy renewal payment renderer contains no inline QR or transfer data
+  ---
+  duration_ms: 0.307333
+  type: 'test'
+  ...
+# Subtest: public renewal redirects and return handling polls only the read-only endpoint
+ok 291 - public renewal redirects and return handling polls only the read-only endpoint
+  ---
+  duration_ms: 5.359167
+  type: 'test'
+  ...
+# Subtest: public renewal period preserves remaining time and inclusive calendar months
+ok 292 - public renewal period preserves remaining time and inclusive calendar months
+  ---
+  duration_ms: 2.035916
+  type: 'test'
+  ...
+# Subtest: renewal authorization uses canonical verified JWT role claim
+ok 293 - renewal authorization uses canonical verified JWT role claim
+  ---
+  duration_ms: 8.772708
+  type: 'test'
+  ...
+# Subtest: anon and authenticated cannot execute while service_role can
+ok 294 - anon and authenticated cannot execute while service_role can
+  ---
+  duration_ms: 2.470625
+  type: 'test'
+  ...
+# Subtest: renewal authorization expiry remains bounded to 15 minutes
+ok 295 - renewal authorization expiry remains bounded to 15 minutes
+  ---
+  duration_ms: 1.308083
+  type: 'test'
+  ...
+# Subtest: server RPC helper selects the service credential for renewal authorization
+ok 296 - server RPC helper selects the service credential for renewal authorization
+  ---
+  duration_ms: 3.090167
+  type: 'test'
+  ...
+# Subtest: safe RPC diagnostics preserve useful fields and redact secrets
+ok 297 - safe RPC diagnostics preserve useful fields and redact secrets
+  ---
+  duration_ms: 8.149166
+  type: 'test'
+  ...
+# Subtest: signed renewal token is short lived and guessed ID is rejected
+ok 298 - signed renewal token is short lived and guessed ID is rejected
+  ---
+  duration_ms: 9.731584
+  type: 'test'
+  ...
+# Subtest: expired renewal token is rejected
+ok 299 - expired renewal token is rejected
+  ---
+  duration_ms: 0.520333
+  type: 'test'
+  ...
+# Subtest: token for Kiosk A cannot authorize Kiosk B
+ok 300 - token for Kiosk A cannot authorize Kiosk B
+  ---
+  duration_ms: 0.957208
+  type: 'test'
+  ...
+# Subtest: client price is ignored and current server price is authoritative
+ok 301 - client price is ignored and current server price is authoritative
+  ---
+  duration_ms: 8.57925
+  type: 'test'
+  ...
+# Subtest: renewal authorization is consumed once before payment preparation
+ok 302 - renewal authorization is consumed once before payment preparation
+  ---
+  duration_ms: 0.765417
+  type: 'test'
+  ...
+# Subtest: only signed webhook can complete and retries are idempotent
+ok 303 - only signed webhook can complete and retries are idempotent
+  ---
+  duration_ms: 0.807792
+  type: 'test'
+  ...
+# Subtest: public status and return URL cannot complete a renewal
+ok 304 - public status and return URL cannot complete a renewal
+  ---
+  duration_ms: 0.637
+  type: 'test'
+  ...
+# Subtest: shared PayOS status polling is read-only and requires authoritative payment completion
+ok 305 - shared PayOS status polling is read-only and requires authoritative payment completion
+  ---
+  duration_ms: 0.417416
+  type: 'test'
+  ...
+# Subtest: webhook diagnostics expose lifecycle names but not secrets or payloads
+ok 306 - webhook diagnostics expose lifecycle names but not secrets or payloads
+  ---
+  duration_ms: 1.064792
+  type: 'test'
+  ...
+# Subtest: PayOS confirmation preserves remaining time for active and warning Kiosks
+ok 307 - PayOS confirmation preserves remaining time for active and warning Kiosks
+  ---
+  duration_ms: 1.272417
+  type: 'test'
+  ...
+# Subtest: Facebook help uses a dedicated responsive modal and readable step hierarchy
+ok 308 - Facebook help uses a dedicated responsive modal and readable step hierarchy
+  ---
+  duration_ms: 6.045875
+  type: 'test'
+  ...
+# Subtest: public checkbox and radio labels distinguish checked, unchecked and disabled states
+ok 309 - public checkbox and radio labels distinguish checked, unchecked and disabled states
+  ---
+  duration_ms: 5.9605
+  type: 'test'
+  ...
+# Subtest: public polish leaves resolver and PayOS contracts untouched
+ok 310 - public polish leaves resolver and PayOS contracts untouched
+  ---
+  duration_ms: 3.18975
+  type: 'test'
+  ...
+# Subtest: public header and home use the shared SVG icon system without emoji controls
+ok 311 - public header and home use the shared SVG icon system without emoji controls
+  ---
+  duration_ms: 0.413792
+  type: 'test'
+  ...
+# Subtest: registration retains three focused steps and concise classification confirmation
+ok 312 - registration retains three focused steps and concise classification confirmation
+  ---
+  duration_ms: 0.099542
+  type: 'test'
+  ...
+# Subtest: promotion checkout exposes accessible preview, money discount and bonus-month states
+ok 313 - promotion checkout exposes accessible preview, money discount and bonus-month states
+  ---
+  duration_ms: 0.063
+  type: 'test'
+  ...
+# Subtest: business discovery removes repeated taxonomy and keeps search-first fallback
+ok 314 - business discovery removes repeated taxonomy and keeps search-first fallback
+  ---
+  duration_ms: 0.046375
+  type: 'test'
+  ...
+# Subtest: legacy, lookup, payment and mobile contracts share V3 responsive primitives
+ok 315 - legacy, lookup, payment and mobile contracts share V3 responsive primitives
+  ---
+  duration_ms: 0.078125
+  type: 'test'
+  ...
+# Subtest: QR display expiry remains separate from registration/payment business intent
+ok 316 - QR display expiry remains separate from registration/payment business intent
+  ---
+  duration_ms: 0.569
+  type: 'test'
+  ...
+# Subtest: future cancellation archives only transaction-proven provisional customers
+ok 317 - future cancellation archives only transaction-proven provisional customers
+  ---
+  duration_ms: 0.096
+  type: 'test'
+  ...
+# Subtest: Dashboard and Logs consume one permission-checked business event RPC
+ok 318 - Dashboard and Logs consume one permission-checked business event RPC
+  ---
+  duration_ms: 0.1255
+  type: 'test'
+  ...
+# Subtest: financial KPI query and labels use runtime Vietnam year and month
+ok 319 - financial KPI query and labels use runtime Vietnam year and month
+  ---
+  duration_ms: 0.06425
+  type: 'test'
+  ...
+# Subtest: module permission guards protect reports, logs, payments, registration and storage
+ok 320 - module permission guards protect reports, logs, payments, registration and storage
+  ---
+  duration_ms: 0.136458
+  type: 'test'
+  ...
+# Subtest: homepage body is focused and Hero/Footer share the public content object
+ok 321 - homepage body is focused and Hero/Footer share the public content object
+  ---
+  duration_ms: 0.097459
+  type: 'test'
+  ...
+# Subtest: account self-registration requires only username and password
+ok 322 - account self-registration requires only username and password
+  ---
+  duration_ms: 0.52775
+  type: 'test'
+  ...
+# Subtest: QA migrations execute and registration RPCs use the unified module permission
+ok 323 - QA migrations execute and registration RPCs use the unified module permission
+  ---
+  duration_ms: 2276.163333
+  type: 'test'
+  ...
+# Subtest: Round 2 migrations execute and enforce status, expense category and journal boundaries
+ok 324 - Round 2 migrations execute and enforce status, expense category and journal boundaries
+  ---
+  duration_ms: 2265.522292
+  type: 'test'
+  ...
+# Subtest: status read models use only the narrow warning-days helper and retain private settings
+ok 325 - status read models use only the narrow warning-days helper and retain private settings
+  ---
+  duration_ms: 0.478084
+  type: 'test'
+  ...
+# Subtest: Kiosk list exposes only real business states with required semantics and sorting
+ok 326 - Kiosk list exposes only real business states with required semantics and sorting
+  ---
+  duration_ms: 0.278583
+  type: 'test'
+  ...
+# Subtest: admin history screens use runtime Vietnam year-to-date values and shared date fields
+ok 327 - admin history screens use runtime Vietnam year-to-date values and shared date fields
+  ---
+  duration_ms: 0.1175
+  type: 'test'
+  ...
+# Subtest: Expense workspace uses one date range for expense, revenue and estimated profit
+ok 328 - Expense workspace uses one date range for expense, revenue and estimated profit
+  ---
+  duration_ms: 0.064375
+  type: 'test'
+  ...
+# Subtest: managed expense categories support create rename archive and preserve historical FK rows
+ok 329 - managed expense categories support create rename archive and preserve historical FK rows
+  ---
+  duration_ms: 0.151
+  type: 'test'
+  ...
+# Subtest: default Business Logs exclude mirrored audit rows while technical history remains available
+ok 330 - default Business Logs exclude mirrored audit rows while technical history remains available
+  ---
+  duration_ms: 0.096041
+  type: 'test'
+  ...
+# Subtest: Settings is the single sidebar workspace and reuses the canonical Homepage editor
+ok 331 - Settings is the single sidebar workspace and reuses the canonical Homepage editor
+  ---
+  duration_ms: 0.130208
+  type: 'test'
+  ...
+# Subtest: public footer uses local branded assets, removes duplicate destinations and has compact empty UI
+ok 332 - public footer uses local branded assets, removes duplicate destinations and has compact empty UI
+  ---
+  duration_ms: 0.088875
+  type: 'test'
+  ...
+# Subtest: legitimate service_role claim passes PayOS order recording guard
+ok 333 - legitimate service_role claim passes PayOS order recording guard
+  ---
+  duration_ms: 9.54075
+  type: 'test'
+  ...
+# Subtest: PayOS order recording remains executable only by service_role
+ok 334 - PayOS order recording remains executable only by service_role
+  ---
+  duration_ms: 8.1535
+  type: 'test'
+  ...
+# Subtest: only pending public renewal payment can be recorded
+ok 335 - only pending public renewal payment can be recorded
+  ---
+  duration_ms: 2.45525
+  type: 'test'
+  ...
+# Subtest: wrong amount and non-public-renewal payment are rejected
+ok 336 - wrong amount and non-public-renewal payment are rejected
+  ---
+  duration_ms: 1.821833
+  type: 'test'
+  ...
+# Subtest: PayOS record preserves provider fields, pending upsert, and JSON response
+ok 337 - PayOS record preserves provider fields, pending upsert, and JSON response
+  ---
+  duration_ms: 2.8645
+  type: 'test'
+  ...
+# Subtest: recording path does not log service credentials or renewal secrets
+ok 338 - recording path does not log service credentials or renewal secrets
+  ---
+  duration_ms: 1.36475
+  type: 'test'
+  ...
+# Subtest: latest application-owned public renewal RPC definitions use no legacy singular role setting
+ok 339 - latest application-owned public renewal RPC definitions use no legacy singular role setting
+  ---
+  duration_ms: 156.081083
+  type: 'test'
+  ...
+# Subtest: reproduces SQLSTATE 42883 source and hotfixes every affected batch function
+ok 340 - reproduces SQLSTATE 42883 source and hotfixes every affected batch function
+  ---
+  duration_ms: 4.792959
+  type: 'test'
+  ...
+# Subtest: registration API preserves safe PostgreSQL code, message, details, and hint diagnostics
+ok 341 - registration API preserves safe PostgreSQL code, message, details, and hint diagnostics
+  ---
+  duration_ms: 2.045625
+  type: 'test'
+  ...
+# Subtest: failure remains before every PayOS network request and batch ownership is unchanged
+ok 342 - failure remains before every PayOS network request and batch ownership is unchanged
+  ---
+  duration_ms: 1.190167
+  type: 'test'
+  ...
+# Subtest: registration batches cannot run legacy or modern single-kiosk period logic
+ok 343 - registration batches cannot run legacy or modern single-kiosk period logic
+  ---
+  duration_ms: 4.118833
+  type: 'test'
+  ...
+# Subtest: batch kiosk totals use item allocations while customer revenue keeps one payment
+ok 344 - batch kiosk totals use item allocations while customer revenue keeps one payment
+  ---
+  duration_ms: 2.888375
+  type: 'test'
+  ...
+# Subtest: ordinary payments and renewals retain single-kiosk totals and dates
+ok 345 - ordinary payments and renewals retain single-kiosk totals and dates
+  ---
+  duration_ms: 1.096208
+  type: 'test'
+  ...
+# Subtest: batch finalizer remains sole owner of every kiosk and item date
+ok 346 - batch finalizer remains sole owner of every kiosk and item date
+  ---
+  duration_ms: 5.372667
+  type: 'test'
+  ...
+# Subtest: registration lookup navigation clears PayOS return state and can prefill phone
+ok 347 - registration lookup navigation clears PayOS return state and can prefill phone
+  ---
+  duration_ms: 0.815375
+  type: 'test'
+  ...
+# Subtest: only a stored public-renewal flow can activate renewal return mode
+ok 348 - only a stored public-renewal flow can activate renewal return mode
+  ---
+  duration_ms: 1.155417
+  type: 'test'
+  ...
+# Subtest: single and multi-Kiosk registration use the same one-batch one-payment architecture
+ok 349 - single and multi-Kiosk registration use the same one-batch one-payment architecture
+  ---
+  duration_ms: 5.924084
+  type: 'test'
+  ...
+# Subtest: batch total is a server-side sum of current active business-type prices
+ok 350 - batch total is a server-side sum of current active business-type prices
+  ---
+  duration_ms: 0.722291
+  type: 'test'
+  ...
+# Subtest: repeated checkout and expired replacement retain one underlying batch payment
+ok 351 - repeated checkout and expired replacement retain one underlying batch payment
+  ---
+  duration_ms: 1.568375
+  type: 'test'
+  ...
+# Subtest: paid webhook transactionally activates every batch item exactly once
+ok 352 - paid webhook transactionally activates every batch item exactly once
+  ---
+  duration_ms: 0.774042
+  type: 'test'
+  ...
+# Subtest: batch dates are inclusive per item and revenue is represented by one completed payment
+ok 353 - batch dates are inclusive per item and revenue is represented by one completed payment
+  ---
+  duration_ms: 1.014208
+  type: 'test'
+  ...
+# Subtest: batch status is read-only and returns all activated Kiosks
+ok 354 - batch status is read-only and returns all activated Kiosks
+  ---
+  duration_ms: 1.8425
+  type: 'test'
+  ...
+# Subtest: new batch RPCs are locked down and legacy, renewal, and admin paths remain available
+ok 355 - new batch RPCs are locked down and legacy, renewal, and admin paths remain available
+  ---
+  duration_ms: 2.180208
+  type: 'test'
+  ...
+# Subtest: v3 is the single explicit current service-role checkout signature
+ok 356 - v3 is the single explicit current service-role checkout signature
+  ---
+  duration_ms: 1.72825
+  type: 'test'
+  ...
+# Subtest: normal and promotion pricing share one authoritative transaction
+ok 357 - normal and promotion pricing share one authoritative transaction
+  ---
+  duration_ms: 0.52575
+  type: 'test'
+  ...
+# Subtest: API always sends the third argument and creates PayOS only after DB preparation
+ok 358 - API always sends the third argument and creates PayOS only after DB preparation
+  ---
+  duration_ms: 0.300458
+  type: 'test'
+  ...
+# Subtest: retry and cross-flow duplicate contracts are serialized and idempotent
+ok 359 - retry and cross-flow duplicate contracts are serialized and idempotent
+  ---
+  duration_ms: 0.58175
+  type: 'test'
+  ...
+# Subtest: Admin external completion records real external payment and finalizes exactly once
+ok 360 - Admin external completion records real external payment and finalizes exactly once
+  ---
+  duration_ms: 0.389541
+  type: 'test'
+  ...
+# Subtest: Admin cancellation preserves history and refuses paid or active records
+ok 361 - Admin cancellation preserves history and refuses paid or active records
+  ---
+  duration_ms: 1.331208
+  type: 'test'
+  ...
+# Subtest: Admin UI exposes request-centric filters, payment states and safe dialogs
+ok 362 - Admin UI exposes request-centric filters, payment states and safe dialogs
+  ---
+  duration_ms: 0.368542
+  type: 'test'
+  ...
+# Subtest: reports and notifications keep all four pending concepts separate
+ok 363 - reports and notifications keep all four pending concepts separate
+  ---
+  duration_ms: 0.31025
+  type: 'test'
+  ...
+# Subtest: promotion UI and signed webhook remain connected without weakening idempotency
+ok 364 - promotion UI and signed webhook remain connected without weakening idempotency
+  ---
+  duration_ms: 0.736125
+  type: 'test'
+  ...
+# Subtest: security-definer functions use empty search path and narrow execute grants
+ok 365 - security-definer functions use empty search path and narrow execute grants
+  ---
+  duration_ms: 0.773084
+  type: 'test'
+  ...
+# Subtest: production hotfix leaves exactly one public payment-preparation signature
+ok 366 - production hotfix leaves exactly one public payment-preparation signature
+  ---
+  duration_ms: 0.789333
+  type: 'test'
+  ...
+# Subtest: normal checkout uses v3 with explicit null promotion and remains server-authoritative
+ok 367 - normal checkout uses v3 with explicit null promotion and remains server-authoritative
+  ---
+  duration_ms: 0.074708
+  type: 'test'
+  ...
+# Subtest: percentage, fixed and bonus-month promotion infrastructure remains installed
+ok 368 - percentage, fixed and bonus-month promotion infrastructure remains installed
+  ---
+  duration_ms: 0.142125
+  type: 'test'
+  ...
+# Subtest: promotion input enters the unique v3 path before provider order creation
+ok 369 - promotion input enters the unique v3 path before provider order creation
+  ---
+  duration_ms: 0.071292
+  type: 'test'
+  ...
+# Subtest: duplicate and failed-attempt retries preserve one financial intent
+ok 370 - duplicate and failed-attempt retries preserve one financial intent
+  ---
+  duration_ms: 0.059459
+  type: 'test'
+  ...
+# Subtest: multi-Kiosk payment remains one authoritative sum
+ok 371 - multi-Kiosk payment remains one authoritative sum
+  ---
+  duration_ms: 0.050917
+  type: 'test'
+  ...
+# Subtest: PayOS failure diagnostics identify the recoverable stage without leaking secrets
+ok 372 - PayOS failure diagnostics identify the recoverable stage without leaking secrets
+  ---
+  duration_ms: 0.076292
+  type: 'test'
+  ...
+# Subtest: production schema contract does not define registration_requests.updated_at
+ok 373 - production schema contract does not define registration_requests.updated_at
+  ---
+  duration_ms: 3.860208
+  type: 'test'
+  ...
+# Subtest: webhook column hotfix repairs every effective registration request writer
+ok 374 - webhook column hotfix repairs every effective registration request writer
+  ---
+  duration_ms: 1.308875
+  type: 'test'
+  ...
+# Subtest: all historical registration_requests.updated_at writes are classified
+ok 375 - all historical registration_requests.updated_at writes are classified
+  ---
+  duration_ms: 1.653958
+  type: 'test'
+  ...
+# Subtest: reachable table-column references remain covered by their schema contracts
+ok 376 - reachable table-column references remain covered by their schema contracts
+  ---
+  duration_ms: 2.854292
+  type: 'test'
+  ...
+# Subtest: shared button SVG normalization keeps rendered icons compact and unfilled
+ok 377 - shared button SVG normalization keeps rendered icons compact and unfilled
+  ---
+  duration_ms: 1.240833
+  type: 'test'
+  ...
+# Subtest: Registration Requests toolbar and destructive modal actions align icon and label
+ok 378 - Registration Requests toolbar and destructive modal actions align icon and label
+  ---
+  duration_ms: 0.552709
+  type: 'test'
+  ...
+# Subtest: active category and business-type code contains no removed sort_order field
+ok 379 - active category and business-type code contains no removed sort_order field
+  ---
+  duration_ms: 19.108542
+  type: 'test'
+  ...
+# Subtest: categories are ordered alphabetically by name
+ok 380 - categories are ordered alphabetically by name
+  ---
+  duration_ms: 3.165667
+  type: 'test'
+  ...
+# Subtest: business types are grouped by category and ordered by name within each group
+ok 381 - business types are grouped by category and ordered by name within each group
+  ---
+  duration_ms: 1.420208
+  type: 'test'
+  ...
+# Subtest: category and business-type mutations never send removed sort_order
+ok 382 - category and business-type mutations never send removed sort_order
+  ---
+  duration_ms: 1.464333
+  type: 'test'
+  ...
+# (node:24701) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/components/RenewKioskForm.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: active Kiosk renewal starts one day after current expiry
+ok 383 - active Kiosk renewal starts one day after current expiry
+  ---
+  duration_ms: 1.505541
+  type: 'test'
+  ...
+# Subtest: expired Kiosk renewal starts today
+ok 384 - expired Kiosk renewal starts today
+  ---
+  duration_ms: 0.08825
+  type: 'test'
+  ...
+# Subtest: public renewal blocked states use friendly Admin-support messages
+ok 385 - public renewal blocked states use friendly Admin-support messages
+  ---
+  duration_ms: 0.147875
+  type: 'test'
+  ...
+# Subtest: renewal end uses calendar months and inclusive end date
+ok 386 - renewal end uses calendar months and inclusive end date
+  ---
+  duration_ms: 0.08575
+  type: 'test'
+  ...
+# Subtest: shared VND formatter is consistent
+ok 387 - shared VND formatter is consistent
+  ---
+  duration_ms: 14.465542
+  type: 'test'
+  ...
+# Subtest: manual and PayOS renewal paths remain separated
+ok 388 - manual and PayOS renewal paths remain separated
+  ---
+  duration_ms: 6.248875
+  type: 'test'
+  ...
+# (node:24702) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/components/RenewKioskForm.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: active, expiring, and expires-today renewals start without a gap or overlap
+ok 389 - active, expiring, and expires-today renewals start without a gap or overlap
+  ---
+  duration_ms: 1.605084
+  type: 'test'
+  ...
+# Subtest: expired yesterday and long-expired renewals restart on confirmation date
+ok 390 - expired yesterday and long-expired renewals restart on confirmation date
+  ---
+  duration_ms: 0.080625
+  type: 'test'
+  ...
+# Subtest: calendar-month periods cover three months, month ends, and year boundaries
+ok 391 - calendar-month periods cover three months, month ends, and year boundaries
+  ---
+  duration_ms: 0.110083
+  type: 'test'
+  ...
+# Subtest: forward migration preserves kiosk start_date in manual, PayOS, and trigger paths
+ok 392 - forward migration preserves kiosk start_date in manual, PayOS, and trigger paths
+  ---
+  duration_ms: 2.646334
+  type: 'test'
+  ...
+# Subtest: manual and PayOS finalizers use the same authoritative inclusive period rule
+ok 393 - manual and PayOS finalizers use the same authoritative inclusive period rule
+  ---
+  duration_ms: 0.431334
+  type: 'test'
+  ...
+# Subtest: PayOS webhook idempotency remains owned by the existing webhook implementation
+ok 394 - PayOS webhook idempotency remains owned by the existing webhook implementation
+  ---
+  duration_ms: 0.526833
+  type: 'test'
+  ...
+# (node:24704) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/pages/ReportsPage.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: Reports renders three primary filters and nine advanced filters without losing fields
+ok 395 - Reports renders three primary filters and nine advanced filters without losing fields
+  ---
+  duration_ms: 39.727041
+  type: 'test'
+  ...
+# Subtest: existing filter state, refresh, export, and tab behavior remain bound
+ok 396 - existing filter state, refresh, export, and tab behavior remain bound
+  ---
+  duration_ms: 0.348084
+  type: 'test'
+  ...
+# Subtest: advanced filters auto-open from existing frontend state only
+ok 397 - advanced filters auto-open from existing frontend state only
+  ---
+  duration_ms: 0.089
+  type: 'test'
+  ...
+# Subtest: all report tabs and full-filter CSV export remain present
+ok 398 - all report tabs and full-filter CSV export remain present
+  ---
+  duration_ms: 0.069833
+  type: 'test'
+  ...
+# Subtest: Reports filters use responsive non-overflowing grids and compact controls
+ok 399 - Reports filters use responsive non-overflowing grids and compact controls
+  ---
+  duration_ms: 1.534292
+  type: 'test'
+  ...
+# (node:24705) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/components/PublicLogo.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: sidebar and shared header logo use root-relative light and dark assets
+ok 400 - sidebar and shared header logo use root-relative light and dark assets
+  ---
+  duration_ms: 1.493875
+  type: 'test'
+  ...
+# Subtest: public, sidebar and mobile header logos have separate responsive sizing without distortion
+ok 401 - public, sidebar and mobile header logos have separate responsive sizing without distortion
+  ---
+  duration_ms: 8.954334
+  type: 'test'
+  ...
+# Subtest: stylesheet cache key changes with the corrected logo layout
+ok 402 - stylesheet cache key changes with the corrected logo layout
+  ---
+  duration_ms: 1.721292
+  type: 'test'
+  ...
+# Subtest: theme switching updates mounted logos immediately without re-render or reload
+ok 403 - theme switching updates mounted logos immediately without re-render or reload
+  ---
+  duration_ms: 0.4485
+  type: 'test'
+  ...
+# Subtest: active source contains no deleted or route-relative sidebar logo reference
+ok 404 - active source contains no deleted or route-relative sidebar logo reference
+  ---
+  duration_ms: 3.193458
+  type: 'test'
+  ...
+# Subtest: Dashboard remains standalone and management sections are always visible
+ok 405 - Dashboard remains standalone and management sections are always visible
+  ---
+  duration_ms: 0.525958
+  type: 'test'
+  ...
+# (node:24706) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/constants/navigation.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: TTC keeps its operational items while unified users moves to system settings
+ok 406 - TTC keeps its operational items while unified users moves to system settings
+  ---
+  duration_ms: 15.978042
+  type: 'test'
+  ...
+# Subtest: sidebar sections need no expand state while current route stays active
+ok 407 - sidebar sections need no expand state while current route stays active
+  ---
+  duration_ms: 0.35475
+  type: 'test'
+  ...
+# Subtest: sidebar uses the valid brand asset and compact accessible presentation
+ok 408 - sidebar uses the valid brand asset and compact accessible presentation
+  ---
+  duration_ms: 0.829334
+  type: 'test'
+  ...
+# Subtest: sidebar uses the unified direct-permission resolution
+ok 409 - sidebar uses the unified direct-permission resolution
+  ---
+  duration_ms: 0.296542
+  type: 'test'
+  ...
+# Subtest: every pg_catalog symbol in active migrations is explicitly classified
+ok 410 - every pg_catalog symbol in active migrations is explicitly classified
+  ---
+  duration_ms: 64.807875
+  type: 'test'
+  ...
+# Subtest: final hotfix recreates every active batch function and removes all invalid special forms
+ok 411 - final hotfix recreates every active batch function and removes all invalid special forms
+  ---
+  duration_ms: 0.719584
+  type: 'test'
+  ...
+# Subtest: the pre-PayOS and webhook dependency functions contain no invalid qualification
+ok 412 - the pre-PayOS and webhook dependency functions contain no invalid qualification
+  ---
+  duration_ms: 1.604833
+  type: 'test'
+  ...
+# (node:24708) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/nguyenthanhhan/Documents/CODE/Die%CC%82%CC%83n%20Cha%CC%82u%20A%CC%80%20%C4%90a%CC%82y%20Ro%CC%82%CC%80i/DHL-Group-v3/src/components/CompactAction.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to /Users/nguyenthanhhan/Documents/CODE/Diễn Châu À Đây Rồi/DHL-Group-v3/package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: required Kiosk states use distinct semantic badge treatments
+ok 413 - required Kiosk states use distinct semantic badge treatments
+  ---
+  duration_ms: 0.525542
+  type: 'test'
+  ...
+# Subtest: compact actions include SVG icons and semantic action tones
+ok 414 - compact actions include SVG icons and semantic action tones
+  ---
+  duration_ms: 0.3
+  type: 'test'
+  ...
+# Subtest: shared CSS gives badges tint, border and compact actions a bounded size
+ok 415 - shared CSS gives badges tint, border and compact actions a bounded size
+  ---
+  duration_ms: 4.486709
+  type: 'test'
+  ...
+# Subtest: exact Kiosk sets are identical for warning_days=5
+ok 416 - exact Kiosk sets are identical for warning_days=5
+  ---
+  duration_ms: 12.990542
+  type: 'test'
+  ...
+# Subtest: exact Kiosk sets are identical for warning_days=10
+ok 417 - exact Kiosk sets are identical for warning_days=10
+  ---
+  duration_ms: 0.456916
+  type: 'test'
+  ...
+# Subtest: exact Kiosk sets are identical for warning_days=20
+ok 418 - exact Kiosk sets are identical for warning_days=20
+  ---
+  duration_ms: 0.4805
+  type: 'test'
+  ...
+# Subtest: exact Kiosk sets are identical for warning_days=30
+ok 419 - exact Kiosk sets are identical for warning_days=30
+  ---
+  duration_ms: 0.587958
+  type: 'test'
+  ...
+# Subtest: customer status precedence is deterministic for mixed Kiosk sets
+ok 420 - customer status precedence is deterministic for mixed Kiosk sets
+  ---
+  duration_ms: 0.245792
+  type: 'test'
+  ...
+# Subtest: migration and services route every active status consumer through one SQL contract
+ok 421 - migration and services route every active status consumer through one SQL contract
+  ---
+  duration_ms: 10.585791
+  type: 'test'
+  ...
+# Subtest: authenticated status RPCs use a narrow warning-days accessor
+ok 422 - authenticated status RPCs use a narrow warning-days accessor
+  ---
+  duration_ms: 5.408666
+  type: 'test'
+  ...
+# Subtest: permission fix never grants authenticated access to the settings table
+ok 423 - permission fix never grants authenticated access to the settings table
+  ---
+  duration_ms: 1.769334
+  type: 'test'
+  ...
+# Subtest: warning-days fallback and status contracts remain unchanged
+ok 424 - warning-days fallback and status contracts remain unchanged
+  ---
+  duration_ms: 1.454375
+  type: 'test'
+  ...
+# Subtest: existing definer report and public-settings RPCs retain explicit authorization boundaries
+ok 425 - existing definer report and public-settings RPCs retain explicit authorization boundaries
+  ---
+  duration_ms: 2.620666
+  type: 'test'
+  ...
+# Subtest: Dashboard stays standalone and section labels keep permitted items visible
+ok 426 - Dashboard stays standalone and section labels keep permitted items visible
+  ---
+  duration_ms: 1.184125
+  type: 'test'
+  ...
+# Subtest: Reports overview contains exactly the six business-facing KPI cards
+ok 427 - Reports overview contains exactly the six business-facing KPI cards
+  ---
+  duration_ms: 0.552625
+  type: 'test'
+  ...
+# Subtest: notification popup is presentation-sorted and closes outside or with Escape without summary copy
+ok 428 - notification popup is presentation-sorted and closes outside or with Escape without summary copy
+  ---
+  duration_ms: 0.311125
+  type: 'test'
+  ...
+# Subtest: Promotions uses one overflow-safe accessible action menu with destructive styling
+ok 429 - Promotions uses one overflow-safe accessible action menu with destructive styling
+  ---
+  duration_ms: 0.334417
+  type: 'test'
+  ...
+# Subtest: inactive and cancelled records cannot inherit the active presentation
+ok 430 - inactive and cancelled records cannot inherit the active presentation
+  ---
+  duration_ms: 0.113209
+  type: 'test'
+  ...
+# Subtest: canonical permission map contains all 26 active production permissions
+ok 431 - canonical permission map contains all 26 active production permissions
+  ---
+  duration_ms: 1.527917
+  type: 'test'
+  ...
+# Subtest: locked session is rejected from sensitive API using current database access state
+ok 432 - locked session is rejected from sensitive API using current database access state
+  ---
+  duration_ms: 14.671708
+  type: 'test'
+  ...
+# Subtest: one-permission user is denied an unrelated API permission
+ok 433 - one-permission user is denied an unrelated API permission
+  ---
+  duration_ms: 0.378084
+  type: 'test'
+  ...
+# Subtest: System Admin can list users without individual user_permissions rows
+ok 434 - System Admin can list users without individual user_permissions rows
+  ---
+  duration_ms: 1.149709
+  type: 'test'
+  ...
+# Subtest: legacy GET /api/staff compatibility preserves listing contract for System Admin
+ok 435 - legacy GET /api/staff compatibility preserves listing contract for System Admin
+  ---
+  duration_ms: 0.347875
+  type: 'test'
+  ...
+# Subtest: legacy staff compatibility still enforces user-management permission
+ok 436 - legacy staff compatibility still enforces user-management permission
+  ---
+  duration_ms: 0.1785
+  type: 'test'
+  ...
+# Subtest: GET user-management without the staff rewrite marker keeps the existing POST-only contract
+ok 437 - GET user-management without the staff rewrite marker keeps the existing POST-only contract
+  ---
+  duration_ms: 0.109083
+  type: 'test'
+  ...
+# Subtest: grant permissions performs authoritative sync and enables web access
+ok 438 - grant permissions performs authoritative sync and enables web access
+  ---
+  duration_ms: 2.048916
+  type: 'test'
+  ...
+# Subtest: removing all CRM permissions preserves personal web access
+ok 439 - removing all CRM permissions preserves personal web access
+  ---
+  duration_ms: 1.313542
+  type: 'test'
+  ...
+# Subtest: sensitive actions reject a wrong admin password before any protected write
+ok 440 - sensitive actions reject a wrong admin password before any protected write
+  ---
+  duration_ms: 4.971
+  type: 'test'
+  ...
+# Subtest: profile update uses an explicit whitelist and ignores protected client fields
+ok 441 - profile update uses an explicit whitelist and ignores protected client fields
+  ---
+  duration_ms: 2.6195
+  type: 'test'
+  ...
+# Subtest: unknown or inactive permission is rejected before permission writes
+ok 442 - unknown or inactive permission is rejected before permission writes
+  ---
+  duration_ms: 1.2205
+  type: 'test'
+  ...
+# Subtest: lock and unlock synchronize Auth ban and database web access without granting permissions
+ok 443 - lock and unlock synchronize Auth ban and database web access without granting permissions
+  ---
+  duration_ms: 2.463625
+  type: 'test'
+  ...
+# Subtest: System Admin target cannot be permission-modified or locked
+ok 444 - System Admin target cannot be permission-modified or locked
+  ---
+  duration_ms: 0.956375
+  type: 'test'
+  ...
+# Subtest: wallet adjustment reuses ledger RPC and preserves idempotency key
+ok 445 - wallet adjustment reuses ledger RPC and preserves idempotency key
+  ---
+  duration_ms: 4.440959
+  type: 'test'
+  ...
+# Subtest: password reset response and audit never contain plaintext passwords
+ok 446 - password reset response and audit never contain plaintext passwords
+  ---
+  duration_ms: 1.350708
+  type: 'test'
+  ...
+# Subtest: new authorization path has no legacy Reviewer checks or frontend service-role access
+ok 447 - new authorization path has no legacy Reviewer checks or frontend service-role access
+  ---
+  duration_ms: 4.55525
+  type: 'test'
+  ...
+# Subtest: user list keeps the requested compact columns and one Manage action
+ok 448 - user list keeps the requested compact columns and one Manage action
+  ---
+  duration_ms: 0.4975
+  type: 'test'
+  ...
+# Subtest: Manage button opens User Detail and all five tabs remain wired
+ok 449 - Manage button opens User Detail and all five tabs remain wired
+  ---
+  duration_ms: 0.560042
+  type: 'test'
+  ...
+# Subtest: permission groups cover the unchanged canonical catalog with Vietnamese labels only
+ok 450 - permission groups cover the unchanged canonical catalog with Vietnamese labels only
+  ---
+  duration_ms: 1.18225
+  type: 'test'
+  ...
+# Subtest: saving permissions opens a confirmation dialog and reuses the existing backend flow
+ok 451 - saving permissions opens a confirmation dialog and reuses the existing backend flow
+  ---
+  duration_ms: 0.770167
+  type: 'test'
+  ...
+# Subtest: table keeps user data bindings and web access uses explicit business copy
+ok 452 - table keeps user data bindings and web access uses explicit business copy
+  ---
+  duration_ms: 0.340125
+  type: 'test'
+  ...
+# Subtest: modal, permission cards and sticky actions are compact and responsive
+ok 453 - modal, permission cards and sticky actions are compact and responsive
+  ---
+  duration_ms: 1.430958
+  type: 'test'
+  ...
+# Subtest: Vercel Hobby deployment has at most 12 physical function entrypoints
+ok 454 - Vercel Hobby deployment has at most 12 physical function entrypoints
+  ---
+  duration_ms: 1.261958
+  type: 'test'
+  ...
+# Subtest: legacy /api/staff is rewritten to the user-management compatibility branch
+ok 455 - legacy /api/staff is rewritten to the user-management compatibility branch
+  ---
+  duration_ms: 1.099042
+  type: 'test'
+  ...
+# Subtest: allows Facebook verify bypass on Vercel preview but never production
+ok 456 - allows Facebook verify bypass on Vercel preview but never production
+  ---
+  duration_ms: 0.818166
+  type: 'test'
+  ...
+1..456
+# tests 484
+# suites 9
+# pass 484
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3185.988083

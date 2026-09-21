@@ -93,7 +93,6 @@ begin
   );
 end;
 $function$;
-
 create or replace function private.write_ttc_audit(
   module_input text,
   action_input text,
@@ -177,7 +176,6 @@ begin
   end if;
 end;
 $function$;
-
 create or replace function public.upsert_my_facebook_account(
   account_id_input bigint default null,
   facebook_url_original_input text default null,
@@ -337,7 +335,6 @@ begin
   return jsonb_build_object('account', to_jsonb(account_record));
 end;
 $function$;
-
 create or replace function public.list_available_ttc_tasks(
   facebook_account_id_input bigint default null,
   page_number integer default 1,
@@ -453,7 +450,6 @@ begin
   );
 end;
 $function$;
-
 create or replace function public.list_available_ttc_campaigns(
   facebook_account_id_input bigint default null,
   page_number integer default 1,
@@ -503,7 +499,6 @@ begin
   );
 end;
 $function$;
-
 create or replace function public.list_my_ttc_tasks(
   status_input text default null,
   page_number integer default 1,
@@ -585,7 +580,6 @@ begin
   );
 end;
 $function$;
-
 create or replace function public.submit_ttc_task(
   task_id_input bigint,
   evidence_input jsonb default '{}'::jsonb
@@ -640,7 +634,6 @@ begin
   return jsonb_build_object('task', to_jsonb(task_record), 'credited', false);
 end;
 $function$;
-
 create or replace function public.verify_ttc_task(
   task_id_input bigint,
   action_input text,
@@ -777,7 +770,6 @@ begin
   );
 end;
 $function$;
-
 create or replace function public.cancel_ttc_campaign(
   campaign_id_input bigint,
   reason_input text,
@@ -939,7 +931,6 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.ensure_my_user_profile(text, text, text, jsonb) from public, anon, authenticated;
 grant execute on function public.ensure_my_user_profile(text, text, text, jsonb) to authenticated;
 revoke all on function public.upsert_my_facebook_account(bigint, text, text, text, text, boolean, text, jsonb) from public, anon, authenticated;
@@ -950,5 +941,4 @@ revoke all on function public.list_available_ttc_campaigns(bigint, integer, inte
 grant execute on function public.list_available_ttc_campaigns(bigint, integer, integer) to authenticated;
 revoke all on function public.list_my_ttc_tasks(text, integer, integer) from public, anon, authenticated;
 grant execute on function public.list_my_ttc_tasks(text, integer, integer) to authenticated;
-
 notify pgrst, 'reload schema';

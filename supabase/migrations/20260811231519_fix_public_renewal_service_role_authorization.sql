@@ -33,7 +33,6 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.register_public_renewal_authorization(bigint, text, timestamptz)
   from public, anon, authenticated;
 grant execute on function public.register_public_renewal_authorization(bigint, text, timestamptz)

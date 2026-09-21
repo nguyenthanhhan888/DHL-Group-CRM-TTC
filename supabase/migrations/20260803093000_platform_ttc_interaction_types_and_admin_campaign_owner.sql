@@ -1,10 +1,8 @@
 alter table public.ttc_interaction_types
 drop constraint if exists ttc_interaction_types_code_check;
-
 alter table public.ttc_interaction_types
 add constraint ttc_interaction_types_code_check
 check (code ~ '^[a-z][a-z0-9_]{1,63}$');
-
 update public.ttc_interaction_types
 set config = coalesce(config, '{}'::jsonb)
   || jsonb_build_object(
@@ -13,7 +11,6 @@ set config = coalesce(config, '{}'::jsonb)
     'legacy_code', true
   )
 where coalesce(config->>'platform', '') = '';
-
 insert into public.ttc_interaction_types(
   code,
   label,
@@ -47,16 +44,13 @@ set
   config = excluded.config,
   is_active = true,
   updated_at = now();
-
 update public.ttc_interaction_types
 set is_active = false,
     updated_at = now()
 where code in ('like', 'reaction', 'comment', 'share', 'follow', 'join_group');
-
 grant update(label, unit_cost, worker_reward, min_quantity, max_quantity, hold_seconds, is_active, config)
 on table public.ttc_interaction_types
 to authenticated;
-
 create or replace function public.admin_create_ttc_campaign_for_user(
   owner_user_id_input uuid,
   interaction_type_input text,
@@ -214,7 +208,6 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.admin_create_ttc_campaign_for_user(uuid, text, text, integer, text, text, text, jsonb, jsonb, text)
 from public, anon, authenticated;
 grant execute on function public.admin_create_ttc_campaign_for_user(uuid, text, text, integer, text, text, text, jsonb, jsonb, text)

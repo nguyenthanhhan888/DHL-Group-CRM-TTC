@@ -16,6 +16,7 @@ const ICONS = {
   list: _icon(_path('M8 6.5h11M8 12h11M8 17.5h11M4.8 6.5h.1M4.8 12h.1M4.8 17.5h.1')),
   briefcase: _icon(`${_rect(4, 7.5, 16, 11.5, 2)}${_path('M9.5 7.5V5.8h5v1.7M4 12h16M10.2 12v1.4h3.6V12')}`),
   report: _icon(`${_path('M6 4.5h9.2L18 7.3v12.2H6z')}${_path('M14.8 4.5v3.1H18M9 16v-4M12 16V9.5M15 16v-2.5')}`),
+  receipt: _icon(`${_path('M6 4.5h12v15l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5v-15Z')}${_path('M9 8h6M9 11.5h6M9 15h3')}`),
   target: _icon(`${_circle(12, 12, 8)}${_circle(12, 12, 4.5)}${_circle(12, 12, 1.6)}`),
   boost: _icon(`${_path('M4 17.8 9 13l3.3 3.2L20 7.6')}${_path('M15.4 7.4H20v4.6')}${_path('M4 20h16')}`),
   'user-circle': _icon(`${_circle(12, 12, 8.5)}${_circle(12, 9.8, 2.7)}${_path('M7.3 18.1c.9-2.4 2.5-3.6 4.7-3.6s3.8 1.2 4.7 3.6')}`),
@@ -59,6 +60,8 @@ const ICONS = {
   refresh: _icon(`${_path('M19 7v4h-4')}${_path('M5 17v-4h4')}${_path('M18.2 11A7 7 0 0 0 6.4 7.2L5 9M5.8 13A7 7 0 0 0 17.6 16.8L19 15')}`),
   phone: _icon(`${_path('M7.2 4.5 9.5 8 8 9.5c1.1 2.4 3.1 4.4 5.5 5.5l1.5-1.5 3.5 2.3v2.7c0 .8-.7 1.5-1.5 1.5A13 13 0 0 1 4 7c0-.8.7-1.5 1.5-1.5h1.7Z')}`),
   link: _icon(`${_path('M9.5 14.5 14.5 9.5M7.2 16.8l-1 1a3.5 3.5 0 0 1-5-5l3-3a3.5 3.5 0 0 1 5 0M16.8 7.2l1-1a3.5 3.5 0 1 1 5 5l-3 3a3.5 3.5 0 0 1-5 0')}`),
+  location: _icon(`${_path('M12 21s6-5.5 6-11a6 6 0 1 0-12 0c0 5.5 6 11 6 11Z')}${_circle(12, 10, 2)}`),
+  'external-link': _icon(`${_path('M13 5h6v6M19 5l-8 8')}${_path('M17 13v5.5H5.5v-12H11')}`),
 };
 
 export function renderIcon(name) {

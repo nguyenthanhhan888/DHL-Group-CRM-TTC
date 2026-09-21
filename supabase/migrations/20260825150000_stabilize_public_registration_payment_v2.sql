@@ -298,7 +298,6 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.prepare_registration_payment_v2(bigint[], text)
   from public, anon, authenticated;
 grant execute on function public.prepare_registration_payment_v2(bigint[], text)

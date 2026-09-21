@@ -6,6 +6,7 @@ import { PUBLIC_BRAND } from '../config/organization.js';
 const GENERIC_AUTH_ERROR = 'Tên đăng nhập hoặc mật khẩu không chính xác.';
 
 export function LoginPage({ message = '' } = {}) {
+  const registrationMessage = readRegistrationMessage();
   return `
     <main class="auth-shell">
       <section class="auth-landing auth-landing-expanded">
@@ -40,8 +41,10 @@ export function LoginPage({ message = '' } = {}) {
                     <button class="password-visibility-toggle" type="button" data-password-toggle aria-label="Hiện mật khẩu">Hiện</button>
                   </span>
                 </label>
+                <div id="login-success" class="auth-panel-message auth-success-message ${registrationMessage ? '' : 'hidden'}" role="status" aria-live="polite">${escapeHtml(registrationMessage)}</div>
                 <div id="login-error" class="form-error auth-panel-message ${message ? '' : 'hidden'}" role="alert" aria-live="polite">${escapeHtml(message)}</div>
                 <button id="login-submit" class="btn-primary auth-submit" type="submit">Đăng nhập</button>
+                <p class="auth-account-link">Chưa có tài khoản? <a href="#/signup">Đăng ký</a></p>
               </form>
               <form id="login-mfa-form" class="auth-form-panel hidden" hidden novalidate>
                 <div class="auth-panel-heading">
@@ -148,7 +151,14 @@ function defaultRoute(profile) {
   if (profile?.is_system_admin || profile?.permissions?.includes('dashboard')) return 'dashboard';
   const permissions = new Set(profile?.permissions || []);
   const preferredRoutes = ['reports', 'customers', 'kiosks', 'registration-requests', 'admin', 'user-management', 'logs', 'settings'];
-  return preferredRoutes.find((route) => permissions.has(ROUTE_PERMISSIONS[route])) || 'dashboard';
+  return preferredRoutes.find((route) => permissions.has(ROUTE_PERMISSIONS[route])) || 'user';
+}
+
+function readRegistrationMessage() {
+  if (typeof sessionStorage === 'undefined') return '';
+  const message = sessionStorage.getItem('account-registration-success') || '';
+  sessionStorage.removeItem('account-registration-success');
+  return message;
 }
 
 function switchPanel(panel) {

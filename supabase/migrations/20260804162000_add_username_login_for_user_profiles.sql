@@ -1,6 +1,5 @@
 alter table public.user_profiles
   add column if not exists username text;
-
 update public.user_profiles
 set username = lower(split_part(email, '@', 1))
 where username is null
@@ -12,15 +11,12 @@ where username is null
     where existing.user_id <> user_profiles.user_id
       and lower(existing.username) = lower(split_part(user_profiles.email, '@', 1))
   );
-
 create unique index if not exists user_profiles_username_unique_idx
   on public.user_profiles (lower(username))
   where username is not null;
-
 create index if not exists user_profiles_phone_login_idx
   on public.user_profiles (phone)
   where phone is not null;
-
 create or replace function public.ensure_my_user_profile(
   display_name_input text default null,
   phone_input text default null,
@@ -125,7 +121,6 @@ begin
   );
 end;
 $function$;
-
 create or replace function public.get_current_app_profile()
 returns jsonb
 language plpgsql
@@ -189,6 +184,5 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.ensure_my_user_profile(text, text, text, jsonb, text) from public, anon, authenticated;
 grant execute on function public.ensure_my_user_profile(text, text, text, jsonb, text) to authenticated;

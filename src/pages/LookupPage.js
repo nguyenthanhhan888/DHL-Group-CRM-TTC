@@ -9,6 +9,7 @@ import { StatusBadge } from '../components/StatusBadge.js';
 import { renderIcon } from '../utils/icons.js';
 
 let lookupRows = [];
+let pendingRenewal = null;
 const ALLOWED_PUBLIC_MONTHS = new Set([1, 3, 6, 12]);
 
 export function LookupPage() {
@@ -53,15 +54,20 @@ function handleResultClick(event) {
   if (renew) return openRenewal(Number(renew.dataset.renewIndex));
   const create = event.target.closest('[data-create-public-renewal]');
   if (create) return createRenewal(Number(create.dataset.createPublicRenewal));
-  if (event.target.closest('[data-lookup-again], [data-renew-retry]')) { window.location.hash = '#/lookup'; window.location.reload(); }
+  if (event.target.closest('[data-renew-retry]')) return retryRenewal(event.target.closest('[data-renew-retry]'));
+  const coupon = event.target.closest('[data-apply-renew-code]');
+  if (coupon) return applyRenewalCode(Number(coupon.dataset.applyRenewCode));
+  if (event.target.closest('[data-lookup-again]')) { window.location.hash = '#/lookup'; window.location.reload(); }
 }
 
 function openRenewal(index) {
   const item = lookupRows[index]; const panel = document.querySelector(`[data-renew-panel="${index}"]`);
   if (!item || !panel) return;
   if (!item.renewalAvailable) { panel.innerHTML = blockedRenewalPanel(item.renewalBlockedReason); return; }
+  item.promotion = null;
   panel.innerHTML = renewalConfirmationCard(item, index, 1);
-  panel.querySelectorAll('[name="public-renew-months"]').forEach((input) => input.addEventListener('change', () => updateRenewalConfirmation(item, panel, Number(input.value))));
+  panel.querySelector('[data-renew-code]')?.addEventListener('input', () => { item.promotion = null; updateRenewalConfirmation(item, panel, Number(panel.querySelector('[name="public-renew-months"]:checked')?.value)); });
+  panel.querySelectorAll('[name="public-renew-months"]').forEach((input) => input.addEventListener('change', () => { item.promotion = null; updateRenewalConfirmation(item, panel, Number(input.value)); }));
 }
 
 function blockedRenewalPanel(reason) { return `<div class="public-renew-panel public-renew-blocked" role="status"><h3>Chưa thể gia hạn tự động</h3><p>${escapeHtml(renewalBlockedMessage(reason))}</p>${PublicContactLinks({ compact: true })}</div>`; }
@@ -71,12 +77,13 @@ async function createRenewal(index) {
   const item = lookupRows[index]; const panel = document.querySelector(`[data-renew-panel="${index}"]`); const button = panel?.querySelector('[data-create-public-renewal]');
   const months = Number(panel?.querySelector('[name="public-renew-months"]:checked')?.value);
   if (!item || !panel || !ALLOWED_PUBLIC_MONTHS.has(months)) return;
+  if (panel.querySelector('[data-renew-code]')?.value.trim() && !item.promotion?.code) { show(panel.querySelector('[data-renew-error]'), 'Vui lòng áp dụng mã giảm giá trước khi thanh toán.'); return; }
   if (button) { button.disabled = true; button.textContent = 'Đang chuyển đến PayOS...'; }
   try {
     const returnUrl = `${window.location.origin}${window.location.pathname}#/lookup`;
-    const { data } = await PublicLookupService.createRenewal({ renewalToken: item.renewalToken, months, returnUrl });
+    const { data } = await PublicLookupService.createRenewal({ renewalToken: item.renewalToken, months, returnUrl, promotionCode: item.promotion?.code || null });
     if (!data?.checkoutUrl) throw new Error('Chưa nhận được link thanh toán PayOS.');
-    sessionStorage.setItem(`renewal-payos:${data.orderCode}`, JSON.stringify({ renewalToken: item.renewalToken, orderCode: data.orderCode }));
+    sessionStorage.setItem(`renewal-payos:${data.orderCode}`, JSON.stringify({ renewalToken: data.checkoutToken || item.renewalToken, orderCode: data.orderCode, months: data.months || months, promotionCode: item.promotion?.code || null }));
     window.location.assign(data.checkoutUrl);
   } catch (error) { show(panel.querySelector('[data-renew-error]'), error?.message || 'Không thể tạo thanh toán.'); if (button) { button.disabled = false; button.textContent = 'Thanh toán'; } }
 }
@@ -89,18 +96,16 @@ async function handleRenewalReturn() {
     clearPayosReturnParams();
     return false;
   }
+  pendingRenewal = stored;
   document.getElementById('lookup-form')?.classList.add('hidden');
   const target = document.getElementById('lookup-results');
-  if (String(params.get('cancel')).toLowerCase() === 'true' || String(params.get('status')).toLowerCase() === 'cancelled') {
-    target.innerHTML = terminalRenewalCard('cancelled'); return true;
-  }
   target.innerHTML = pendingRenewalCard();
   if (!stored.renewalToken) return true;
   for (let attempt = 0; attempt < 10; attempt += 1) {
     try {
       const { data } = await PublicLookupService.renewalStatus({ renewalToken: stored.renewalToken, orderCode });
       if (data.status === 'paid') { target.innerHTML = renewalSuccessCard(data); return true; }
-      if (['cancelled', 'expired', 'failed'].includes(data.status)) { target.innerHTML = terminalRenewalCard(data.status); return true; }
+      if (['cancelled', 'expired', 'failed', 'review_required'].includes(data.status)) { target.innerHTML = terminalRenewalCard(data.status); return true; }
     } catch { /* Keep the public response generic and finish with pending state. */ }
     await new Promise((resolve) => window.setTimeout(resolve, 3000));
   }
@@ -109,15 +114,42 @@ async function handleRenewalReturn() {
 
 export function renewalConfirmationCard(item, index, months) {
   const period = item.renewalPeriods?.[months] || {}; const total = Number(item.pricePerMonth) * months;
-  return `<div class="public-renew-panel public-renew-confirmation payment-experience">${PaymentStatusHero({ status: 'checkout', eyebrow: 'Gia hạn Kiosk', title: item.kiosk || 'Kiosk', description: 'Kiểm tra thời hạn và số tiền trước khi chuyển sang PayOS.' })}<div class="renew-money-row"><span>Giá dịch vụ</span><strong>${formatCurrency(item.pricePerMonth)} / tháng</strong></div><fieldset class="public-renew-duration"><legend>Chọn thời hạn gia hạn</legend>${[1, 3, 6, 12].map((value) => `<label><input type="radio" name="public-renew-months" value="${value}" ${value === months ? 'checked' : ''}><span>${value} tháng</span></label>`).join('')}</fieldset><dl class="public-renew-preview"><div><dt>Ngày hết hạn hiện tại</dt><dd>${date(item.endDate)}</dd></div><div><dt>Ngày hết hạn dự kiến</dt><dd data-renew-proposed>${date(period.proposedExpiry)}</dd></div><div class="is-total"><dt>Tổng thanh toán</dt><dd data-renew-total>${formatCurrency(total)}</dd></div></dl><p class="form-error hidden" data-renew-error role="alert"></p>${PaymentActionButtons([{ label: 'Thanh toán qua PayOS', icon: 'checkout', attrs: `data-create-public-renewal="${index}"` }])}</div>`;
+  return `<div class="public-renew-panel public-renew-confirmation payment-experience">${PaymentStatusHero({ status: 'checkout', eyebrow: 'Gia hạn Kiosk', title: item.kiosk || 'Kiosk', description: 'Kiểm tra thời hạn và số tiền trước khi chuyển sang PayOS.' })}<div class="renew-money-row"><span>Giá dịch vụ</span><strong>${formatCurrency(item.pricePerMonth)} / tháng</strong></div><fieldset class="public-renew-duration"><legend>Chọn thời hạn gia hạn</legend>${[1, 3, 6, 12].map((value) => `<label><input type="radio" name="public-renew-months" value="${value}" ${value === months ? 'checked' : ''}><span>${value} tháng</span></label>`).join('')}</fieldset><label class="form-group"><span>Mã giảm giá</span><input class="form-control" data-renew-code maxlength="64" autocomplete="off"></label><button type="button" class="btn-secondary" data-apply-renew-code="${index}">Áp dụng mã</button><p data-renew-promotion-note class="muted-text" aria-live="polite"></p><dl class="public-renew-preview"><div><dt>Ngày hết hạn hiện tại</dt><dd>${date(item.endDate)}</dd></div><div><dt>Ngày hết hạn dự kiến</dt><dd data-renew-proposed>${date(period.proposedExpiry)}</dd></div><div class="is-total"><dt>Tổng thanh toán</dt><dd data-renew-total>${formatCurrency(total)}</dd></div></dl><p class="form-error hidden" data-renew-error role="alert"></p>${PaymentActionButtons([{ label: 'Thanh toán qua PayOS', icon: 'checkout', attrs: `data-create-public-renewal="${index}"` }])}</div>`;
 }
 
 // Compatibility export for callers/tests; inline payment presentation is intentionally gone.
 export function renewalPaymentCard(data) { return `<div class="public-renew-panel public-renew-payment-card"><h3>Đang chuyển đến PayOS</h3><p>${escapeHtml(data?.kiosk || 'Kiosk')}</p></div>`; }
-function updateRenewalConfirmation(item, panel, months) { const period = item.renewalPeriods?.[months] || {}; panel.querySelector('[data-renew-proposed]').textContent = date(period.proposedExpiry); panel.querySelector('[data-renew-total]').textContent = formatCurrency(Number(item.pricePerMonth) * months); }
+function updateRenewalConfirmation(item, panel, months) { const period = item.renewalPeriods?.[months] || {}; panel.querySelector('[data-renew-proposed]').textContent = date(period.proposedExpiry); panel.querySelector('[data-renew-total]').textContent = formatCurrency(item.promotion?.finalAmount ?? Number(item.pricePerMonth) * months); if (item.promotion?.proposedExpiry) panel.querySelector('[data-renew-proposed]').textContent = date(item.promotion.proposedExpiry); const note=panel.querySelector('[data-renew-promotion-note]'); if(note) note.textContent=item.promotion?.code ? `${item.promotion.message}${item.promotion.totalBonusMonths ? ` Tặng ${item.promotion.totalBonusMonths} tháng.` : ''}` : '';  }
 function renewalSuccessCard(data) { return `<div class="renew-success public-renew-success payment-experience">${PaymentStatusHero({ status: 'success', eyebrow: 'Gia hạn hoàn tất', title: 'Gia hạn thành công', description: `${data.kiosk || 'Kiosk'} đã được cập nhật thời hạn sử dụng.` })}${PaymentProgress({ activeStep: 4 })}${PaymentSummaryCard([{ label: 'Kiosk', value: data.kiosk || 'Kiosk' }, { label: 'Đã thanh toán', value: formatCurrency(data.amount), emphasis: true }, { label: 'Ngày hết hạn cũ', value: date(data.currentExpiry) }, { label: 'Ngày hết hạn mới', value: date(data.newExpiry) }, { label: 'Trạng thái', value: '<span class="payment-status-pill is-success">Hoàn tất</span>', html: true }])}${PaymentActionButtons([{ label: 'Tra cứu lại Kiosk', attrs: 'data-lookup-again', icon: 'kiosk' }])}</div>`; }
 function pendingRenewalCard(timedOut = false) { return `<div class="renew-success payment-experience payment-processing" role="status" aria-live="polite">${PaymentStatusHero({ status: 'pending', eyebrow: 'Đang xử lý an toàn', title: 'Đang xác nhận thanh toán', description: timedOut ? 'Giao dịch đang chờ PayOS xác nhận. Bạn có thể kiểm tra lại sau ít phút.' : 'Ngân hàng đã tiếp nhận giao dịch. Hệ thống đang xác nhận với PayOS.', helper: 'Quá trình này thường chỉ mất vài giây.' })}${PaymentProgress({ activeStep: 2 })}</div>`; }
-function terminalRenewalCard(value) { const cancelled = value === 'cancelled'; return `<div class="renew-success payment-experience">${PaymentStatusHero({ status: cancelled ? 'cancelled' : 'warning', eyebrow: 'Giao dịch chưa hoàn tất', title: cancelled ? 'Bạn đã huỷ thanh toán' : value === 'expired' ? 'Liên kết thanh toán đã hết hạn' : 'Thanh toán chưa hoàn tất', description: cancelled ? 'Giao dịch chưa được hoàn tất và Kiosk chưa được gia hạn.' : 'Kiosk chưa được gia hạn. Bạn có thể tạo một liên kết PayOS mới.' })}${PaymentActionButtons([{ label: 'Thử thanh toán lại', attrs: 'data-renew-retry', icon: 'checkout' }, { label: 'Liên hệ hỗ trợ', href: '#/contact', secondary: true }])}</div>`; }
+function terminalRenewalCard(value) {
+  const review = value === 'review_required';
+  return `<div class="payment-experience">${PaymentStatusHero({ status: 'warning', eyebrow: 'Gia hạn Kiosk', title: review ? 'Thanh toán cần đối soát' : value === 'expired' ? 'Liên kết thanh toán đã hết hạn' : 'Thanh toán chưa hoàn tất', description: review ? 'Giao dịch đã được lưu để Admin kiểm tra. Không chuyển khoản thêm.' : 'Yêu cầu gia hạn được giữ nguyên. Nếu đã chuyển tiền, hãy kiểm tra trước khi thanh toán lại. Không dùng ảnh QR cũ.' })}<p class="form-error" data-renew-retry-error role="alert"></p>${PaymentActionButtons([...(!review && pendingRenewal ? [{ label: 'Tạo lại mã thanh toán', attrs: 'data-renew-retry', icon: 'checkout' }] : []), { label: 'Tra cứu lại', attrs: 'data-lookup-again', secondary: true }, { label: 'Liên hệ hỗ trợ', href: '#/contact', secondary: true }])}</div>`;
+}
+async function retryRenewal(button) {
+  if (!pendingRenewal) return;
+  button.disabled = true;
+  try {
+    const { data } = await PublicLookupService.createRenewal({ ...pendingRenewal, returnUrl: `${window.location.origin}${window.location.pathname}#/lookup` });
+    if (!data.checkoutUrl) throw new Error('Chưa tạo được link thanh toán.');
+    pendingRenewal = { ...pendingRenewal, renewalToken: data.checkoutToken || pendingRenewal.renewalToken, orderCode: data.orderCode };
+    sessionStorage.setItem(`renewal-payos:${data.orderCode}`, JSON.stringify(pendingRenewal));
+    window.location.assign(data.checkoutUrl);
+  } catch (error) { show(document.querySelector('[data-renew-retry-error]'), error.message); button.disabled = false; }
+}
+async function applyRenewalCode(index) {
+  const item = lookupRows[index]; const panel = document.querySelector(`[data-renew-panel="${index}"]`);
+  const months = Number(panel?.querySelector('[name="public-renew-months"]:checked')?.value);
+  const code = panel?.querySelector('[data-renew-code]')?.value.trim().toUpperCase();
+  if (!item || !code || !ALLOWED_PUBLIC_MONTHS.has(months)) return;
+  const button = panel.querySelector('[data-apply-renew-code]'); button.disabled = true;
+  try {
+    const { data } = await PublicLookupService.previewPromotion({ renewalToken: item.renewalToken, months, code });
+    if (Number(panel.querySelector('[name="public-renew-months"]:checked')?.value) !== months || panel.querySelector('[data-renew-code]').value.trim().toUpperCase() !== code) return;
+    item.promotion = data; updateRenewalConfirmation(item, panel, months);
+  } catch (error) { item.promotion = null; show(panel.querySelector('[data-renew-error]'), error.message); }
+  finally { button.disabled = false; }
+}
 function payosReturnParams() { const params = new URLSearchParams(window.location.search); const query = String(window.location.hash || '').split('?')[1]; if (query) new URLSearchParams(query).forEach((value, key) => params.set(key, value)); return params; }
 function readStoredPayosState(key) { try { return JSON.parse(sessionStorage.getItem(key) || '{}'); } catch { return {}; } }
 function clearPayosReturnParams() { window.history.replaceState({}, '', `${window.location.pathname}#/lookup`); }

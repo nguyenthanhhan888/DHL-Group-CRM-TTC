@@ -158,6 +158,5 @@ begin
   );
 end;
 $function$;
-
 revoke all on function private.evaluate_registration_promotion(text, bigint, jsonb)
   from public, anon, authenticated, service_role;

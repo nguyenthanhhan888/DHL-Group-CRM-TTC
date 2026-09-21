@@ -9,11 +9,13 @@ export const AUDIT_CATEGORY_FILTERS = Object.freeze([
   { value: 'renewal', label: 'Gia hạn' },
   { value: 'user', label: 'Người dùng' },
   { value: 'promotion', label: 'Mã giảm giá' },
+  { value: 'expense', label: 'Chi phí' },
   { value: 'system', label: 'Hệ thống' },
 ]);
 
 const CATEGORY_LABELS = Object.freeze(Object.fromEntries(AUDIT_CATEGORY_FILTERS.map((item) => [item.value, item.label])));
 const ACTION_LABELS = Object.freeze({
+  registration_pending: 'Đăng ký', renewal_pending: 'Gia hạn', renewal_paid: 'Gia hạn thành công', payment_review_required: 'Cần đối soát',
   create: 'Tạo mới', update: 'Cập nhật', delete: 'Xóa', confirm: 'Xác nhận', cancel: 'Hủy',
   reject: 'Từ chối', approve: 'Phê duyệt', approved: 'Phê duyệt', set_active: 'Đổi trạng thái',
   reset_password: 'Đặt lại mật khẩu', update_profile: 'Cập nhật người dùng',
@@ -26,6 +28,8 @@ const ACTION_LABELS = Object.freeze({
   review_legacy_approve: 'Duyệt hồ sơ', review_legacy_cancel: 'Hủy hồ sơ',
   create_promotion: 'Tạo mã giảm giá', update_promotion: 'Sửa mã giảm giá',
   pause_promotion: 'Tạm ngưng', reactivate_promotion: 'Kích hoạt', delete_promotion: 'Xóa mã giảm giá',
+  create_expense: 'Thêm chi phí', create_salary_expense: 'Ghi nhận lương',
+  update_expense: 'Sửa chi phí', archive_expense: 'Hủy chi phí',
   expire: 'Đánh dấu hết hạn', expired: 'Đánh dấu hết hạn', activate: 'Kích hoạt', deactivate: 'Vô hiệu hóa',
 });
 
@@ -45,6 +49,7 @@ const FIELD_LABELS = Object.freeze({
   balance_after: 'Số dư sau', discount: 'Giảm giá', discount_value: 'Giá trị giảm', discount_type: 'Loại giảm giá',
   is_active: 'Trạng thái áp dụng', web_access_enabled: 'Quyền truy cập Web', permissions: 'Quyền được cấp',
   tier: 'Cấp bậc TTC', credit_limit: 'Hạn mức', note: 'Ghi chú', reason: 'Lý do', kiosk_count: 'Số Kiosk',
+  expense_date: 'Ngày chi', salary_period: 'Kỳ lương', employee_user_id: 'Nhân viên', category: 'Danh mục chi phí',
 });
 
 const MONEY_FIELDS = /(?:^|_)(?:amount|balance|price|total|discount|credit_limit)(?:$|_)/i;
@@ -88,9 +93,10 @@ export function formatAuditLog(log = {}) {
 }
 
 export function categoryForLog(log = {}) {
-  if (AUDIT_CATEGORY_FILTERS.some((item) => item.value && item.value === log.category)) return log.category;
   const action = normalizeAction(log.action);
   const scope = `${log.module || ''} ${log.entity || ''}`.toLowerCase();
+  if (/expense/.test(scope) || /expense/.test(action)) return 'expense';
+  if (AUDIT_CATEGORY_FILTERS.some((item) => item.value && item.value === log.category)) return log.category;
   if (/renew|gia_han/.test(scope) || /renewal/.test(action)) return 'renewal';
   if (/promotion|discount|coupon/.test(scope) || /promotion/.test(action)) return 'promotion';
   if (/payment|payos|transaction/.test(scope) || /payos|refund|payment/.test(action)) return 'payment';
@@ -117,6 +123,7 @@ export function moduleLabel(module) {
     registration_requests: 'Kiosk', registration_batches: 'Kiosk', staff: 'Người dùng',
     user: 'Người dùng', users: 'Người dùng', usermanagement: 'Người dùng', user_profiles: 'Người dùng',
     promotion: 'Mã giảm giá', promotions: 'Mã giảm giá', system: 'Hệ thống',
+    expense: 'Chi phí', expenses: 'Chi phí',
   };
   return direct[normalized] || 'Đối tượng';
 }
@@ -233,12 +240,25 @@ export function humanLogSummary(log) {
 
 export function isTechnicalLog(log = {}) {
   const action = normalizeAction(log.action);
+  if (log.legacy_log_id || log.reason === 'Mirrored from legacy logs') return true;
   return !BUSINESS_ACTIONS.has(action);
 }
 
 function businessTitle({ log, action, category, actorName, objectName, changes }) {
   const amount = extractValue(log, ['actual_amount', 'total_amount', 'amount']);
   const kioskName = log.resolved_names?.kiosk?.name;
+  if (action === 'create_salary_expense') {
+    const period = extractValue(log, ['salary_period']);
+    const employee = extractValue(log, ['employee_name']) || 'nhân viên';
+    return `Ghi nhận lương${period ? ` tháng ${formatSalaryPeriod(period)}` : ''} cho ${employee}${amount !== null ? ` – ${formatCurrency(amount)}` : ''}`;
+  }
+  if (action === 'create_expense') return `Thêm chi phí${amount !== null ? ` ${formatCurrency(amount)}` : ''} – ${expenseCategoryLabel(extractValue(log, ['category']))}`;
+  if (action === 'update_expense') return `Sửa chi phí${amount !== null ? ` ${formatCurrency(amount)}` : ''} – ${expenseCategoryLabel(extractValue(log, ['category']))}`;
+  if (action === 'archive_expense') return `Hủy chi phí${amount !== null ? ` ${formatCurrency(amount)}` : ''} – ${expenseCategoryLabel(extractValue(log, ['category']))}`;
+  if (action === 'registration_pending') return `Đăng ký ${objectName} – Chờ thanh toán`;
+  if (action === 'renewal_pending') return `Gia hạn ${objectName} – Chờ thanh toán`;
+  if (action === 'renewal_paid') return `Gia hạn ${objectName} thành công`;
+  if (action === 'payment_review_required') return `${objectName} cần đối soát thanh toán`;
   if (isHistoricalPaymentCorrection(log)) return `${actorName} đã sửa dữ liệu thanh toán của ${objectName}`;
   if (action === 'admin_manual_renewal') return `${objectName} được gia hạn`;
   if (action === 'confirm_payos' || action === 'confirm_payos_batch') {
@@ -266,6 +286,18 @@ function businessTitle({ log, action, category, actorName, objectName, changes }
   if (/expire/.test(action)) return `${objectName} đã được đánh dấu hết hạn`;
   if (/activate|set_active/.test(action)) return `${actorName} đã thay đổi trạng thái của ${objectName}`;
   return `${actorName} đã ghi nhận ${actionLabel(action).toLocaleLowerCase('vi')} cho ${objectName}`;
+}
+
+function expenseCategoryLabel(value) {
+  return {
+    salary: 'Lương nhân viên', bonus: 'Thưởng', advertising: 'Quảng cáo',
+    infrastructure: 'Hosting / Domain / API', refund: 'Hoàn tiền', other: 'Chi khác',
+  }[value] || 'Chi khác';
+}
+
+function formatSalaryPeriod(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})/);
+  return match ? `${match[2]}/${match[1]}` : String(value || '');
 }
 
 function businessSecondary({ log, action, category, changes }) {

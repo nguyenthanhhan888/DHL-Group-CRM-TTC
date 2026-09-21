@@ -1,0 +1,25 @@
+{
+  "modifiedSinceSessionStart": [
+    "src/components/PublicLayout.js",
+    "src/pages/ExpensesPage.js",
+    "src/pages/LogsPage.js",
+    "src/pages/PromotionsPage.js",
+    "src/styles/app.css",
+    "tests/homepage-redesign.test.cjs",
+    "tests/qa-round2-stabilization.test.mjs"
+  ],
+  "newSinceSessionStart": [
+    "src/components/FilterBar.js",
+    "src/utils/businessEventPresentation.js",
+    "tests/final-admin-presentation.test.mjs",
+    "tests/visual/final-admin-ui-fixture.js",
+    "tests/visual/final-admin-ui.html",
+    "tests/visual/run-final-admin-ui.mjs"
+  ],
+  "removedSinceSessionStart": [],
+  "migrationFilesUnchanged": true,
+  "apiAndServiceFilesUnchanged": true,
+  "sharedPermissionsUnchanged": true,
+  "baselineFileCount": 347,
+  "migrationFilesCompared": 94
+}

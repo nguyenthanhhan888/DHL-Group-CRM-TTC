@@ -1061,7 +1061,6 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.get_reports_data(
   text, date, date, bigint, bigint, bigint, bigint, text, text, text, text, integer, integer
 ) from public;

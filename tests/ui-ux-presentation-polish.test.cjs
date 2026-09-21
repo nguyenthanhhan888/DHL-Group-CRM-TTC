@@ -13,13 +13,13 @@ const promotions = read('src/pages/PromotionsPage.js');
 const statusBadge = read('src/components/StatusBadge.js');
 const css = read('src/styles/app.css');
 
-test('Dashboard stays standalone and current-route groups use accessible collapsible sections', () => {
+test('Dashboard stays standalone and section labels keep permitted items visible', () => {
   assert.match(navigation, /label: 'TỔNG QUAN',[\s\S]*standalone: true/);
-  for (const label of ['QUẢN LÝ KHÁCH HÀNG', 'TƯƠNG TÁC CHÉO', 'CÀI ĐẶT HỆ THỐNG']) assert.match(navigation, new RegExp(label));
-  assert.match(layout, /<details class="nav-section nav-section-collapsible"/);
-  assert.match(layout, /<summary class="nav-section-toggle"/);
-  assert.match(app, /activeSection[\s\S]*section\.open = section === activeSection/);
-  assert.match(css, /\.nav-section-collapsible\[open\] \.nav-section-chevron/);
+  for (const label of ['QUẢN LÝ CRM', 'TƯƠNG TÁC CHÉO', 'HỆ THỐNG']) assert.match(navigation, new RegExp(label));
+  assert.match(layout, /<div class="nav-section"[\s\S]*<div class="nav-section-label">/);
+  assert.match(layout, /section\.collapsible[\s\S]*nav-section-collapsible/);
+  assert.doesNotMatch(app, /collapsibleNavSections|activeSection/);
+  assert.match(css, /\.nav-section-label\{min-height:25px/);
 });
 
 test('Reports overview contains exactly the six business-facing KPI cards', () => {

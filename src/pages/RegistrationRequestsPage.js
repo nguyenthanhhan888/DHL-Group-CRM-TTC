@@ -9,7 +9,7 @@ import { escapeHtml } from '../utils/html.js';
 import { renderIcon } from '../utils/icons.js';
 import { setButtonBusy } from '../utils/buttonState.js';
 
-const state = { status: 'awaiting_payment', busyId: null, searchTerm: '', rows: [] };
+const state = { status: '', busyId: null, searchTerm: '', rows: [] };
 
 export function RegistrationRequestsPage() {
   return `
@@ -20,7 +20,7 @@ export function RegistrationRequestsPage() {
       <select id="request-status-filter" class="filter-select" aria-label="Lọc trạng thái hồ sơ">
         <option value="">Tất cả</option><option value="awaiting_payment">Chờ thanh toán</option>
         <option value="pending">Chờ duyệt</option><option value="approved">Đã hoàn tất</option>
-        <option value="terminal">Đã từ chối / Đã hủy</option>
+        <option value="terminal">Đã hủy</option>
       </select>
       <button id="request-reload" class="btn-secondary" type="button">${renderIcon('refresh')} Tải lại</button>
     </div>
@@ -34,7 +34,7 @@ RegistrationRequestsPage.afterRender = function afterRenderRequests() {
   const filter = document.getElementById('request-status-filter');
   const search = document.getElementById('request-search');
   const requestedStatus = new URLSearchParams(String(window.location.hash || '').split('?')[1] || '').get('status');
-  if (['awaiting_payment', 'pending', 'approved', 'terminal'].includes(requestedStatus)) state.status = requestedStatus;
+  state.status = ['awaiting_payment', 'pending', 'approved', 'terminal'].includes(requestedStatus) ? requestedStatus : '';
   if (filter) filter.value = state.status;
   if (search) search.value = state.searchTerm;
   search?.addEventListener('input', (event) => { state.searchTerm = event.currentTarget.value || ''; renderRows(state.rows); });
@@ -142,7 +142,9 @@ function bindModalAction(id, action) {
     try {
       if (action === 'external-complete') await RegistrationRequestService.completeExternal(id, value);
       else await RegistrationRequestService.cancelAwaiting(id, value);
-      Modal.close(); Toast.show(action === 'external-complete' ? 'Đã ghi nhận thanh toán ngoài PayOS và kích hoạt Kiosk.' : 'Đã hủy hồ sơ, lịch sử vẫn được lưu.', 'success'); await loadRequests();
+      Modal.close(); Toast.show(action === 'external-complete' ? 'Đã ghi nhận thanh toán ngoài PayOS và kích hoạt Kiosk.' : 'Đã hủy hồ sơ, lịch sử vẫn được lưu.', 'success');
+      window.dispatchEvent(new CustomEvent('dhl:actionable-registration-changed'));
+      await loadRequests();
     } catch (error) { errorTarget.textContent = error?.message || 'Không thể xử lý hồ sơ.'; errorTarget.classList.remove('hidden'); Toast.show(errorTarget.textContent, 'error'); }
     finally { state.busyId = null; setButtonBusy(button, false); }
   });
@@ -158,7 +160,9 @@ async function runLegacyReviewAction(item, action) {
     if (action === 'reject') await RegistrationRequestService.reject(item.id, reason);
     if (action === 'legacy-approve') await RegistrationRequestService.reviewLegacy(item.id, 'approve');
     if (action === 'legacy-cancel') await RegistrationRequestService.reviewLegacy(item.id, 'cancel', reason);
-    Toast.show('Đã cập nhật hồ sơ.', 'success'); await loadRequests();
+    Toast.show('Đã cập nhật hồ sơ.', 'success');
+    window.dispatchEvent(new CustomEvent('dhl:actionable-registration-changed'));
+    await loadRequests();
   } catch (error) { window.alert(error?.message || 'Không thể xử lý đơn đăng ký.'); }
   finally { state.busyId = null; setRowButtonsDisabled(item.id, false); }
 }

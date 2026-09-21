@@ -88,9 +88,9 @@ test.afterEach(() => {
   delete global.fetch;
 });
 
-test('canonical permission map contains all 24 active production permissions', () => {
-  assert.equal(ALL_PERMISSIONS.length, 24);
-  assert.equal(new Set(ALL_PERMISSIONS).size, 24);
+test('canonical permission map contains all 26 active production permissions', () => {
+  assert.equal(ALL_PERMISSIONS.length, 26);
+  assert.equal(new Set(ALL_PERMISSIONS).size, 26);
   assert.equal(ROUTE_PERMISSIONS['user-management'], PERMISSIONS.USER_MANAGEMENT);
   assert.equal(ROUTE_PERMISSIONS['admin-ttc-wallets'], PERMISSIONS.WALLET);
 });
@@ -198,16 +198,16 @@ test('grant permissions performs authoritative sync and enables web access', asy
   assert.equal(profilePatch.body.web_access_updated_by, ACTOR_ID);
 });
 
-test('removing all permissions disables web access', async () => {
+test('removing all CRM permissions preserves personal web access', async () => {
   const writes = [];
   global.fetch = createSensitiveFetch({ existingPermissions: ['dashboard'], onWrite(entry) { writes.push(entry); } });
   const res = await callHandler({
     action: 'sync_permissions', userId: TARGET_ID, permissions: [], adminPassword: 'admin-password', reason: 'Thu hồi toàn bộ',
   });
   assert.equal(res.statusCode, 200);
-  assert.equal(res.payload.webAccessEnabled, false);
+  assert.equal(res.payload.webAccessEnabled, true);
   assert.equal(writes.some((item) => item.path === '/rest/v1/user_permissions' && item.method === 'POST'), false);
-  assert.equal(writes.find((item) => item.path === '/rest/v1/user_profiles' && item.method === 'PATCH').body.web_access_enabled, false);
+  assert.equal(writes.find((item) => item.path === '/rest/v1/user_profiles' && item.method === 'PATCH').body.web_access_enabled, true);
 });
 
 test('sensitive actions reject a wrong admin password before any protected write', async () => {
@@ -276,7 +276,7 @@ test('lock and unlock synchronize Auth ban and database web access without grant
   global.fetch = createSensitiveFetch({ target: targetProfile({ status: 'locked', web_access_enabled: false }), existingPermissions: [], onWrite(entry) { unlockWrites.push(entry); } });
   const unlocked = await callHandler({ action: 'set_locked', userId: TARGET_ID, locked: false, adminPassword: 'admin-password', reason: 'Mở kiểm thử' });
   assert.equal(unlocked.statusCode, 200);
-  assert.equal(unlocked.payload.webAccessEnabled, false);
+  assert.equal(unlocked.payload.webAccessEnabled, true);
   assert.equal(unlockWrites.find((item) => item.path === `/auth/v1/admin/users/${TARGET_ID}` && item.method === 'PUT').body.ban_duration, 'none');
 });
 

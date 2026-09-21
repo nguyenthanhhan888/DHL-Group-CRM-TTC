@@ -72,7 +72,9 @@ module.exports = async function payosWebhookHandler(req, res) {
       serviceRole: true,
     });
 
-    if (result?.already_processed) {
+    if (result?.reconciliation_required) {
+      logWebhook('PAYOS_RECONCILIATION_REQUIRED', { orderCode });
+    } else if (result?.already_processed) {
       logWebhook('PAYOS_WEBHOOK_DUPLICATE', { orderCode });
     } else if (result?.ignored) {
       logWebhook('PAYOS_WEBHOOK_REJECTED', { reason: 'ORDER_NOT_PROCESSABLE', orderCode });

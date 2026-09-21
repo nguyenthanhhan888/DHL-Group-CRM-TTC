@@ -30,7 +30,7 @@ test('public renewal redirects and polls read-only status for at most 30 seconds
   assert.match(page, /attempt < 10/);
   assert.match(page, /setTimeout\(resolve, 3000\)/);
   assert.match(page, /Gia hạn thành công/);
-  assert.match(page, /Bạn đã huỷ thanh toán/);
+  assert.match(page, /Thanh toán chưa hoàn tất/);
   assert.doesNotMatch(status, /handle_payos_webhook|confirm_crm_payment|update\s+public\./i);
 });
 

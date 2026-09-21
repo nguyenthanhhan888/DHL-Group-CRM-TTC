@@ -2,20 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { kioskDetailHref, recentActivityPresentation } from '../src/pages/DashboardPage.js';
-import { buildRecentActivity } from '../src/services/DashboardService.js';
+import { normalizeBusinessEvents } from '../src/services/DashboardService.js';
 
 const dashboardUrl = new URL('../src/pages/DashboardPage.js', import.meta.url);
 const chartsUrl = new URL('../src/components/DashboardCharts.js', import.meta.url);
 const cssUrl = new URL('../src/styles/app.css', import.meta.url);
 
 test('recent activity maps only explicit business event types to semantic badges', () => {
-  assert.deepEqual(recentActivityPresentation('Đăng ký mới'), {
+  assert.deepEqual(recentActivityPresentation('registration'), {
     label: 'Đăng ký', tone: 'info', icon: 'store',
   });
-  assert.deepEqual(recentActivityPresentation('Gia hạn'), {
+  assert.deepEqual(recentActivityPresentation('renewal'), {
     label: 'Gia hạn', tone: 'success', icon: 'refresh',
   });
-  assert.deepEqual(recentActivityPresentation('Bổ sung Kiosk'), {
+  assert.deepEqual(recentActivityPresentation('legacy'), {
     label: 'Bổ sung', tone: 'secondary', icon: 'user-plus',
   });
   assert.throws(
@@ -32,51 +32,34 @@ test('recent activity always renders exactly one badge from the normalized prese
   assert.doesNotMatch(source, /recent-activity-type">\$\{escapeHtml\(activity\.label\)\}/);
 });
 
-test('valid registration, renewal, and additional events each receive the exact business type', () => {
-  const events = buildRecentActivity([
-    completedPayment({ id: 1, registration_batch_id: 10, confirmed_at: '2026-08-28T10:04:00Z' }),
-    completedPayment({ id: 2, payment_intent_key: 'admin-renewal:22:3:0', confirmed_at: '2026-08-28T10:03:00Z' }),
-    completedPayment({ id: 3, confirmed_at: '2026-08-28T10:02:00Z' }),
-    completedPayment({ id: 317, confirmed_at: '2026-08-28T10:01:00Z' }),
-  ], [
-    approvedRequest({ id: 30, payment_id: 3, metadata: { request_type: 'legacy' } }),
-  ], [
-    { record_id: '317', action: 'admin_manual_renewal' },
+test('shared business events preserve registration, renewal and legacy types', () => {
+  const events = normalizeBusinessEvents([
+    businessEvent('registration', 1), businessEvent('renewal', 2), businessEvent('legacy', 3),
   ]);
-
-  assert.deepEqual(events.map((event) => event.type), [
-    'Đăng ký mới', 'Gia hạn', 'Bổ sung Kiosk', 'Gia hạn',
-  ]);
+  assert.deepEqual(events.map((event) => event.type).sort(), ['legacy', 'registration', 'renewal']);
   assert.equal(events.every((event) => recentActivityPresentation(event.type)), true);
 });
 
-test('registration request links classify registrations without guessing from presentation fields', () => {
-  const events = buildRecentActivity([
-    completedPayment({ id: 11, registration_request_id: 51 }),
-    completedPayment({ id: 12 }),
-  ], [
-    approvedRequest({ id: 52, payment_id: 12, metadata: {} }),
+test('dashboard excludes business-log-only activity without reclassifying it', () => {
+  const events = normalizeBusinessEvents([
+    businessEvent('reconciliation', 11), businessEvent('expense', 12), businessEvent('update', 13),
   ]);
-  assert.deepEqual(events.map((event) => event.type), ['Đăng ký mới', 'Đăng ký mới']);
+  assert.deepEqual(events, []);
 });
 
-test('unknown completed payment is reported explicitly instead of silently hiding its badge', () => {
-  assert.throws(
-    () => buildRecentActivity([completedPayment({ id: 999 })], [], []),
-    /Không thể phân loại hoạt động thanh toán #999/,
-  );
+test('dashboard deduplicates shared transactions, sorts by business date and limits the report to five', () => {
+  const rows = [1, 2, 3, 4, 5, 6].map((id) => businessEvent(id % 2 ? 'registration' : 'renewal', id, `2026-08-${String(20 + id).padStart(2, '0')}T10:00:00Z`));
+  rows.push({ ...rows[5] });
+  assert.deepEqual(normalizeBusinessEvents(rows).map((event) => event.id), [
+    'payment:6', 'payment:5', 'payment:4', 'payment:3', 'payment:2',
+  ]);
 });
 
-test('recent activity query selects durable event discriminators and renewal audit actions', async () => {
+test('recent activity reads the shared permission-checked business event model only', async () => {
   const service = await readFile(new URL('../src/services/DashboardService.js', import.meta.url), 'utf8');
-  for (const field of ['registration_batch_id', 'registration_request_id', 'payment_intent_key', 'note']) {
-    assert.match(service, new RegExp(field));
-  }
-  assert.match(service, /rpc\('get_audit_logs'/);
-  assert.doesNotMatch(service, /from\('audit_logs'\)/);
-  assert.match(service, /'admin_manual_renewal', 'create_renewal'/);
-  assert.match(service, /metadata\?\.request_type/);
-  assert.doesNotMatch(service, /return\s*'Thanh toán thành công'/);
+  assert.match(service, /DASHBOARD_ACTIVITY_TYPES = \['registration', 'legacy', 'renewal'\]/);
+  assert.match(service, /BusinessEventService\.list\(\{[\s\S]*context: 'dashboard', activity/);
+  assert.doesNotMatch(service, /from\('payments'\)|from\('registration_requests'\)|get_audit_logs/);
 });
 
 test('category chart centers one bounded stage and stacks legend below on compact screens', async () => {
@@ -109,23 +92,13 @@ test('expiring kiosk link has pointer, hover, and keyboard focus states', async 
   assert.match(css, /\.expiring-item-link:focus-visible\s*\{[^}]*outline:/s);
 });
 
-function completedPayment(overrides = {}) {
+function businessEvent(type, id, occurredAt = '2026-08-28T10:00:00Z') {
   return {
-    id: 1,
-    payment_status: 'completed',
-    confirmed_at: '2026-08-28T10:00:00Z',
-    total_amount: 400000,
-    transaction_type: 'standard',
-    ...overrides,
-  };
-}
-
-function approvedRequest(overrides = {}) {
-  return {
-    id: 1,
-    status: 'approved',
-    reviewed_at: '2026-08-28T10:00:00Z',
-    metadata: {},
-    ...overrides,
+    event_key: `payment:${id}`,
+    event_type: type,
+    activity_label: type,
+    subject_name: `Kiosk ${id}`,
+    amount: 400000,
+    occurred_at: occurredAt,
   };
 }

@@ -111,9 +111,7 @@ begin
   return new;
 end;
 $function$;
-
 revoke all on function private.protect_payment_records() from public;
-
 -- The existing deferred trigger normally makes the newly completed period the
 -- Kiosk expiry. Historical correction calculates the authoritative expiry in
 -- the RPC instead, so this backstop must not overwrite that result at commit.
@@ -142,9 +140,7 @@ begin
   return null;
 end;
 $function$;
-
 revoke all on function private.sync_completed_renewal_kiosk_period() from public;
-
 create or replace function public.correct_historical_payment(
   payment_id_input bigint,
   start_date_input date,
@@ -353,10 +349,8 @@ begin
   );
 end;
 $function$;
-
 comment on function public.correct_historical_payment(bigint, date, date, integer, numeric, text) is
   'System Admin-only atomic correction of an existing completed individual payment; does not create a renewal or adjustment.';
-
 revoke all on function public.correct_historical_payment(bigint, date, date, integer, numeric, text)
   from public, anon, authenticated;
 grant execute on function public.correct_historical_payment(bigint, date, date, integer, numeric, text)

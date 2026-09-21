@@ -2,7 +2,6 @@ create table if not exists public.role_permissions (
   role text primary key,
   permissions text[] not null default '{}'::text[]
 );
-
 insert into public.role_permissions(role, permissions)
 values
   ('admin', array[
@@ -42,7 +41,6 @@ values
   ]),
   ('support', array['dashboard'])
 on conflict (role) do nothing;
-
 update public.role_permissions rp
 set permissions = (
   select array_agg(distinct permission order by permission)

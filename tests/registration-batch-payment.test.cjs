@@ -34,7 +34,7 @@ test('repeated checkout and expired replacement retain one underlying batch paym
   const [sql, api] = await Promise.all([readFile(migrationPath, 'utf8'), source('api/payos/create-registration-payment.js')]);
   assert.match(sql, /pg_advisory_xact_lock/);
   assert.match(sql, /return jsonb_build_object\('batch'.*'reused',true\)/s);
-  assert.match(api, /fetchExistingPayosOrder\(payment\.id\)/);
+  assert.match(api, /prepareCheckoutRetry\(payment\.id\)/);
   assert.match(api, /status: 'eq\.pending'/);
   assert.match(api, /recordOrder\(payment\.id/);
   const hardening = await source('supabase/migrations/20260815120000_harden_payos_payment_intents.sql');

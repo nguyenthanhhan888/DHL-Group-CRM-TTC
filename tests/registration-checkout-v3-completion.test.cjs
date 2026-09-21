@@ -41,7 +41,7 @@ test('API always sends the third argument and creates PayOS only after DB prepar
   assert.match(api, /promotion_code_input: promotionCode/);
   assert.match(api, /return code \|\| null/);
   assert.ok(api.indexOf("PREPARE_BASE_PRICING") < api.indexOf("CREATE_PAYOS_ORDER"));
-  assert.match(api, /fetchExistingPayosOrder\(payment\.id\)/);
+  assert.match(api, /prepareCheckoutRetry\(payment\.id\)/);
   assert.match(api, /failReservedOrder\(diagnostic\.paymentId, diagnostic\.orderCode/);
 });
 
@@ -79,7 +79,7 @@ test('Admin cancellation preserves history and refuses paid or active records', 
 });
 
 test('Admin UI exposes request-centric filters, payment states and safe dialogs', () => {
-  for (const label of ['Tất cả', 'Chờ thanh toán', 'Chờ duyệt', 'Đã hoàn tất', 'Đã từ chối / Đã hủy']) assert.match(page, new RegExp(label));
+  for (const label of ['Tất cả', 'Chờ thanh toán', 'Chờ duyệt', 'Đã hoàn tất', 'Đã hủy']) assert.match(page, new RegExp(label));
   for (const stateLabel of ['Chưa tạo liên kết thanh toán', 'Đang chờ khách thanh toán', 'Link thanh toán hết hạn', 'Tạo PayOS thất bại']) assert.match(page, new RegExp(stateLabel));
   assert.match(page, /Modal\.open/);
   assert.match(page, /Đang xử lý\.\.\./);
@@ -95,8 +95,8 @@ test('reports and notifications keep all four pending concepts separate', () => 
   for (const label of ['Hồ sơ cần xử lý', 'Hồ sơ chờ thanh toán', 'Kiosk hoạt động']) assert.match(overview, new RegExp(label));
   assert.match(notifications, /pendingReviewCount: pendingCount/);
   assert.match(notifications, /awaitingPaymentCount: awaitingCount/);
-  assert.match(notifications, /registrationCount: pendingCount/);
-  assert.match(notifications, /count: 'exact'/);
+  assert.match(notifications, /registrationCount: pendingCount \+ reconciliationCount/);
+  assert.match(notifications, /get_registration_actionable_summary/);
 });
 
 test('promotion UI and signed webhook remain connected without weakening idempotency', () => {

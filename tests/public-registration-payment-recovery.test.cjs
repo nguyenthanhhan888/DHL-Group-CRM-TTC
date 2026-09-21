@@ -50,9 +50,9 @@ test('public PayOS requests use a separate waiting-for-payment state', () => {
 
 test('Admin queue exposes awaiting-payment separately from Admin-review pending', () => {
   assert.match(requestService, /admin_list_registration_requests/);
-  assert.match(notifications, /\.eq\('status', 'pending'\)/);
-  assert.match(notifications, /\.eq\('status', 'awaiting_payment'\)/);
-  assert.match(notifications, /registrationCount: pendingCount/);
+  assert.match(notifications, /get_registration_actionable_summary/);
+  assert.match(notifications, /registrationCount: pendingCount \+ reconciliationCount/);
+  assert.doesNotMatch(notifications, /request:awaiting_payment:/);
   assert.match(notifications, /awaitingPaymentCount: awaitingCount/);
 });
 
@@ -60,7 +60,7 @@ test('identical retry reuses request, batch, payment, and active provider order'
   assert.match(migration, /select r\.id into request_id_value[\s\S]*r\.status = 'awaiting_payment'/);
   assert.match(migration, /r\.payment_id is null[\s\S]*or exists[\s\S]*p\.payment_status = 'pending'/);
   assert.match(migration, /used_request_ids/);
-  assert.match(api, /fetchExistingPayosOrder\(payment\.id\)/);
+  assert.match(api, /prepareCheckoutRetry\(payment\.id\)/);
 });
 
 test('failed provider creation releases only an unpaid empty reservation', () => {

@@ -30,7 +30,7 @@ test('Manage button opens User Detail and all five tabs remain wired', () => {
 test('permission groups cover the unchanged canonical catalog with Vietnamese labels only', () => {
   const grouped = PERMISSION_GROUPS.flatMap((group) => group.permissions);
   assert.deepEqual(new Set(grouped), new Set(ALL_PERMISSIONS));
-  assert.equal(ALL_PERMISSIONS.length, 24);
+  assert.equal(ALL_PERMISSIONS.length, 26);
   for (const permission of ALL_PERMISSIONS) {
     assert.equal(typeof PERMISSION_LABELS[permission], 'string');
     assert.ok(PERMISSION_LABELS[permission].length > 0);

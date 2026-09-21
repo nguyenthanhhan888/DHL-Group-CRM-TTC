@@ -158,7 +158,6 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.admin_manual_renew_kiosk(bigint, integer, date, numeric, numeric, text, text, text)
   from public, anon, authenticated;
 grant execute on function public.admin_manual_renew_kiosk(bigint, integer, date, numeric, numeric, text, text, text)

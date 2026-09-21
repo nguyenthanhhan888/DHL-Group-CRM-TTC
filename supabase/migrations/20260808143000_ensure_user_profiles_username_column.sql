@@ -1,6 +1,5 @@
 alter table public.user_profiles
   add column if not exists username text;
-
 update public.user_profiles
 set username = lower(coalesce(
   nullif(metadata->>'username', ''),
@@ -26,11 +25,9 @@ where username is null
         split_part(user_profiles.email, '@', 1)
       ))
   );
-
 create unique index if not exists user_profiles_username_unique_idx
   on public.user_profiles (lower(username))
   where username is not null;
-
 create index if not exists user_profiles_phone_login_idx
   on public.user_profiles (phone)
   where phone is not null;

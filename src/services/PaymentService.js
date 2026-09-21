@@ -16,10 +16,12 @@ export const PaymentService = {
     discount = 0,
     discountReason = '',
     note = '',
+    promotionCode = null,
   } = {}) {
     const supabase = requireSupabaseClient();
     const { data } = await runQuery(
       supabase.rpc('create_renewal_payment', {
+        ...(promotionCode ? { promotion_code_input: promotionCode } : {}),
         kiosk_id_input: positiveInteger(kioskId, 'Kiosk'),
         months_input: positiveInteger(months, 'Số tháng'),
         discount_input: nonNegativeNumber(discount, 'Giảm giá'),
@@ -39,10 +41,12 @@ export const PaymentService = {
     discountReason = '',
     paymentMethod,
     note = '',
+    promotionCode = null,
   } = {}) {
     const supabase = requireSupabaseClient();
     const { data } = await runQuery(
       supabase.rpc('admin_manual_renew_kiosk', {
+        ...(promotionCode ? { promotion_code_input: promotionCode } : {}),
         kiosk_id_input: positiveInteger(kioskId, 'Kiosk'),
         months_input: positiveInteger(months, 'Số tháng'),
         start_date_input: requiredText(startDate, 'Kỳ bắt đầu'),
@@ -56,12 +60,21 @@ export const PaymentService = {
     return { data };
   },
 
+  async previewRenewalPromotion({ kioskId, months, code }) {
+    return runQuery(requireSupabaseClient().rpc('preview_renewal_promotion', {
+      kiosk_id_input: positiveInteger(kioskId, 'Kiosk'), months_input: positiveInteger(months, 'Số tháng'),
+      promotion_code_input: requiredText(code, 'Mã giảm giá'),
+    }));
+  },
+
   async list({
     searchTerm = '',
     status = '',
     paymentMethod = '',
     businessTypeId = '',
-    sort = { column: 'created_at', ascending: false },
+    fromDate = '',
+    toDate = '',
+    sort = { column: 'business_at', ascending: false },
     pagination,
   } = {}) {
     const supabase = requireSupabaseClient();
@@ -70,7 +83,7 @@ export const PaymentService = {
       findKioskIdsByBusinessType(supabase, businessTypeId),
     ]);
     let query = supabase
-      .from('payments')
+      .from('payment_business_dates')
       .select(PAYMENT_SELECT, { count: 'exact' });
 
     query = applyPaymentFilters(query, {
@@ -78,6 +91,7 @@ export const PaymentService = {
       status,
       paymentMethod,
       businessTypeKioskIds,
+      fromDate, toDate,
     });
 
     return runQuery(applyPagination(applySort(query, sort), pagination));
@@ -88,7 +102,9 @@ export const PaymentService = {
     status = '',
     paymentMethod = '',
     businessTypeId = '',
-    sort = { column: 'created_at', ascending: false },
+    fromDate = '',
+    toDate = '',
+    sort = { column: 'business_at', ascending: false },
     pagination,
   } = {}) {
     const supabase = requireSupabaseClient();
@@ -101,10 +117,11 @@ export const PaymentService = {
       status,
       paymentMethod,
       businessTypeKioskIds,
+      fromDate, toDate,
     };
 
     let listQuery = supabase
-      .from('payments')
+      .from('payment_business_dates')
       .select(PAYMENT_SELECT, { count: 'exact' });
     listQuery = applyPaymentFilters(listQuery, filters);
 
@@ -115,6 +132,7 @@ export const PaymentService = {
         status,
         paymentMethod,
         businessTypeId,
+        fromDate, toDate,
       }),
     ]);
 
@@ -130,6 +148,8 @@ export const PaymentService = {
     status = '',
     paymentMethod = '',
     businessTypeId = '',
+    fromDate = '',
+    toDate = '',
   } = {}) {
     const supabase = requireSupabaseClient();
     const { data } = await getPaymentSummaryRpc(supabase, {
@@ -137,6 +157,7 @@ export const PaymentService = {
       status,
       paymentMethod,
       businessTypeId,
+      fromDate, toDate,
     });
     return { data: normalizePaymentSummary(data) };
   },
@@ -358,7 +379,10 @@ function applyPaymentFilters(query, {
   status = '',
   paymentMethod = '',
   businessTypeKioskIds = null,
+  fromDate = '', toDate = '',
 }) {
+  if (fromDate) query = query.gte('business_at', vietnamDateBoundary(fromDate));
+  if (toDate) query = query.lt('business_at', vietnamDateBoundary(toDate, true));
   if (status) query = query.eq('payment_status', status);
   if (paymentMethod) query = query.eq('payment_method', paymentMethod);
   if (Array.isArray(businessTypeKioskIds)) {
@@ -463,9 +487,11 @@ async function getPaymentSummaryRpc(supabase, {
   status = '',
   paymentMethod = '',
   businessTypeId = '',
+  fromDate = '', toDate = '',
 } = {}) {
   return runQuery(
     supabase.rpc('get_payment_summary', {
+      ...(fromDate || toDate ? { from_date_input: fromDate || null, to_date_input: toDate || null } : {}),
       search_input: normalizeOptionalText(searchTerm),
       status_input: normalizeOptionalText(status),
       payment_method_input: normalizeOptionalText(paymentMethod),
@@ -510,4 +536,11 @@ function requiredText(value, label) {
   const text = String(value || '').trim();
   if (!text) throw new Error(`${label} là bắt buộc.`);
   return text;
+}
+
+function vietnamDateBoundary(value, exclusiveEnd = false) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value))) throw new Error('Ngày lọc không hợp lệ.');
+  const date = new Date(`${value}T00:00:00+07:00`);
+  if (exclusiveEnd) date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString();
 }

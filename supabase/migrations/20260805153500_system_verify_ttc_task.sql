@@ -122,6 +122,5 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.system_verify_ttc_task(bigint, jsonb) from public, anon, authenticated;
 grant execute on function public.system_verify_ttc_task(bigint, jsonb) to service_role;

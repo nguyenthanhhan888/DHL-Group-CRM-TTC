@@ -40,10 +40,8 @@ begin
   return jsonb_build_object('deleted',true,'id',promotion_record.id,'code',promotion_record.code,'name',promotion_record.name);
 end;
 $function$;
-
 revoke all on function public.admin_delete_unused_promotion(bigint) from public,anon,authenticated;
 grant execute on function public.admin_delete_unused_promotion(bigint) to authenticated;
-
 -- Deletion remains RPC-only; existing SELECT and column-scoped UPDATE grants stay unchanged.
 revoke delete on table public.promotions from public,anon,authenticated;
 notify pgrst, 'reload schema';

@@ -23,10 +23,8 @@ as $function$
     0
   )
 $function$;
-
 revoke all on function public.get_status_warning_days() from public, anon, authenticated;
 grant execute on function public.get_status_warning_days() to authenticated;
-
 -- Replace only the privileged settings lookup in the two new invoker RPCs.
 -- pg_get_functiondef preserves their filters, pagination, RLS behavior and
 -- shared status contract without editing the already-applied S1 migration.
@@ -57,14 +55,11 @@ begin
   end loop;
 end
 $migration$;
-
 revoke all on function public.get_kiosk_status_data(text,text,bigint,text,text,integer,integer)
   from public, anon;
 grant execute on function public.get_kiosk_status_data(text,text,bigint,text,text,integer,integer)
   to authenticated;
-
 revoke all on function public.get_customer_status_data(text,text,text,bigint,text,text,integer,integer)
   from public, anon;
 grant execute on function public.get_customer_status_data(text,text,text,bigint,text,text,integer,integer)
   to authenticated;
-

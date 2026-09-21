@@ -1,0 +1,2742 @@
+{
+  "fixture": "Real page/layout/CSS renderers with deterministic service responses; no production data access",
+  "results": [
+    {
+      "label": "expenses-1440-light",
+      "pass": true,
+      "width": 1440,
+      "scrollWidth": 1440,
+      "filters": [
+        {
+          "id": "expense-start-date",
+          "x": 289,
+          "y": 218.78125,
+          "width": 152,
+          "height": 44,
+          "right": 441,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-end-date",
+          "x": 453,
+          "y": 218.78125,
+          "width": 152,
+          "height": 44,
+          "right": 605,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-category-filter",
+          "x": 617,
+          "y": 218.78125,
+          "width": 346.140625,
+          "height": 44,
+          "right": 963.140625,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-employee-filter",
+          "x": 975.140625,
+          "y": 218.78125,
+          "width": 346.140625,
+          "height": 44,
+          "right": 1321.28125,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-filter-reset",
+          "x": 1333.28125,
+          "y": 218.78125,
+          "width": 69.71875,
+          "height": 44,
+          "right": 1403,
+          "bottom": 262.78125
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 91,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 1138,
+          "container": 1138
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "logs-1440-light",
+      "pass": true,
+      "width": 1440,
+      "scrollWidth": 1440,
+      "filters": [
+        {
+          "id": "log-search",
+          "x": 289,
+          "y": 196.390625,
+          "width": 396.765625,
+          "height": 44,
+          "right": 685.765625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-action-filter",
+          "x": 697.765625,
+          "y": 196.390625,
+          "width": 252.375,
+          "height": 44,
+          "right": 950.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-from-date",
+          "x": 962.140625,
+          "y": 196.390625,
+          "width": 152,
+          "height": 44,
+          "right": 1114.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-to-date",
+          "x": 1126.140625,
+          "y": 196.390625,
+          "width": 152,
+          "height": 44,
+          "right": 1278.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-advanced-toggle",
+          "x": 1290.140625,
+          "y": 196.390625,
+          "width": 112.859375,
+          "height": 44,
+          "right": 1403,
+          "bottom": 240.390625
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 91,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 1138,
+          "container": 1140
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "detail-1440-light",
+      "pass": true,
+      "width": 1440,
+      "scrollWidth": 1440,
+      "filters": [
+        {
+          "id": "log-search",
+          "x": 289,
+          "y": 196.390625,
+          "width": 396.765625,
+          "height": 44,
+          "right": 685.765625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-action-filter",
+          "x": 697.765625,
+          "y": 196.390625,
+          "width": 252.375,
+          "height": 44,
+          "right": 950.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-from-date",
+          "x": 962.140625,
+          "y": 196.390625,
+          "width": 152,
+          "height": 44,
+          "right": 1114.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-to-date",
+          "x": 1126.140625,
+          "y": 196.390625,
+          "width": 152,
+          "height": 44,
+          "right": 1278.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-advanced-toggle",
+          "x": 1290.140625,
+          "y": 196.390625,
+          "width": 112.859375,
+          "height": 44,
+          "right": 1403,
+          "bottom": 240.390625
+        }
+      ],
+      "pairs": [
+        {
+          "label": {
+            "x": 423,
+            "y": 547.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 567,
+            "bottom": 568.078125
+          },
+          "value": {
+            "x": 587,
+            "y": 547.28125,
+            "width": 430,
+            "height": 21,
+            "right": 1017,
+            "bottom": 568.28125
+          }
+        },
+        {
+          "label": {
+            "x": 423,
+            "y": 582.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 567,
+            "bottom": 603.078125
+          },
+          "value": {
+            "x": 587,
+            "y": 582.28125,
+            "width": 430,
+            "height": 21,
+            "right": 1017,
+            "bottom": 603.28125
+          }
+        },
+        {
+          "label": {
+            "x": 423,
+            "y": 617.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 567,
+            "bottom": 638.078125
+          },
+          "value": {
+            "x": 587,
+            "y": 617.28125,
+            "width": 430,
+            "height": 21,
+            "right": 1017,
+            "bottom": 638.28125
+          }
+        },
+        {
+          "label": {
+            "x": 423,
+            "y": 652.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 567,
+            "bottom": 673.078125
+          },
+          "value": {
+            "x": 587,
+            "y": 652.28125,
+            "width": 430,
+            "height": 21,
+            "right": 1017,
+            "bottom": 673.28125
+          }
+        }
+      ],
+      "filterHeight": 91,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 1138,
+          "container": 1140
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": {
+        "x": 400,
+        "y": 305.703125,
+        "width": 640,
+        "height": 388.578125,
+        "right": 1040,
+        "bottom": 694.28125
+      },
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "promotions-1440-light",
+      "pass": true,
+      "width": 1440,
+      "scrollWidth": 1440,
+      "filters": [
+        {
+          "id": "promotion-search",
+          "x": 289,
+          "y": 196.390625,
+          "width": 644.1875,
+          "height": 44,
+          "right": 933.1875,
+          "bottom": 240.390625
+        },
+        {
+          "id": "promotion-status-filter",
+          "x": 945.1875,
+          "y": 196.390625,
+          "width": 376.09375,
+          "height": 44,
+          "right": 1321.28125,
+          "bottom": 240.390625
+        },
+        {
+          "id": "promotion-filter-reset",
+          "x": 1333.28125,
+          "y": 196.390625,
+          "width": 69.71875,
+          "height": 44,
+          "right": 1403,
+          "bottom": 240.390625
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 91,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 1138,
+          "container": 1140
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "footer-1440-light",
+      "pass": true,
+      "width": 1440,
+      "scrollWidth": 1440,
+      "filters": [],
+      "pairs": [],
+      "fontLoaded": true,
+      "tables": [],
+      "clippedCellText": [],
+      "functionalIcons": [
+        {
+          "stroke": "rgb(147, 197, 253)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(167, 243, 208)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(196, 181, 253)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(191, 219, 254)",
+          "fill": "none"
+        }
+      ],
+      "modal": null,
+      "footerColumns": [
+        {
+          "x": 130,
+          "y": 1397.75,
+          "width": 334.796875,
+          "height": 361,
+          "right": 464.796875,
+          "bottom": 1758.75
+        },
+        {
+          "x": 496.796875,
+          "y": 1397.75,
+          "width": 279,
+          "height": 361,
+          "right": 775.796875,
+          "bottom": 1758.75
+        },
+        {
+          "x": 807.796875,
+          "y": 1397.75,
+          "width": 502.203125,
+          "height": 361,
+          "right": 1310,
+          "bottom": 1758.75
+        }
+      ],
+      "icons": [
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 807.796875,
+          "y": 1438.75,
+          "width": 22,
+          "height": 22,
+          "right": 829.796875,
+          "bottom": 1460.75
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 807.796875,
+          "y": 1482.75,
+          "width": 22,
+          "height": 22,
+          "right": 829.796875,
+          "bottom": 1504.75
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 807.796875,
+          "y": 1526.75,
+          "width": 22,
+          "height": 22,
+          "right": 829.796875,
+          "bottom": 1548.75
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 807.796875,
+          "y": 1570.75,
+          "width": 22,
+          "height": 22,
+          "right": 829.796875,
+          "bottom": 1592.75
+        },
+        {
+          "complete": true,
+          "naturalWidth": 100,
+          "x": 804.796875,
+          "y": 1626.75,
+          "width": 28,
+          "height": 28,
+          "right": 832.796875,
+          "bottom": 1654.75
+        },
+        {
+          "complete": true,
+          "naturalWidth": 100,
+          "x": 804.796875,
+          "y": 1668.75,
+          "width": 28,
+          "height": 28,
+          "right": 832.796875,
+          "bottom": 1696.75
+        }
+      ],
+      "links": [
+        "https://www.facebook.com/groups/1145443782801316",
+        "https://www.facebook.com/groups/dienchaugroup888",
+        "https://www.facebook.com/groups/320237372898775",
+        "https://www.facebook.com/admin.dc.adayroi/",
+        "https://zalo.me/0888690346",
+        "https://zalo.me/0888640346",
+        "tel:0333015337"
+      ]
+    },
+    {
+      "label": "expenses-1280-light",
+      "pass": true,
+      "width": 1280,
+      "scrollWidth": 1280,
+      "filters": [
+        {
+          "id": "expense-start-date",
+          "x": 289,
+          "y": 218.78125,
+          "width": 152,
+          "height": 44,
+          "right": 441,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-end-date",
+          "x": 453,
+          "y": 218.78125,
+          "width": 152,
+          "height": 44,
+          "right": 605,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-category-filter",
+          "x": 617,
+          "y": 218.78125,
+          "width": 266.140625,
+          "height": 44,
+          "right": 883.140625,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-employee-filter",
+          "x": 895.140625,
+          "y": 218.78125,
+          "width": 266.140625,
+          "height": 44,
+          "right": 1161.28125,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-filter-reset",
+          "x": 1173.28125,
+          "y": 218.78125,
+          "width": 69.71875,
+          "height": 44,
+          "right": 1243,
+          "bottom": 262.78125
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 91,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 978,
+          "container": 978
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "logs-1280-light",
+      "pass": true,
+      "width": 1280,
+      "scrollWidth": 1280,
+      "filters": [
+        {
+          "id": "log-search",
+          "x": 289,
+          "y": 196.390625,
+          "width": 290.09375,
+          "height": 44,
+          "right": 579.09375,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-action-filter",
+          "x": 591.09375,
+          "y": 196.390625,
+          "width": 199.046875,
+          "height": 44,
+          "right": 790.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-from-date",
+          "x": 802.140625,
+          "y": 196.390625,
+          "width": 152,
+          "height": 44,
+          "right": 954.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-to-date",
+          "x": 966.140625,
+          "y": 196.390625,
+          "width": 152,
+          "height": 44,
+          "right": 1118.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-advanced-toggle",
+          "x": 1130.140625,
+          "y": 196.390625,
+          "width": 112.859375,
+          "height": 44,
+          "right": 1243,
+          "bottom": 240.390625
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 91,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 978,
+          "container": 980
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "detail-1280-light",
+      "pass": true,
+      "width": 1280,
+      "scrollWidth": 1280,
+      "filters": [
+        {
+          "id": "log-search",
+          "x": 289,
+          "y": 196.390625,
+          "width": 290.09375,
+          "height": 44,
+          "right": 579.09375,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-action-filter",
+          "x": 591.09375,
+          "y": 196.390625,
+          "width": 199.046875,
+          "height": 44,
+          "right": 790.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-from-date",
+          "x": 802.140625,
+          "y": 196.390625,
+          "width": 152,
+          "height": 44,
+          "right": 954.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-to-date",
+          "x": 966.140625,
+          "y": 196.390625,
+          "width": 152,
+          "height": 44,
+          "right": 1118.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-advanced-toggle",
+          "x": 1130.140625,
+          "y": 196.390625,
+          "width": 112.859375,
+          "height": 44,
+          "right": 1243,
+          "bottom": 240.390625
+        }
+      ],
+      "pairs": [
+        {
+          "label": {
+            "x": 343,
+            "y": 547.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 487,
+            "bottom": 568.078125
+          },
+          "value": {
+            "x": 507,
+            "y": 547.28125,
+            "width": 430,
+            "height": 21,
+            "right": 937,
+            "bottom": 568.28125
+          }
+        },
+        {
+          "label": {
+            "x": 343,
+            "y": 582.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 487,
+            "bottom": 603.078125
+          },
+          "value": {
+            "x": 507,
+            "y": 582.28125,
+            "width": 430,
+            "height": 21,
+            "right": 937,
+            "bottom": 603.28125
+          }
+        },
+        {
+          "label": {
+            "x": 343,
+            "y": 617.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 487,
+            "bottom": 638.078125
+          },
+          "value": {
+            "x": 507,
+            "y": 617.28125,
+            "width": 430,
+            "height": 21,
+            "right": 937,
+            "bottom": 638.28125
+          }
+        },
+        {
+          "label": {
+            "x": 343,
+            "y": 652.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 487,
+            "bottom": 673.078125
+          },
+          "value": {
+            "x": 507,
+            "y": 652.28125,
+            "width": 430,
+            "height": 21,
+            "right": 937,
+            "bottom": 673.28125
+          }
+        }
+      ],
+      "filterHeight": 91,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 978,
+          "container": 980
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": {
+        "x": 320,
+        "y": 305.703125,
+        "width": 640,
+        "height": 388.578125,
+        "right": 960,
+        "bottom": 694.28125
+      },
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "promotions-1280-light",
+      "pass": true,
+      "width": 1280,
+      "scrollWidth": 1280,
+      "filters": [
+        {
+          "id": "promotion-search",
+          "x": 289,
+          "y": 196.390625,
+          "width": 537.515625,
+          "height": 44,
+          "right": 826.515625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "promotion-status-filter",
+          "x": 838.515625,
+          "y": 196.390625,
+          "width": 322.765625,
+          "height": 44,
+          "right": 1161.28125,
+          "bottom": 240.390625
+        },
+        {
+          "id": "promotion-filter-reset",
+          "x": 1173.28125,
+          "y": 196.390625,
+          "width": 69.71875,
+          "height": 44,
+          "right": 1243,
+          "bottom": 240.390625
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 91,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 978,
+          "container": 980
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "footer-1280-light",
+      "pass": true,
+      "width": 1280,
+      "scrollWidth": 1280,
+      "filters": [],
+      "pairs": [],
+      "fontLoaded": true,
+      "tables": [],
+      "clippedCellText": [],
+      "functionalIcons": [
+        {
+          "stroke": "rgb(147, 197, 253)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(167, 243, 208)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(196, 181, 253)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(191, 219, 254)",
+          "fill": "none"
+        }
+      ],
+      "modal": null,
+      "footerColumns": [
+        {
+          "x": 50,
+          "y": 1397.75,
+          "width": 334.796875,
+          "height": 361,
+          "right": 384.796875,
+          "bottom": 1758.75
+        },
+        {
+          "x": 416.796875,
+          "y": 1397.75,
+          "width": 279,
+          "height": 361,
+          "right": 695.796875,
+          "bottom": 1758.75
+        },
+        {
+          "x": 727.796875,
+          "y": 1397.75,
+          "width": 502.203125,
+          "height": 361,
+          "right": 1230,
+          "bottom": 1758.75
+        }
+      ],
+      "icons": [
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 727.796875,
+          "y": 1438.75,
+          "width": 22,
+          "height": 22,
+          "right": 749.796875,
+          "bottom": 1460.75
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 727.796875,
+          "y": 1482.75,
+          "width": 22,
+          "height": 22,
+          "right": 749.796875,
+          "bottom": 1504.75
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 727.796875,
+          "y": 1526.75,
+          "width": 22,
+          "height": 22,
+          "right": 749.796875,
+          "bottom": 1548.75
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 727.796875,
+          "y": 1570.75,
+          "width": 22,
+          "height": 22,
+          "right": 749.796875,
+          "bottom": 1592.75
+        },
+        {
+          "complete": true,
+          "naturalWidth": 100,
+          "x": 724.796875,
+          "y": 1626.75,
+          "width": 28,
+          "height": 28,
+          "right": 752.796875,
+          "bottom": 1654.75
+        },
+        {
+          "complete": true,
+          "naturalWidth": 100,
+          "x": 724.796875,
+          "y": 1668.75,
+          "width": 28,
+          "height": 28,
+          "right": 752.796875,
+          "bottom": 1696.75
+        }
+      ],
+      "links": [
+        "https://www.facebook.com/groups/1145443782801316",
+        "https://www.facebook.com/groups/dienchaugroup888",
+        "https://www.facebook.com/groups/320237372898775",
+        "https://www.facebook.com/admin.dc.adayroi/",
+        "https://zalo.me/0888690346",
+        "https://zalo.me/0888640346",
+        "tel:0333015337"
+      ]
+    },
+    {
+      "label": "expenses-768-light",
+      "pass": true,
+      "width": 768,
+      "scrollWidth": 768,
+      "filters": [
+        {
+          "id": "expense-start-date",
+          "x": 37,
+          "y": 218.78125,
+          "width": 152,
+          "height": 44,
+          "right": 189,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-end-date",
+          "x": 201,
+          "y": 218.78125,
+          "width": 152,
+          "height": 44,
+          "right": 353,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-category-filter",
+          "x": 365,
+          "y": 218.78125,
+          "width": 177,
+          "height": 44,
+          "right": 542,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-employee-filter",
+          "x": 554,
+          "y": 218.78125,
+          "width": 177,
+          "height": 44,
+          "right": 731,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-filter-reset",
+          "x": 37,
+          "y": 274.78125,
+          "width": 69.71875,
+          "height": 44,
+          "right": 106.71875,
+          "bottom": 318.78125
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 147,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 720,
+          "container": 720
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "logs-768-light",
+      "pass": true,
+      "width": 768,
+      "scrollWidth": 768,
+      "filters": [
+        {
+          "id": "log-search",
+          "x": 37,
+          "y": 196.390625,
+          "width": 309.328125,
+          "height": 44,
+          "right": 346.328125,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-action-filter",
+          "x": 358.328125,
+          "y": 196.390625,
+          "width": 208.671875,
+          "height": 44,
+          "right": 567,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-from-date",
+          "x": 579,
+          "y": 196.390625,
+          "width": 152,
+          "height": 44,
+          "right": 731,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-to-date",
+          "x": 37,
+          "y": 273.390625,
+          "width": 152,
+          "height": 44,
+          "right": 189,
+          "bottom": 317.390625
+        },
+        {
+          "id": "log-advanced-toggle",
+          "x": 201,
+          "y": 273.390625,
+          "width": 112.859375,
+          "height": 44,
+          "right": 313.859375,
+          "bottom": 317.390625
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 168,
+      "fontLoaded": true,
+      "tables": [],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "detail-768-light",
+      "pass": true,
+      "width": 768,
+      "scrollWidth": 768,
+      "filters": [
+        {
+          "id": "log-search",
+          "x": 37,
+          "y": 196.390625,
+          "width": 309.328125,
+          "height": 44,
+          "right": 346.328125,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-action-filter",
+          "x": 358.328125,
+          "y": 196.390625,
+          "width": 208.671875,
+          "height": 44,
+          "right": 567,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-from-date",
+          "x": 579,
+          "y": 196.390625,
+          "width": 152,
+          "height": 44,
+          "right": 731,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-to-date",
+          "x": 37,
+          "y": 273.390625,
+          "width": 152,
+          "height": 44,
+          "right": 189,
+          "bottom": 317.390625
+        },
+        {
+          "id": "log-advanced-toggle",
+          "x": 201,
+          "y": 273.390625,
+          "width": 112.859375,
+          "height": 44,
+          "right": 313.859375,
+          "bottom": 317.390625
+        }
+      ],
+      "pairs": [
+        {
+          "label": {
+            "x": 87,
+            "y": 547.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 231,
+            "bottom": 568.078125
+          },
+          "value": {
+            "x": 251,
+            "y": 547.28125,
+            "width": 430,
+            "height": 21,
+            "right": 681,
+            "bottom": 568.28125
+          }
+        },
+        {
+          "label": {
+            "x": 87,
+            "y": 582.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 231,
+            "bottom": 603.078125
+          },
+          "value": {
+            "x": 251,
+            "y": 582.28125,
+            "width": 430,
+            "height": 21,
+            "right": 681,
+            "bottom": 603.28125
+          }
+        },
+        {
+          "label": {
+            "x": 87,
+            "y": 617.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 231,
+            "bottom": 638.078125
+          },
+          "value": {
+            "x": 251,
+            "y": 617.28125,
+            "width": 430,
+            "height": 21,
+            "right": 681,
+            "bottom": 638.28125
+          }
+        },
+        {
+          "label": {
+            "x": 87,
+            "y": 652.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 231,
+            "bottom": 673.078125
+          },
+          "value": {
+            "x": 251,
+            "y": 652.28125,
+            "width": 430,
+            "height": 21,
+            "right": 681,
+            "bottom": 673.28125
+          }
+        }
+      ],
+      "filterHeight": 168,
+      "fontLoaded": true,
+      "tables": [],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": {
+        "x": 64,
+        "y": 305.703125,
+        "width": 640,
+        "height": 388.578125,
+        "right": 704,
+        "bottom": 694.28125
+      },
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "promotions-768-light",
+      "pass": true,
+      "width": 768,
+      "scrollWidth": 768,
+      "filters": [
+        {
+          "id": "promotion-search",
+          "x": 37,
+          "y": 196.390625,
+          "width": 364.1875,
+          "height": 44,
+          "right": 401.1875,
+          "bottom": 240.390625
+        },
+        {
+          "id": "promotion-status-filter",
+          "x": 413.1875,
+          "y": 196.390625,
+          "width": 236.09375,
+          "height": 44,
+          "right": 649.28125,
+          "bottom": 240.390625
+        },
+        {
+          "id": "promotion-filter-reset",
+          "x": 661.28125,
+          "y": 196.390625,
+          "width": 69.71875,
+          "height": 44,
+          "right": 731,
+          "bottom": 240.390625
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 91,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 720,
+          "container": 720
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "footer-768-light",
+      "pass": true,
+      "width": 768,
+      "scrollWidth": 768,
+      "filters": [],
+      "pairs": [],
+      "fontLoaded": true,
+      "tables": [],
+      "clippedCellText": [],
+      "functionalIcons": [
+        {
+          "stroke": "rgb(147, 197, 253)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(167, 243, 208)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(196, 181, 253)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(191, 219, 254)",
+          "fill": "none"
+        }
+      ],
+      "modal": null,
+      "footerColumns": [
+        {
+          "x": 20,
+          "y": 1713.5625,
+          "width": 348,
+          "height": 162,
+          "right": 368,
+          "bottom": 1875.5625
+        },
+        {
+          "x": 400,
+          "y": 1713.5625,
+          "width": 348,
+          "height": 162,
+          "right": 748,
+          "bottom": 1875.5625
+        },
+        {
+          "x": 20,
+          "y": 1907.5625,
+          "width": 728,
+          "height": 273,
+          "right": 748,
+          "bottom": 2180.5625
+        }
+      ],
+      "icons": [
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 20,
+          "y": 1948.5625,
+          "width": 22,
+          "height": 22,
+          "right": 42,
+          "bottom": 1970.5625
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 396,
+          "y": 1948.5625,
+          "width": 22,
+          "height": 22,
+          "right": 418,
+          "bottom": 1970.5625
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 20,
+          "y": 1992.5625,
+          "width": 22,
+          "height": 22,
+          "right": 42,
+          "bottom": 2014.5625
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 396,
+          "y": 1992.5625,
+          "width": 22,
+          "height": 22,
+          "right": 418,
+          "bottom": 2014.5625
+        },
+        {
+          "complete": true,
+          "naturalWidth": 100,
+          "x": 17,
+          "y": 2048.5625,
+          "width": 28,
+          "height": 28,
+          "right": 45,
+          "bottom": 2076.5625
+        },
+        {
+          "complete": true,
+          "naturalWidth": 100,
+          "x": 17,
+          "y": 2090.5625,
+          "width": 28,
+          "height": 28,
+          "right": 45,
+          "bottom": 2118.5625
+        }
+      ],
+      "links": [
+        "https://www.facebook.com/groups/1145443782801316",
+        "https://www.facebook.com/groups/dienchaugroup888",
+        "https://www.facebook.com/groups/320237372898775",
+        "https://www.facebook.com/admin.dc.adayroi/",
+        "https://zalo.me/0888690346",
+        "https://zalo.me/0888640346",
+        "tel:0333015337"
+      ]
+    },
+    {
+      "label": "expenses-390-light",
+      "pass": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "filters": [
+        {
+          "id": "expense-start-date",
+          "x": 29,
+          "y": 268.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 312.78125
+        },
+        {
+          "id": "expense-end-date",
+          "x": 29,
+          "y": 345.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 389.78125
+        },
+        {
+          "id": "expense-category-filter",
+          "x": 29,
+          "y": 422.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 466.78125
+        },
+        {
+          "id": "expense-employee-filter",
+          "x": 29,
+          "y": 499.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 543.78125
+        },
+        {
+          "id": "expense-filter-reset",
+          "x": 29,
+          "y": 555.78125,
+          "width": 69.71875,
+          "height": 44,
+          "right": 98.71875,
+          "bottom": 599.78125
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 378,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 358,
+          "container": 358
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "logs-390-light",
+      "pass": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "filters": [
+        {
+          "id": "log-search",
+          "x": 29,
+          "y": 210.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 254.78125
+        },
+        {
+          "id": "log-action-filter",
+          "x": 29,
+          "y": 287.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 331.78125
+        },
+        {
+          "id": "log-from-date",
+          "x": 29,
+          "y": 364.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 408.78125
+        },
+        {
+          "id": "log-to-date",
+          "x": 29,
+          "y": 441.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 485.78125
+        },
+        {
+          "id": "log-advanced-toggle",
+          "x": 29,
+          "y": 497.78125,
+          "width": 112.859375,
+          "height": 44,
+          "right": 141.859375,
+          "bottom": 541.78125
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 378,
+      "fontLoaded": true,
+      "tables": [],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "detail-390-light",
+      "pass": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "filters": [
+        {
+          "id": "log-search",
+          "x": 29,
+          "y": 210.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 254.78125
+        },
+        {
+          "id": "log-action-filter",
+          "x": 29,
+          "y": 287.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 331.78125
+        },
+        {
+          "id": "log-from-date",
+          "x": 29,
+          "y": 364.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 408.78125
+        },
+        {
+          "id": "log-to-date",
+          "x": 29,
+          "y": 441.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 485.78125
+        },
+        {
+          "id": "log-advanced-toggle",
+          "x": 29,
+          "y": 497.78125,
+          "width": 112.859375,
+          "height": 44,
+          "right": 141.859375,
+          "bottom": 541.78125
+        }
+      ],
+      "pairs": [
+        {
+          "label": {
+            "x": 41,
+            "y": 506.9375,
+            "width": 308,
+            "height": 20.796875,
+            "right": 349,
+            "bottom": 527.734375
+          },
+          "value": {
+            "x": 41,
+            "y": 531.734375,
+            "width": 308,
+            "height": 21,
+            "right": 349,
+            "bottom": 552.734375
+          }
+        },
+        {
+          "label": {
+            "x": 41,
+            "y": 566.734375,
+            "width": 308,
+            "height": 20.796875,
+            "right": 349,
+            "bottom": 587.53125
+          },
+          "value": {
+            "x": 41,
+            "y": 591.53125,
+            "width": 308,
+            "height": 21,
+            "right": 349,
+            "bottom": 612.53125
+          }
+        },
+        {
+          "label": {
+            "x": 41,
+            "y": 626.53125,
+            "width": 308,
+            "height": 20.796875,
+            "right": 349,
+            "bottom": 647.328125
+          },
+          "value": {
+            "x": 41,
+            "y": 651.328125,
+            "width": 308,
+            "height": 21,
+            "right": 349,
+            "bottom": 672.328125
+          }
+        },
+        {
+          "label": {
+            "x": 41,
+            "y": 686.328125,
+            "width": 308,
+            "height": 20.796875,
+            "right": 349,
+            "bottom": 707.125
+          },
+          "value": {
+            "x": 41,
+            "y": 711.125,
+            "width": 308,
+            "height": 21,
+            "right": 349,
+            "bottom": 732.125
+          }
+        }
+      ],
+      "filterHeight": 378,
+      "fontLoaded": true,
+      "tables": [],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": {
+        "x": 24,
+        "y": 250.859375,
+        "width": 342,
+        "height": 498.265625,
+        "right": 366,
+        "bottom": 749.125
+      },
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "promotions-390-light",
+      "pass": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "filters": [
+        {
+          "id": "promotion-search",
+          "x": 29,
+          "y": 246.390625,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 290.390625
+        },
+        {
+          "id": "promotion-status-filter",
+          "x": 29,
+          "y": 323.390625,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 367.390625
+        },
+        {
+          "id": "promotion-filter-reset",
+          "x": 29,
+          "y": 379.390625,
+          "width": 69.71875,
+          "height": 44,
+          "right": 98.71875,
+          "bottom": 423.390625
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 224,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 358,
+          "container": 358
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "footer-390-light",
+      "pass": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "filters": [],
+      "pairs": [],
+      "fontLoaded": true,
+      "tables": [],
+      "clippedCellText": [],
+      "functionalIcons": [
+        {
+          "stroke": "rgb(147, 197, 253)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(167, 243, 208)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(196, 181, 253)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(191, 219, 254)",
+          "fill": "none"
+        }
+      ],
+      "modal": null,
+      "footerColumns": [
+        {
+          "x": 16,
+          "y": 1632.46875,
+          "width": 358,
+          "height": 55.59375,
+          "right": 374,
+          "bottom": 1688.0625
+        },
+        {
+          "x": 16,
+          "y": 1720.0625,
+          "width": 358,
+          "height": 162,
+          "right": 374,
+          "bottom": 1882.0625
+        },
+        {
+          "x": 16,
+          "y": 1914.0625,
+          "width": 358,
+          "height": 361,
+          "right": 374,
+          "bottom": 2275.0625
+        }
+      ],
+      "icons": [
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 16,
+          "y": 1955.0625,
+          "width": 22,
+          "height": 22,
+          "right": 38,
+          "bottom": 1977.0625
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 16,
+          "y": 1999.0625,
+          "width": 22,
+          "height": 22,
+          "right": 38,
+          "bottom": 2021.0625
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 16,
+          "y": 2043.0625,
+          "width": 22,
+          "height": 22,
+          "right": 38,
+          "bottom": 2065.0625
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 16,
+          "y": 2087.0625,
+          "width": 22,
+          "height": 22,
+          "right": 38,
+          "bottom": 2109.0625
+        },
+        {
+          "complete": true,
+          "naturalWidth": 100,
+          "x": 13,
+          "y": 2143.0625,
+          "width": 28,
+          "height": 28,
+          "right": 41,
+          "bottom": 2171.0625
+        },
+        {
+          "complete": true,
+          "naturalWidth": 100,
+          "x": 13,
+          "y": 2185.0625,
+          "width": 28,
+          "height": 28,
+          "right": 41,
+          "bottom": 2213.0625
+        }
+      ],
+      "links": [
+        "https://www.facebook.com/groups/1145443782801316",
+        "https://www.facebook.com/groups/dienchaugroup888",
+        "https://www.facebook.com/groups/320237372898775",
+        "https://www.facebook.com/admin.dc.adayroi/",
+        "https://zalo.me/0888690346",
+        "https://zalo.me/0888640346",
+        "tel:0333015337"
+      ]
+    },
+    {
+      "label": "expenses-1280-dark",
+      "pass": true,
+      "width": 1280,
+      "scrollWidth": 1280,
+      "filters": [
+        {
+          "id": "expense-start-date",
+          "x": 289,
+          "y": 218.78125,
+          "width": 152,
+          "height": 44,
+          "right": 441,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-end-date",
+          "x": 453,
+          "y": 218.78125,
+          "width": 152,
+          "height": 44,
+          "right": 605,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-category-filter",
+          "x": 617,
+          "y": 218.78125,
+          "width": 266.140625,
+          "height": 44,
+          "right": 883.140625,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-employee-filter",
+          "x": 895.140625,
+          "y": 218.78125,
+          "width": 266.140625,
+          "height": 44,
+          "right": 1161.28125,
+          "bottom": 262.78125
+        },
+        {
+          "id": "expense-filter-reset",
+          "x": 1173.28125,
+          "y": 218.78125,
+          "width": 69.71875,
+          "height": 44,
+          "right": 1243,
+          "bottom": 262.78125
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 91,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 978,
+          "container": 978
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "logs-1280-dark",
+      "pass": true,
+      "width": 1280,
+      "scrollWidth": 1280,
+      "filters": [
+        {
+          "id": "log-search",
+          "x": 289,
+          "y": 196.390625,
+          "width": 290.09375,
+          "height": 44,
+          "right": 579.09375,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-action-filter",
+          "x": 591.09375,
+          "y": 196.390625,
+          "width": 199.046875,
+          "height": 44,
+          "right": 790.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-from-date",
+          "x": 802.140625,
+          "y": 196.390625,
+          "width": 152,
+          "height": 44,
+          "right": 954.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-to-date",
+          "x": 966.140625,
+          "y": 196.390625,
+          "width": 152,
+          "height": 44,
+          "right": 1118.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-advanced-toggle",
+          "x": 1130.140625,
+          "y": 196.390625,
+          "width": 112.859375,
+          "height": 44,
+          "right": 1243,
+          "bottom": 240.390625
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 91,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 978,
+          "container": 980
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "detail-1280-dark",
+      "pass": true,
+      "width": 1280,
+      "scrollWidth": 1280,
+      "filters": [
+        {
+          "id": "log-search",
+          "x": 289,
+          "y": 196.390625,
+          "width": 290.09375,
+          "height": 44,
+          "right": 579.09375,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-action-filter",
+          "x": 591.09375,
+          "y": 196.390625,
+          "width": 199.046875,
+          "height": 44,
+          "right": 790.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-from-date",
+          "x": 802.140625,
+          "y": 196.390625,
+          "width": 152,
+          "height": 44,
+          "right": 954.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-to-date",
+          "x": 966.140625,
+          "y": 196.390625,
+          "width": 152,
+          "height": 44,
+          "right": 1118.140625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "log-advanced-toggle",
+          "x": 1130.140625,
+          "y": 196.390625,
+          "width": 112.859375,
+          "height": 44,
+          "right": 1243,
+          "bottom": 240.390625
+        }
+      ],
+      "pairs": [
+        {
+          "label": {
+            "x": 343,
+            "y": 547.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 487,
+            "bottom": 568.078125
+          },
+          "value": {
+            "x": 507,
+            "y": 547.28125,
+            "width": 430,
+            "height": 21,
+            "right": 937,
+            "bottom": 568.28125
+          }
+        },
+        {
+          "label": {
+            "x": 343,
+            "y": 582.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 487,
+            "bottom": 603.078125
+          },
+          "value": {
+            "x": 507,
+            "y": 582.28125,
+            "width": 430,
+            "height": 21,
+            "right": 937,
+            "bottom": 603.28125
+          }
+        },
+        {
+          "label": {
+            "x": 343,
+            "y": 617.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 487,
+            "bottom": 638.078125
+          },
+          "value": {
+            "x": 507,
+            "y": 617.28125,
+            "width": 430,
+            "height": 21,
+            "right": 937,
+            "bottom": 638.28125
+          }
+        },
+        {
+          "label": {
+            "x": 343,
+            "y": 652.28125,
+            "width": 144,
+            "height": 20.796875,
+            "right": 487,
+            "bottom": 673.078125
+          },
+          "value": {
+            "x": 507,
+            "y": 652.28125,
+            "width": 430,
+            "height": 21,
+            "right": 937,
+            "bottom": 673.28125
+          }
+        }
+      ],
+      "filterHeight": 91,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 978,
+          "container": 980
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": {
+        "x": 320,
+        "y": 305.703125,
+        "width": 640,
+        "height": 388.578125,
+        "right": 960,
+        "bottom": 694.28125
+      },
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "promotions-1280-dark",
+      "pass": true,
+      "width": 1280,
+      "scrollWidth": 1280,
+      "filters": [
+        {
+          "id": "promotion-search",
+          "x": 289,
+          "y": 196.390625,
+          "width": 537.515625,
+          "height": 44,
+          "right": 826.515625,
+          "bottom": 240.390625
+        },
+        {
+          "id": "promotion-status-filter",
+          "x": 838.515625,
+          "y": 196.390625,
+          "width": 322.765625,
+          "height": 44,
+          "right": 1161.28125,
+          "bottom": 240.390625
+        },
+        {
+          "id": "promotion-filter-reset",
+          "x": 1173.28125,
+          "y": 196.390625,
+          "width": 69.71875,
+          "height": 44,
+          "right": 1243,
+          "bottom": 240.390625
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 91,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 978,
+          "container": 980
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "footer-1280-dark",
+      "pass": true,
+      "width": 1280,
+      "scrollWidth": 1280,
+      "filters": [],
+      "pairs": [],
+      "fontLoaded": true,
+      "tables": [],
+      "clippedCellText": [],
+      "functionalIcons": [
+        {
+          "stroke": "rgb(147, 197, 253)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(167, 243, 208)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(196, 181, 253)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(147, 197, 253)",
+          "fill": "none"
+        }
+      ],
+      "modal": null,
+      "footerColumns": [
+        {
+          "x": 50,
+          "y": 1397.75,
+          "width": 334.796875,
+          "height": 361,
+          "right": 384.796875,
+          "bottom": 1758.75
+        },
+        {
+          "x": 416.796875,
+          "y": 1397.75,
+          "width": 279,
+          "height": 361,
+          "right": 695.796875,
+          "bottom": 1758.75
+        },
+        {
+          "x": 727.796875,
+          "y": 1397.75,
+          "width": 502.203125,
+          "height": 361,
+          "right": 1230,
+          "bottom": 1758.75
+        }
+      ],
+      "icons": [
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 727.796875,
+          "y": 1438.75,
+          "width": 22,
+          "height": 22,
+          "right": 749.796875,
+          "bottom": 1460.75
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 727.796875,
+          "y": 1482.75,
+          "width": 22,
+          "height": 22,
+          "right": 749.796875,
+          "bottom": 1504.75
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 727.796875,
+          "y": 1526.75,
+          "width": 22,
+          "height": 22,
+          "right": 749.796875,
+          "bottom": 1548.75
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 727.796875,
+          "y": 1570.75,
+          "width": 22,
+          "height": 22,
+          "right": 749.796875,
+          "bottom": 1592.75
+        },
+        {
+          "complete": true,
+          "naturalWidth": 100,
+          "x": 724.796875,
+          "y": 1626.75,
+          "width": 28,
+          "height": 28,
+          "right": 752.796875,
+          "bottom": 1654.75
+        },
+        {
+          "complete": true,
+          "naturalWidth": 100,
+          "x": 724.796875,
+          "y": 1668.75,
+          "width": 28,
+          "height": 28,
+          "right": 752.796875,
+          "bottom": 1696.75
+        }
+      ],
+      "links": [
+        "https://www.facebook.com/groups/1145443782801316",
+        "https://www.facebook.com/groups/dienchaugroup888",
+        "https://www.facebook.com/groups/320237372898775",
+        "https://www.facebook.com/admin.dc.adayroi/",
+        "https://zalo.me/0888690346",
+        "https://zalo.me/0888640346",
+        "tel:0333015337"
+      ]
+    },
+    {
+      "label": "expenses-390-dark",
+      "pass": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "filters": [
+        {
+          "id": "expense-start-date",
+          "x": 29,
+          "y": 268.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 312.78125
+        },
+        {
+          "id": "expense-end-date",
+          "x": 29,
+          "y": 345.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 389.78125
+        },
+        {
+          "id": "expense-category-filter",
+          "x": 29,
+          "y": 422.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 466.78125
+        },
+        {
+          "id": "expense-employee-filter",
+          "x": 29,
+          "y": 499.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 543.78125
+        },
+        {
+          "id": "expense-filter-reset",
+          "x": 29,
+          "y": 555.78125,
+          "width": 69.71875,
+          "height": 44,
+          "right": 98.71875,
+          "bottom": 599.78125
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 378,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 358,
+          "container": 358
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "logs-390-dark",
+      "pass": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "filters": [
+        {
+          "id": "log-search",
+          "x": 29,
+          "y": 210.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 254.78125
+        },
+        {
+          "id": "log-action-filter",
+          "x": 29,
+          "y": 287.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 331.78125
+        },
+        {
+          "id": "log-from-date",
+          "x": 29,
+          "y": 364.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 408.78125
+        },
+        {
+          "id": "log-to-date",
+          "x": 29,
+          "y": 441.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 485.78125
+        },
+        {
+          "id": "log-advanced-toggle",
+          "x": 29,
+          "y": 497.78125,
+          "width": 112.859375,
+          "height": 44,
+          "right": 141.859375,
+          "bottom": 541.78125
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 378,
+      "fontLoaded": true,
+      "tables": [],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "detail-390-dark",
+      "pass": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "filters": [
+        {
+          "id": "log-search",
+          "x": 29,
+          "y": 210.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 254.78125
+        },
+        {
+          "id": "log-action-filter",
+          "x": 29,
+          "y": 287.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 331.78125
+        },
+        {
+          "id": "log-from-date",
+          "x": 29,
+          "y": 364.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 408.78125
+        },
+        {
+          "id": "log-to-date",
+          "x": 29,
+          "y": 441.78125,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 485.78125
+        },
+        {
+          "id": "log-advanced-toggle",
+          "x": 29,
+          "y": 497.78125,
+          "width": 112.859375,
+          "height": 44,
+          "right": 141.859375,
+          "bottom": 541.78125
+        }
+      ],
+      "pairs": [
+        {
+          "label": {
+            "x": 41,
+            "y": 506.9375,
+            "width": 308,
+            "height": 20.796875,
+            "right": 349,
+            "bottom": 527.734375
+          },
+          "value": {
+            "x": 41,
+            "y": 531.734375,
+            "width": 308,
+            "height": 21,
+            "right": 349,
+            "bottom": 552.734375
+          }
+        },
+        {
+          "label": {
+            "x": 41,
+            "y": 566.734375,
+            "width": 308,
+            "height": 20.796875,
+            "right": 349,
+            "bottom": 587.53125
+          },
+          "value": {
+            "x": 41,
+            "y": 591.53125,
+            "width": 308,
+            "height": 21,
+            "right": 349,
+            "bottom": 612.53125
+          }
+        },
+        {
+          "label": {
+            "x": 41,
+            "y": 626.53125,
+            "width": 308,
+            "height": 20.796875,
+            "right": 349,
+            "bottom": 647.328125
+          },
+          "value": {
+            "x": 41,
+            "y": 651.328125,
+            "width": 308,
+            "height": 21,
+            "right": 349,
+            "bottom": 672.328125
+          }
+        },
+        {
+          "label": {
+            "x": 41,
+            "y": 686.328125,
+            "width": 308,
+            "height": 20.796875,
+            "right": 349,
+            "bottom": 707.125
+          },
+          "value": {
+            "x": 41,
+            "y": 711.125,
+            "width": 308,
+            "height": 21,
+            "right": 349,
+            "bottom": 732.125
+          }
+        }
+      ],
+      "filterHeight": 378,
+      "fontLoaded": true,
+      "tables": [],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": {
+        "x": 24,
+        "y": 250.859375,
+        "width": 342,
+        "height": 498.265625,
+        "right": 366,
+        "bottom": 749.125
+      },
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "promotions-390-dark",
+      "pass": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "filters": [
+        {
+          "id": "promotion-search",
+          "x": 29,
+          "y": 246.390625,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 290.390625
+        },
+        {
+          "id": "promotion-status-filter",
+          "x": 29,
+          "y": 323.390625,
+          "width": 332,
+          "height": 44,
+          "right": 361,
+          "bottom": 367.390625
+        },
+        {
+          "id": "promotion-filter-reset",
+          "x": 29,
+          "y": 379.390625,
+          "width": 69.71875,
+          "height": 44,
+          "right": 98.71875,
+          "bottom": 423.390625
+        }
+      ],
+      "pairs": [],
+      "filterHeight": 224,
+      "fontLoaded": true,
+      "tables": [
+        {
+          "width": 358,
+          "container": 358
+        }
+      ],
+      "clippedCellText": [],
+      "functionalIcons": [],
+      "modal": null,
+      "footerColumns": [],
+      "icons": [],
+      "links": []
+    },
+    {
+      "label": "footer-390-dark",
+      "pass": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "filters": [],
+      "pairs": [],
+      "fontLoaded": true,
+      "tables": [],
+      "clippedCellText": [],
+      "functionalIcons": [
+        {
+          "stroke": "rgb(147, 197, 253)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(167, 243, 208)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(196, 181, 253)",
+          "fill": "none"
+        },
+        {
+          "stroke": "rgb(147, 197, 253)",
+          "fill": "none"
+        }
+      ],
+      "modal": null,
+      "footerColumns": [
+        {
+          "x": 16,
+          "y": 1632.46875,
+          "width": 358,
+          "height": 55.59375,
+          "right": 374,
+          "bottom": 1688.0625
+        },
+        {
+          "x": 16,
+          "y": 1720.0625,
+          "width": 358,
+          "height": 162,
+          "right": 374,
+          "bottom": 1882.0625
+        },
+        {
+          "x": 16,
+          "y": 1914.0625,
+          "width": 358,
+          "height": 361,
+          "right": 374,
+          "bottom": 2275.0625
+        }
+      ],
+      "icons": [
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 16,
+          "y": 1955.0625,
+          "width": 22,
+          "height": 22,
+          "right": 38,
+          "bottom": 1977.0625
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 16,
+          "y": 1999.0625,
+          "width": 22,
+          "height": 22,
+          "right": 38,
+          "bottom": 2021.0625
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 16,
+          "y": 2043.0625,
+          "width": 22,
+          "height": 22,
+          "right": 38,
+          "bottom": 2065.0625
+        },
+        {
+          "complete": true,
+          "naturalWidth": 512,
+          "x": 16,
+          "y": 2087.0625,
+          "width": 22,
+          "height": 22,
+          "right": 38,
+          "bottom": 2109.0625
+        },
+        {
+          "complete": true,
+          "naturalWidth": 100,
+          "x": 13,
+          "y": 2143.0625,
+          "width": 28,
+          "height": 28,
+          "right": 41,
+          "bottom": 2171.0625
+        },
+        {
+          "complete": true,
+          "naturalWidth": 100,
+          "x": 13,
+          "y": 2185.0625,
+          "width": 28,
+          "height": 28,
+          "right": 41,
+          "bottom": 2213.0625
+        }
+      ],
+      "links": [
+        "https://www.facebook.com/groups/1145443782801316",
+        "https://www.facebook.com/groups/dienchaugroup888",
+        "https://www.facebook.com/groups/320237372898775",
+        "https://www.facebook.com/admin.dc.adayroi/",
+        "https://zalo.me/0888690346",
+        "https://zalo.me/0888640346",
+        "tel:0333015337"
+      ]
+    }
+  ],
+  "errors": []
+}

@@ -2,12 +2,13 @@ const crypto = require('crypto');
 
 const TOKEN_TTL_SECONDS = 10 * 60;
 
-function issueRenewalToken({ kioskId, now = Date.now() } = {}) {
+function issueRenewalToken({ kioskId, paymentId = null, now = Date.now() } = {}) {
   const payload = {
     v: 1,
     kid: positiveInteger(kioskId),
     iat: Math.floor(now / 1000),
-    exp: Math.floor(now / 1000) + TOKEN_TTL_SECONDS,
+    exp: Math.floor(now / 1000) + (paymentId ? 24 * 60 * 60 : TOKEN_TTL_SECONDS),
+    ...(paymentId ? { pid: positiveInteger(paymentId) } : {}),
     nonce: crypto.randomBytes(16).toString('base64url'),
   };
   const iv = crypto.randomBytes(12);
@@ -23,6 +24,7 @@ function verifyRenewalToken(token, { now = Date.now(), expectedKioskId } = {}) {
   try { const decipher=crypto.createDecipheriv('aes-256-gcm',encryptionKey(),Buffer.from(ivValue,'base64url'));decipher.setAuthTag(Buffer.from(tagValue,'base64url'));payload=JSON.parse(Buffer.concat([decipher.update(Buffer.from(encryptedValue,'base64url')),decipher.final()]).toString('utf8')); }
   catch { throw tokenError('Token gia hạn không hợp lệ.'); }
   if (payload?.v !== 1 || !Number.isSafeInteger(payload?.kid) || !Number.isSafeInteger(payload?.exp)) throw tokenError('Token gia hạn không hợp lệ.');
+  if (payload.pid != null && (!Number.isSafeInteger(payload.pid) || payload.pid < 1)) throw tokenError('Token thanh toán không hợp lệ.');
   if (payload.exp <= Math.floor(now / 1000)) throw tokenError('Token gia hạn đã hết hạn.', 'TOKEN_EXPIRED');
   if (expectedKioskId != null && payload.kid !== positiveInteger(expectedKioskId)) throw tokenError('Token không thuộc Kiosk này.', 'TOKEN_SCOPE_MISMATCH');
   return payload;

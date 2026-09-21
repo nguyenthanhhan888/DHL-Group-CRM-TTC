@@ -1,3 +1,5 @@
+const { verifyRenewalToken } = require('./_renewal-token');
+const { callSupabaseRpc } = require('../payos/_utils');
 const { getSupabaseServiceConfig, parseJsonBody, sendError } = require('../payos/_utils');
 
 module.exports = async function evaluatePromotionHandler(req, res) {
@@ -7,6 +9,12 @@ module.exports = async function evaluatePromotionHandler(req, res) {
   if (!parsed.ok) return sendError(res, 400, 'INVALID_JSON', 'Nội dung JSON không hợp lệ.');
   try {
     const code = String(parsed.value.code || '').trim().toUpperCase();
+    if (parsed.value.renewalToken) {
+      const auth = verifyRenewalToken(parsed.value.renewalToken);
+      if (auth.pid) throw new Error('Ưu đãi của thanh toán đã được khóa.');
+      const data = await callSupabaseRpc('preview_renewal_promotion', { kiosk_id_input: auth.kid, months_input: Number(parsed.value.months), promotion_code_input: code }, { serviceRole: true });
+      return res.status(data?.valid ? 200 : 400).json(data);
+    }
     const phone = String(parsed.value.phone || '').replace(/[\s().-]/g, '').trim();
     const items = normalizeItems(parsed.value.items);
     if (!code || code.length > 64) return sendError(res, 400, 'INVALID_PROMOTION_CODE', 'Mã giảm giá không hợp lệ.');

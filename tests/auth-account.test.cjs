@@ -37,6 +37,7 @@ test.beforeEach(() => {
     SUPABASE_SERVICE_ROLE_KEY: 'service-key',
   };
   handler.__test.loginAttempts.clear();
+  handler.__test.signupAttempts.clear();
 });
 
 test.afterEach(() => {
@@ -96,27 +97,62 @@ test('wrong username and wrong password return the same generic response', async
   assert.equal(wrongUsername.payload.message, handler.__test.GENERIC_LOGIN_ERROR);
 });
 
-test('locked or permissionless account is denied after valid password with a generic response', async () => {
-  for (const access of [
-    { status: 'locked', web_access_enabled: false, is_system_admin: false, permissions: ['dashboard'] },
-    { status: 'active', web_access_enabled: true, is_system_admin: false, permissions: [] },
-  ]) {
-    handler.__test.loginAttempts.clear();
-    let loggedOut = false;
-    global.fetch = async (url) => {
-      const parsed = new URL(url);
-      if (parsed.pathname === '/rest/v1/user_profiles') return response(200, [{ user_id: 'user-id' }]);
-      if (parsed.pathname === '/auth/v1/admin/users/user-id') return response(200, { user: { id: 'user-id', email: 'hidden@example.invalid' } });
-      if (parsed.pathname === '/auth/v1/token') return response(200, { access_token: 'token', refresh_token: 'refresh', user: { id: 'user-id' } });
-      if (parsed.pathname === '/rest/v1/rpc/get_my_access_profile') return response(200, { user_id: 'user-id', ...access });
-      if (parsed.pathname === '/auth/v1/logout') { loggedOut = true; return response(204, null); }
-      throw new Error(`Unexpected fetch: ${parsed.pathname}`);
-    };
-    const res = await call({ action: 'username_login', username: 'member', password: 'valid-password' });
-    assert.equal(res.statusCode, 401);
-    assert.equal(res.payload.message, handler.__test.GENERIC_LOGIN_ERROR);
-    assert.equal(loggedOut, true);
-  }
+test('locked account is denied after valid password with a generic response', async () => {
+  let loggedOut = false;
+  global.fetch = async (url) => {
+    const parsed = new URL(url);
+    if (parsed.pathname === '/rest/v1/user_profiles') return response(200, [{ user_id: 'user-id' }]);
+    if (parsed.pathname === '/auth/v1/admin/users/user-id') return response(200, { user: { id: 'user-id', email: 'hidden@example.invalid' } });
+    if (parsed.pathname === '/auth/v1/token') return response(200, { access_token: 'token', refresh_token: 'refresh', user: { id: 'user-id' } });
+    if (parsed.pathname === '/rest/v1/rpc/get_my_access_profile') return response(200, { user_id: 'user-id', status: 'locked', web_access_enabled: false, is_system_admin: false, permissions: ['dashboard'] });
+    if (parsed.pathname === '/auth/v1/logout') { loggedOut = true; return response(204, null); }
+    throw new Error(`Unexpected fetch: ${parsed.pathname}`);
+  };
+  const res = await call({ action: 'username_login', username: 'member', password: 'valid-password' });
+  assert.equal(res.statusCode, 401);
+  assert.equal(res.payload.message, handler.__test.GENERIC_LOGIN_ERROR);
+  assert.equal(loggedOut, true);
+});
+
+test('active permissionless account can login to the personal area', async () => {
+  global.fetch = async (url) => {
+    const parsed = new URL(url);
+    if (parsed.pathname === '/rest/v1/user_profiles') return response(200, [{ user_id: 'user-id' }]);
+    if (parsed.pathname === '/auth/v1/admin/users/user-id') return response(200, { user: { id: 'user-id', email: 'hidden@example.invalid' } });
+    if (parsed.pathname === '/auth/v1/token') return response(200, { access_token: 'token', refresh_token: 'refresh', user: { id: 'user-id' } });
+    if (parsed.pathname === '/rest/v1/rpc/get_my_access_profile') return response(200, { user_id: 'user-id', status: 'active', web_access_enabled: true, is_system_admin: false, permissions: [] });
+    throw new Error(`Unexpected fetch: ${parsed.pathname}`);
+  };
+  const res = await call({ action: 'username_login', username: 'member', password: 'valid-password' });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.payload.ok, true);
+});
+
+test('public account registration creates a normal web user without CRM permissions', async () => {
+  const requests = [];
+  global.fetch = async (url, options = {}) => {
+    const parsed = new URL(url);
+    const body = options.body ? JSON.parse(options.body) : null;
+    requests.push({ path: parsed.pathname, method: options.method || 'GET', body });
+    if (parsed.pathname === '/rest/v1/user_profiles' && (options.method || 'GET') === 'GET') return response(200, []);
+    if (parsed.pathname === '/auth/v1/admin/users' && options.method === 'POST') return response(200, { user: { id: 'new-user-id' } });
+    if (parsed.pathname === '/rest/v1/user_profiles' && options.method === 'POST') return response(201, null);
+    if (parsed.pathname === '/rest/v1/wallets' && options.method === 'POST') return response(201, null);
+    throw new Error(`Unexpected fetch: ${options.method || 'GET'} ${parsed.pathname}`);
+  };
+
+  const res = await call({ action: 'create_user_account', displayName: 'Thành viên mới', username: 'New.Member', phone: '0912345678', password: 'password-123' });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.payload, { ok: true, username: 'new.member' });
+  const authCreate = requests.find((item) => item.path === '/auth/v1/admin/users');
+  assert.equal(authCreate.body.email, 'new.member@users.dhl.local');
+  assert.equal(authCreate.body.email_confirm, true);
+  assert.deepEqual(authCreate.body.app_metadata, { account_type: 'user' });
+  const profileCreate = requests.find((item) => item.path === '/rest/v1/user_profiles' && item.method === 'POST');
+  assert.equal(profileCreate.body.web_access_enabled, true);
+  assert.equal(profileCreate.body.is_system_admin, false);
+  assert.equal(requests.some((item) => item.path === '/rest/v1/user_permissions'), false);
+  assert.equal(requests.some((item) => ['/rest/v1/customers', '/rest/v1/kiosks'].includes(item.path)), false);
 });
 
 test('legacy email resolver is disabled and cannot disclose an auth email', async () => {

@@ -91,7 +91,6 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.prepare_public_kiosk_renewal(bigint, integer, text)
   from public, anon, authenticated;
 grant execute on function public.prepare_public_kiosk_renewal(bigint, integer, text)

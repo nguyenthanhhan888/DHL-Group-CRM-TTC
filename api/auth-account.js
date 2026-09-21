@@ -11,7 +11,10 @@ const PHONE_PATTERN = /^\+?[0-9 .()-]{9,20}$/;
 const GENERIC_LOGIN_ERROR = 'Tên đăng nhập hoặc mật khẩu không chính xác.';
 const LOGIN_WINDOW_MS = 5 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 5;
+const SIGNUP_WINDOW_MS = 10 * 60 * 1000;
+const SIGNUP_MAX_ATTEMPTS = 10;
 const loginAttempts = new Map();
+const signupAttempts = new Map();
 
 module.exports = async function authAccountHandler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -23,7 +26,7 @@ module.exports = async function authAccountHandler(req, res) {
   try {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     if (body.action === 'username_login') return await usernameLogin(body, req, res);
-    if (body.action === 'create_user_account') return await createUserAccount(body, res);
+    if (body.action === 'create_user_account') return await createUserAccount(body, req, res);
     if (body.action === 'resolve_login') {
       return res.status(410).json({ ok: false, message: GENERIC_LOGIN_ERROR });
     }
@@ -70,8 +73,7 @@ async function usernameLogin(body, req, res) {
     const access = normalizeAccessProfile(await userRpc('get_my_access_profile', {}, authSession.access_token));
     const allowed = access.user_id === profile.user_id
       && access.status === 'active'
-      && access.web_access_enabled === true
-      && (access.is_system_admin || access.permissions.length > 0);
+      && access.web_access_enabled === true;
     if (!allowed) {
       await authFetch('/auth/v1/logout?scope=local', {
         method: 'POST',
@@ -98,33 +100,40 @@ async function usernameLogin(body, req, res) {
   }
 }
 
-async function createUserAccount(body, res) {
-  const displayName = clean(body.displayName, 100);
+async function createUserAccount(body, req, res) {
   const username = clean(body.username, 40).toLowerCase();
-  const phone = clean(body.phone, 40);
-  const email = clean(body.email, 254).toLowerCase();
   const password = String(body.password || '');
+  const rateKey = requestIp(req);
 
-  if (!displayName) return res.status(400).json({ ok: false, message: 'Vui lòng nhập họ tên.' });
-  if (!USERNAME_PATTERN.test(username)) return res.status(400).json({ ok: false, message: 'Username không hợp lệ.' });
-  if (phone && !PHONE_PATTERN.test(phone)) return res.status(400).json({ ok: false, message: 'Số điện thoại không hợp lệ.' });
-  if (email && !isEmail(email)) return res.status(400).json({ ok: false, message: 'Email không hợp lệ.' });
-  if (password.length < 8) return res.status(400).json({ ok: false, message: 'Mật khẩu cần ít nhất 8 ký tự.' });
+  if (isSignupRateLimited(rateKey)) {
+    return res.status(429).json({ ok: false, message: 'Bạn đã thử đăng ký quá nhiều lần. Vui lòng chờ ít phút.' });
+  }
+
+  if (!USERNAME_PATTERN.test(username)) return signupFailure(res, rateKey, 'Username không hợp lệ.');
+  if (password.length < 8) return signupFailure(res, rateKey, 'Mật khẩu cần ít nhất 8 ký tự.');
 
   const existing = await findProfileForLogin(username);
-  if (existing) return res.status(409).json({ ok: false, message: 'Username đã được sử dụng.' });
+  if (existing) return signupFailure(res, rateKey, 'Username đã được sử dụng.', 409);
 
   const internalEmail = `${username}@users.dhl.local`;
-  const authData = await serviceFetch('/auth/v1/admin/users', {
-    method: 'POST',
-    body: {
-      email: internalEmail,
-      password,
-      email_confirm: true,
-      user_metadata: { display_name: displayName },
-      app_metadata: { account_type: 'user' },
-    },
-  });
+  let authData;
+  try {
+    authData = await serviceFetch('/auth/v1/admin/users', {
+      method: 'POST',
+      body: {
+        email: internalEmail,
+        password,
+        email_confirm: true,
+        user_metadata: { username },
+        app_metadata: { account_type: 'user' },
+      },
+    });
+  } catch (error) {
+    const duplicateAccount = error?.code === 'email_exists'
+      || /already (?:registered|exists)|duplicate/i.test(String(error?.message || ''));
+    if (duplicateAccount) return signupFailure(res, rateKey, 'Username đã được sử dụng.', 409);
+    throw error;
+  }
   const user = authData?.user || authData;
   if (!user?.id) throw httpError(400, 'Không tạo được tài khoản.');
 
@@ -135,11 +144,11 @@ async function createUserAccount(body, res) {
       body: {
         user_id: user.id,
         username,
-        display_name: displayName,
-        phone: phone || null,
-        email: email || null,
+        display_name: username,
+        phone: null,
+        email: null,
         status: 'active',
-        web_access_enabled: false,
+        web_access_enabled: true,
         is_system_admin: false,
         metadata: { source: 'username_signup_api' },
       },
@@ -154,7 +163,13 @@ async function createUserAccount(body, res) {
     throw error;
   }
 
+  signupAttempts.delete(rateKey);
   return res.status(200).json({ ok: true, username });
+}
+
+function signupFailure(res, key, message, status = 400) {
+  recordSignupAttempt(key);
+  return res.status(status).json({ ok: false, message });
 }
 
 async function findProfileForLogin(username) {
@@ -191,6 +206,26 @@ function recordFailedAttempt(key) {
   current.count += 1;
 }
 
+function isSignupRateLimited(key) {
+  const current = signupAttempts.get(key);
+  if (!current) return false;
+  if (Date.now() - current.startedAt >= SIGNUP_WINDOW_MS) {
+    signupAttempts.delete(key);
+    return false;
+  }
+  return current.count >= SIGNUP_MAX_ATTEMPTS;
+}
+
+function recordSignupAttempt(key) {
+  const now = Date.now();
+  const current = signupAttempts.get(key);
+  if (!current || now - current.startedAt >= SIGNUP_WINDOW_MS) {
+    signupAttempts.set(key, { count: 1, startedAt: now });
+    return;
+  }
+  current.count += 1;
+}
+
 function requestIp(req) {
   const forwarded = String(req?.headers?.['x-forwarded-for'] || '').split(',')[0].trim();
   return forwarded || req?.socket?.remoteAddress || 'unknown';
@@ -207,4 +242,5 @@ function isEmail(value) {
 module.exports.__test = {
   GENERIC_LOGIN_ERROR,
   loginAttempts,
+  signupAttempts,
 };

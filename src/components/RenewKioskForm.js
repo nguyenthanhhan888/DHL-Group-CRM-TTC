@@ -11,9 +11,11 @@ import { renderIcon } from '../utils/icons.js';
 import { setButtonBusy } from '../utils/buttonState.js';
 
 let currentKiosk = null;
+let appliedPromotion = null;
 
 export async function openRenewKioskForm({ kioskId, onSaved } = {}) {
   currentKiosk = null;
+  appliedPromotion = null;
   Modal.open({ title: 'Gia hạn Kiosk', body: stateView('Đang tải Kiosk', 'Đang đọc thông tin Kiosk từ hệ thống.') });
   try {
     ({ data: currentKiosk } = await KioskService.getById(kioskId));
@@ -37,6 +39,8 @@ function formView(kiosk) {
       <label class="form-group"><span>Số tháng gia hạn *</span><input class="form-control" id="renew-months" type="number" min="1" max="120" step="1" value="1" required></label>
       <div class="renew-money-row"><span>Giá dịch vụ</span><strong id="renew-unit-price">${formatCurrency(price)} / tháng</strong></div>
       <div class="renew-money-row"><span>Tạm tính</span><strong id="renew-subtotal">${formatCurrency(price)}</strong></div>
+      <label class="form-group"><span>Mã ưu đãi</span><input class="form-control" id="renew-promotion" autocomplete="off"></label>
+      <button class="btn-secondary" type="button" id="renew-apply-promotion">Áp dụng mã</button><p id="renew-promotion-note" role="status"></p>
       <label class="form-group renew-discount-field"><span>Giảm giá</span><input class="form-control" id="renew-discount" type="text" inputmode="numeric" placeholder="0"></label>
       <label class="form-group"><span>Lý do giảm giá</span><input class="form-control" id="renew-discount-reason" autocomplete="off"></label>
       <div class="renew-total"><span>THÀNH TIỀN</span><strong id="renew-total">${formatCurrency(price)}</strong></div>
@@ -56,6 +60,8 @@ function bindForm(onSaved) {
   const form = document.getElementById('renew-kiosk-form');
   bindCurrencyInput(document.getElementById('renew-discount'));
   ['renew-months', 'renew-discount'].forEach((id) => document.getElementById(id)?.addEventListener('input', updateCalculation));
+  ['renew-months', 'renew-promotion'].forEach((id) => document.getElementById(id)?.addEventListener('input', () => { appliedPromotion = null; document.getElementById('renew-discount').disabled = false; setText('renew-promotion-note', ''); updateCalculation(); }));
+  document.getElementById('renew-apply-promotion')?.addEventListener('click', applyPromotion);
   document.querySelectorAll('input[name="renew-payment-path"]').forEach((radio) => radio.addEventListener('change', updatePath));
   form?.addEventListener('submit', async (event) => {
     event.preventDefault(); clearError();
@@ -73,14 +79,14 @@ function bindForm(onSaved) {
 }
 
 async function submitManual(values, onSaved) {
-  const { data } = await PaymentService.manualRenewKiosk({ kioskId: currentKiosk.id, months: values.months, startDate: values.startDate, baseAmount: values.subtotal, discount: values.discount, discountReason: values.discountReason, paymentMethod: values.paymentMethod, note: values.note });
+  const { data } = await PaymentService.manualRenewKiosk({ kioskId: currentKiosk.id, months: values.months, startDate: values.startDate, baseAmount: values.subtotal, promotionCode: values.promotionCode, discount: values.promotionCode ? 0 : values.discount, discountReason: values.discountReason, paymentMethod: values.paymentMethod, note: values.note });
   const period = data?.period || {};
   Modal.open({ title: 'Gia hạn thành công', body: `<div class="renew-success"><div class="renew-success-icon">${renderIcon('check-circle')}</div><h3>Gia hạn thành công</h3>${detail('Kỳ mới', `${formatDate(period.start_date)} → ${formatDate(period.end_date)}`)}${detail('Số tiền', formatCurrency(data?.payment?.total_amount ?? values.total))}${detail('Phương thức', methodLabel(data?.payment?.payment_method || values.paymentMethod))}${detail('Trạng thái', 'Đang hoạt động')}</div><div class="modal-actions"><button class="btn-primary" type="button" data-renew-cancel>Đóng</button></div>` });
   Toast.show('Gia hạn Kiosk thành công.'); await onSaved?.();
 }
 
 async function submitPayos(values, onSaved) {
-  const { data } = await PaymentService.renewKiosk({ kioskId: currentKiosk.id, months: values.months, discount: values.discount, discountReason: values.discountReason, note: values.note });
+  const { data } = await PaymentService.renewKiosk({ kioskId: currentKiosk.id, months: values.months, promotionCode: values.promotionCode, discount: values.promotionCode ? 0 : values.discount, discountReason: values.discountReason, note: values.note });
   const payment = data?.payment || data;
   const paymentId = payment?.id || data?.payment_id;
   const amount = Number(payment?.total_amount || values.total);
@@ -93,13 +99,27 @@ async function submitPayos(values, onSaved) {
   Toast.show('Đã tạo thanh toán Pending và link PayOS.'); await onSaved?.();
 }
 
+async function applyPromotion() {
+  clearError();
+  const code = value('renew-promotion'); const months = number('renew-months'); const kioskId = currentKiosk?.id;
+  try {
+    const { data } = await PaymentService.previewRenewalPromotion({ kioskId, months, code });
+    if (currentKiosk?.id !== kioskId || value('renew-promotion') !== code || number('renew-months') !== months) return;
+    if (!data?.valid) throw new Error(data?.message || 'Mã ưu đãi không hợp lệ.');
+    appliedPromotion = data;
+    const discount = document.getElementById('renew-discount'); discount.value = ''; discount.disabled = true;
+    setText('renew-promotion-note', `${data.message || 'Đã áp dụng mã.'}${data.totalBonusMonths ? ` Tặng ${data.totalBonusMonths} tháng.` : ''}`);
+    updateCalculation();
+  } catch (error) { showError(error?.message || 'Không thể kiểm tra mã ưu đãi.'); }
+}
+
 function updateCalculation() {
   const values = readValues();
-  setText('renew-unit-price', `${formatCurrency(values.price)} / tháng`); setText('renew-subtotal', formatCurrency(values.subtotal)); setText('renew-total', formatCurrency(values.total)); setText('renew-period', `${formatDate(values.startDate)} → ${formatDate(calendarPeriodEnd(values.startDate, values.months || 1))}`);
+  setText('renew-unit-price', `${formatCurrency(values.price)} / tháng`); setText('renew-subtotal', formatCurrency(values.subtotal)); setText('renew-total', formatCurrency(values.total)); setText('renew-period', `${formatDate(values.startDate)} → ${formatDate(appliedPromotion?.proposedExpiry || calendarPeriodEnd(values.startDate, values.months || 1))}`);
 }
 function updatePath() { const path = document.querySelector('input[name="renew-payment-path"]:checked')?.value || 'paid'; document.querySelector('[data-manual-method]')?.classList.toggle('hidden', path !== 'paid'); setSaving(document.getElementById('renew-save-button'), false, path); }
-function readValues() { const form = document.getElementById('renew-kiosk-form'); const price = Number(form?.dataset.price || 0); const months = number('renew-months'); const discount = parseCurrencyInput(value('renew-discount')); const subtotal = price * months; return { price, months, discount, subtotal, total: Math.max(0, subtotal - discount), discountReason: value('renew-discount-reason'), paymentMethod: value('renew-payment-method'), note: value('renew-note'), path: document.querySelector('input[name="renew-payment-path"]:checked')?.value || 'paid', startDate: form?.dataset.startDate || '' }; }
-function validate(v) { if (!currentKiosk?.id) return 'Kiosk là bắt buộc.'; if (!Number.isInteger(v.months) || v.months < 1 || v.months > 120) return 'Số tháng phải từ 1 đến 120.'; if (!Number.isFinite(v.price) || v.price < 0) return 'Giá dịch vụ hiện tại không hợp lệ.'; if (!Number.isFinite(v.discount) || v.discount < 0 || v.discount > v.subtotal) return 'Giảm giá phải từ 0 đến tạm tính.'; if (v.discount > 0 && !v.discountReason) return 'Vui lòng nhập lý do giảm giá.'; return ''; }
+function readValues() { const form = document.getElementById('renew-kiosk-form'); const price = Number(form?.dataset.price || 0); const months = number('renew-months'); const discount = appliedPromotion ? Number(appliedPromotion.discountAmount || 0) : parseCurrencyInput(value('renew-discount')); const subtotal = price * months; return { price, months, discount, subtotal, promotionCode: appliedPromotion?.code || '', total: appliedPromotion?.finalAmount ?? Math.max(0, subtotal - discount), discountReason: value('renew-discount-reason'), paymentMethod: value('renew-payment-method'), note: value('renew-note'), path: document.querySelector('input[name="renew-payment-path"]:checked')?.value || 'paid', startDate: form?.dataset.startDate || '' }; }
+function validate(v) { if (!currentKiosk?.id) return 'Kiosk là bắt buộc.'; if (!Number.isInteger(v.months) || v.months < 1 || v.months > 120) return 'Số tháng phải từ 1 đến 120.'; if (!Number.isFinite(v.price) || v.price < 0) return 'Giá dịch vụ hiện tại không hợp lệ.'; if (!Number.isFinite(v.discount) || v.discount < 0 || v.discount > v.subtotal) return 'Giảm giá phải từ 0 đến tạm tính.'; if (value('renew-promotion') && !v.promotionCode) return 'Vui lòng áp dụng mã ưu đãi trước khi xác nhận.'; if (v.discount > 0 && !v.promotionCode && !v.discountReason) return 'Vui lòng nhập lý do giảm giá.'; return ''; }
 
 export function renewalStartDate(endDate, today = startOfToday()) { const end = endDate ? parseDateOnly(endDate) : null; const baseToday = new Date(today); baseToday.setHours(0,0,0,0); if (end && !Number.isNaN(end.getTime()) && end >= baseToday) { end.setDate(end.getDate() + 1); return toDateOnly(end); } return toDateOnly(baseToday); }
 export function calendarPeriodEnd(startDate, months) { const start = parseDateOnly(startDate); const targetMonth = start.getMonth() + Number(months || 0); const lastDay = new Date(start.getFullYear(), targetMonth + 1, 0).getDate(); const end = new Date(start.getFullYear(), targetMonth, Math.min(start.getDate(), lastDay)); end.setDate(end.getDate() - 1); return toDateOnly(end); }

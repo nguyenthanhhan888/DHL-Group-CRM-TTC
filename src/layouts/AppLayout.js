@@ -29,13 +29,17 @@ export function AppLayout({ navSections, user }) {
             <img class="user-avatar" src="${escapeHtml(avatarPath)}" alt="" loading="lazy">
             <div class="sidebar-user-meta">
               <div class="user-name">${escapeHtml(displayName)}</div>
-              <div class="user-username">${escapeHtml(username)}</div>
               <div class="user-role">${escapeHtml(roleLabel)}</div>
             </div>
           </div>
-          <button class="logout-button" type="button" data-logout aria-label="Đăng xuất">
-            <span class="nav-icon logout-icon" aria-hidden="true">${renderIcon('logout')}</span><span class="logout-label">Đăng xuất</span>
-          </button>
+          <details class="sidebar-account-menu" data-sidebar-account>
+            <summary class="sidebar-account-trigger" aria-label="Mở menu tài khoản" aria-expanded="false"><span aria-hidden="true">⋮</span></summary>
+            <div class="sidebar-account-dropdown">
+              <a href="#/user-profile"><span class="nav-icon" aria-hidden="true">${renderIcon('user-circle')}</span>Hồ sơ</a>
+              <hr>
+              <button type="button" data-logout><span class="nav-icon" aria-hidden="true">${renderIcon('logout')}</span>Đăng xuất</button>
+            </div>
+          </details>
         </div>
       </aside>
       <button class="sidebar-overlay" type="button" data-sidebar-overlay aria-label="Đóng menu" tabindex="-1"></button>
@@ -72,7 +76,7 @@ export function AppLayout({ navSections, user }) {
 }
 
 function getRoleLabel(user) {
-  if (user?.is_system_admin) return 'System Admin';
+  if (user?.is_system_admin) return 'Quản trị hệ thống';
   return user?.web_access_enabled ? 'Người dùng Web' : 'Thành viên';
 }
 
@@ -158,15 +162,10 @@ function renderNavSection(section) {
     return `<div class="nav-section nav-section-standalone" data-nav-section="${escapeHtml(sectionKey)}">${section.items.map(renderNavItem).join('')}</div>`;
   }
   if (section.collapsible) {
-    return `
-      <details class="nav-section nav-section-collapsible" data-nav-section="${escapeHtml(sectionKey)}" data-nav-section-collapsible>
-        <summary class="nav-section-toggle" data-nav-section-toggle aria-expanded="false">
-          <span>${escapeHtml(section.label)}</span>
-          <span class="nav-section-chevron" aria-hidden="true">${renderIcon('chevron')}</span>
-        </summary>
-        <div class="nav-section-items"><div class="nav-section-items-inner">${section.items.map(renderNavItem).join('')}</div></div>
-      </details>
-    `;
+    return `<details class="nav-section nav-section-collapsible" data-nav-section="${escapeHtml(sectionKey)}" data-nav-group>
+      <summary class="nav-group-toggle" data-nav-group-toggle aria-expanded="false"><span>${escapeHtml(section.label)}</span><span class="nav-chevron" aria-hidden="true">${renderIcon('chevron')}</span></summary>
+      <div class="nav-sublist">${section.items.map((item) => renderNavItem({ ...item, subitem: true })).join('')}</div>
+    </details>`;
   }
   return `<div class="nav-section" data-nav-section="${escapeHtml(sectionKey)}"><div class="nav-section-label">${escapeHtml(section.label)}</div>${section.items.map(renderNavItem).join('')}</div>`;
 }
@@ -195,3 +194,33 @@ function renderNavItem(item) {
 }
 
 export { renderIcon };
+
+// Native disclosures keep keyboard behavior; only presentation state is managed here.
+export function bindSidebarPresentation(root = document) {
+  root.querySelectorAll('[data-nav-group], [data-sidebar-account]').forEach(group => {
+    group.addEventListener('toggle', () => group.querySelector('summary')?.setAttribute('aria-expanded', String(group.open)));
+  });
+  const account = root.querySelector('[data-sidebar-account]');
+  const closeAccount = () => { if (account) account.open = false; };
+  root.addEventListener('click', event => {
+    if (!account?.open) return;
+    if (!account.contains(event.target) || event.target.closest('a, button')) closeAccount();
+  });
+  root.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && account?.open) {
+      event.preventDefault();
+      closeAccount();
+      account.querySelector('summary')?.focus();
+    }
+  });
+}
+
+export function syncNavigationGroups(root = document) {
+  root.querySelectorAll('[data-nav-group]').forEach(group => {
+    const hasActiveChild = Boolean(group.querySelector('.nav-item.active'));
+    group.classList.toggle('has-active-child', hasActiveChild);
+    if (group.classList.contains('nav-section-collapsible')) group.open = hasActiveChild;
+    else if (hasActiveChild) group.open = true;
+    group.querySelector('[data-nav-group-toggle]')?.setAttribute('aria-expanded', String(group.open));
+  });
+}

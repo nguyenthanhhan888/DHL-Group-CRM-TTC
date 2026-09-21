@@ -60,7 +60,7 @@ test('detail headings, tabs, and information banners use semantic colors', async
   assert.match(css, /\.notice strong\s*\{\s*color:\s*inherit/);
 });
 
-test('login is a username/password official portal using the centralized cover asset', async () => {
+test('login is a username/password portal with restored self-registration', async () => {
   const [login, organization] = await Promise.all([
     source('src/pages/LoginPage.js'),
     source('src/config/organization.js'),
@@ -69,7 +69,7 @@ test('login is a username/password official portal using the centralized cover a
   assert.match(login, /id="login-username"/);
   assert.match(login, /id="login-password"/);
   assert.match(login, /Đăng nhập hệ thống/);
-  assert.doesNotMatch(login, /Đăng ký tài khoản/);
+  assert.match(login, /href="#\/signup">Đăng ký/);
   assert.doesNotMatch(login, /Đăng ký Kiosk/);
   assert.match(login, /PUBLIC_BRAND\.assets\.cover/);
   assert.match(organization, /cover:\s*'images\/cover\.PNG'/);

@@ -286,7 +286,6 @@ begin
   );
 end;
 $function$;
-
 revoke all on function public.review_public_legacy_registration_request(bigint, text, text)
   from public, anon, authenticated;
 grant execute on function public.review_public_legacy_registration_request(bigint, text, text)

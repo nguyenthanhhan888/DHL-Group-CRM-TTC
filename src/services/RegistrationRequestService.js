@@ -1,7 +1,7 @@
 import { requireSupabaseClient, runQuery } from './BaseService.js';
 
 export const RegistrationRequestService = {
-  async list(status = 'pending') {
+  async list(status = '') {
     return runQuery(requireSupabaseClient().rpc('admin_list_registration_requests', {
       status_input: status || null,
     }));

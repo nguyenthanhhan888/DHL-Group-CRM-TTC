@@ -9,7 +9,7 @@ import { Toast } from '../components/Toast.js';
 import { getOrganizationSetting } from '../config/organization.js';
 import { escapeHtml } from '../utils/html.js';
 import { renderIcon } from '../utils/icons.js';
-import { toDateOnly } from '../utils/date.js';
+import { startOfVietnamToday, toDateOnly } from '../utils/date.js';
 import { debounce } from '../utils/dom.js';
 import { duplicateValues, isDigits, isValidDateOnly, setInlineError } from '../utils/formValidation.js';
 import { bindCurrencyInput, parseCurrencyInput } from '../utils/currency.js';
@@ -185,7 +185,7 @@ function renderMultipleCustomer() {
 
 function renderKioskCard({ copyCustomer = false } = {}) {
   const kioskId = ++state.kioskSequence;
-  const today = toDateOnly(new Date());
+  const today = toDateOnly(startOfVietnamToday());
   return `
     <section class="form-card legacy-kiosk-card" data-legacy-kiosk="${kioskId}">
       <div class="legacy-kiosk-card-header">

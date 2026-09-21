@@ -44,8 +44,9 @@ test('global toast and reusable busy button expose accessible compact states', (
 test('notification badge counts unread lifecycle-deduped items and supports mark all read', () => {
   assert.match(notifications, /new Map\(items\.map/);
   assert.match(notifications, /request:pending:/);
-  assert.match(notifications, /request:awaiting_payment:/);
-  assert.match(notifications, /kiosk:\$\{String\(item\.derivedStatus\)/);
+  assert.doesNotMatch(notifications, /request:awaiting_payment:/);
+  assert.match(notifications, /reconciliation:summary:/);
+  assert.match(notifications, /pendingCount \+ reconciliationCount/);
   assert.match(notifications, /unreadCount/);
   assert.match(notifications, /markAllRead/);
   assert.match(layout, /data-notification-mark-all/);
@@ -54,7 +55,8 @@ test('notification badge counts unread lifecycle-deduped items and supports mark
 });
 
 test('business logs name Admin cancellation while raw identifiers stay in technical details', () => {
-  assert.match(logs, /value: 'admin_cancel', label: 'Hủy hồ sơ Kiosk'/);
+  assert.match(logs, /value: 'registration', label: 'Đăng ký'/);
+  assert.match(logs, /BusinessEventService\.list/);
   assert.match(logs, /formatAuditLog/);
   assert.match(logs, /Thông tin kỹ thuật/);
 });

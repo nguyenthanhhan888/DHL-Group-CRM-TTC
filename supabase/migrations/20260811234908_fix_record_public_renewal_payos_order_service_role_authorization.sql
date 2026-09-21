@@ -70,7 +70,6 @@ begin
   return to_jsonb(order_record);
 end;
 $function$;
-
 revoke all on function public.record_public_renewal_payos_order(
   bigint, bigint, numeric, text, text, text, text, jsonb
 ) from public, anon, authenticated;

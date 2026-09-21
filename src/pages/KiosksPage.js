@@ -21,15 +21,13 @@ function kioskStatusOptions() {
     { value: 'active', label: 'Hoạt động' },
     { value: 'warning', label: `Sắp hết hạn (≤${getExpiryWarningDays()} ngày)` },
     { value: 'expired', label: 'Đã hết hạn' },
-    { value: 'pending', label: 'Chờ duyệt' },
     { value: 'suspended', label: 'Tạm ngưng' },
-    { value: 'inactive', label: 'Không hoạt động' },
   ];
 }
 
 const state = {
   searchTerm: '',
-  status: '',
+  status: 'active',
   businessTypeId: '',
   page: 1,
   pageSize: 12,
@@ -39,6 +37,8 @@ const state = {
 };
 
 export function KiosksPage() {
+  state.status = 'active';
+  state.page = 1;
   return `
     ${PageHeader({
       title: 'Kiosk',
@@ -104,7 +104,7 @@ function bindKioskEvents() {
   document.getElementById('add-kiosk-button')?.addEventListener('click', () => {
     openKioskEditForm({
       onSaved: async () => {
-        state.status = '';
+        state.status = 'active';
         state.page = 1;
         syncKioskControls();
         await loadKiosks();

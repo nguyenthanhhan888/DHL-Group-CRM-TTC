@@ -8,8 +8,9 @@ const columns = fs.readFileSync(new URL('../src/constants/tables.js', import.met
 test('business log mode is off by default and technical hints only render when explicitly enabled', () => {
   assert.match(page, /showTechnical:\s*false/);
   assert.match(page, /id="log-show-technical"[^>]*type="checkbox"/);
-  assert.match(page, /state\.showTechnical\s*\?\s*`<small class="log-technical-inline"/);
-  assert.match(page, /showTechnical:\s*state\.showTechnical/);
+  assert.match(page, /state\.showTechnical\s*\?\s*await AuditLogService\.list/);
+  assert.match(page, /BusinessEventService\.list/);
+  assert.match(page, /showTechnical:\s*true/);
 });
 
 test('four-column activity UI keeps business summary before collapsed raw technical data', () => {

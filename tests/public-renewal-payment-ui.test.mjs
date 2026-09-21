@@ -14,7 +14,8 @@ test('public renewal confirmation shows authoritative price, periods, and checko
   assert.match(html, /14\/09\/2026/);
   assert.match(html, /Tổng thanh toán/);
   assert.match(html, /Thanh toán qua PayOS/);
-  assert.doesNotMatch(html, /discount|promotion|giảm giá/i);
+  assert.match(html, /Mã giảm giá/);
+  assert.match(html, /data-apply-renew-code/);
 });
 
 test('legacy renewal payment renderer contains no inline QR or transfer data', () => {
@@ -33,7 +34,7 @@ test('public renewal redirects and return handling polls only the read-only endp
   assert.match(page, /attempt < 10/);
   assert.match(page, /setTimeout\(resolve, 3000\)/);
   assert.match(page, /Đang xác nhận thanh toán/);
-  assert.match(page, /Bạn đã huỷ thanh toán/);
+  assert.match(page, /Thanh toán chưa hoàn tất/);
   assert.match(service, /\/api\/public\/renewal-status/);
   assert.doesNotMatch(status, /handle_payos_webhook|confirm_crm_payment|update\s+public\./i);
 });

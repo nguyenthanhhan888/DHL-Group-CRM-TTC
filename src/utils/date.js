@@ -1,5 +1,8 @@
+export const BUSINESS_TIME_ZONE = 'Asia/Ho_Chi_Minh';
+
 export function formatToday() {
   return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: BUSINESS_TIME_ZONE,
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -10,6 +13,7 @@ export function formatToday() {
 export function formatDate(value) {
   if (!value) return '—';
   return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: BUSINESS_TIME_ZONE,
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -21,6 +25,7 @@ export function formatDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
   return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: BUSINESS_TIME_ZONE,
     dateStyle: 'short',
     timeStyle: 'short',
   }).format(date);
@@ -48,6 +53,25 @@ export function startOfVietnamToday(now = new Date()) {
   }).formatToParts(now);
   const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return new Date(Number(value.year), Number(value.month) - 1, Number(value.day));
+}
+
+export function vietnamDateParts(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: BUSINESS_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return { year: Number(value.year), month: Number(value.month), day: Number(value.day) };
+}
+
+export function vietnamDateRangeYearToDate(now = new Date()) {
+  const { year, month, day } = vietnamDateParts(now);
+  return {
+    from: `${year}-01-01`,
+    to: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+  };
 }
 
 export function startOfMonth(date) {

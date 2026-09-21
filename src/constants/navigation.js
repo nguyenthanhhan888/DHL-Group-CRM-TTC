@@ -7,11 +7,13 @@ export const PAGE_TITLES = {
   'kiosk-detail': 'Chi tiết Kiosk',
   payments: 'Thanh toán',
   'payments-mine': 'Thanh toán của tôi',
+  expenses: 'Chi phí',
   categories: 'Danh mục',
   'business-types': 'Loại hình KD',
   promotions: 'Mã giảm giá',
   logs: 'Lịch sử thay đổi',
   settings: 'Cài đặt',
+  'homepage-content': 'Website công khai',
   register: 'Đăng ký trực tuyến',
   'registration-requests': 'Hồ sơ Kiosk',
   staff: 'Quản lý nhân viên',
@@ -43,6 +45,19 @@ export const PAGE_TITLES = {
 
 export const NAV_SECTIONS = [
   {
+    label: 'KHU VỰC CÁ NHÂN',
+    standalone: true,
+    items: [
+      { route: 'user', label: 'Trang của tôi', icon: 'user' },
+      { route: 'user-profile', label: 'Hồ sơ', icon: 'user-circle' },
+      { route: 'user-kiosks', label: 'Kiosk của tôi', icon: 'store' },
+      { route: 'user-register-kiosk', label: 'Đăng ký Kiosk', icon: 'plus' },
+      { route: 'payments-mine', label: 'Thanh toán của tôi', icon: 'wallet' },
+      { route: 'user-announcements', label: 'Thông báo', icon: 'alert' },
+      { route: 'user-support', label: 'Hỗ trợ', icon: 'support' },
+    ],
+  },
+  {
     label: 'TỔNG QUAN',
     standalone: true,
     items: [
@@ -50,8 +65,7 @@ export const NAV_SECTIONS = [
     ],
   },
   {
-    label: 'QUẢN LÝ KHÁCH HÀNG',
-    collapsible: true,
+    label: 'QUẢN LÝ CRM',
     items: [
       { route: 'customers', label: 'Khách hàng', icon: 'users' },
       { route: 'kiosks', label: 'Kiosk', icon: 'store' },
@@ -60,15 +74,16 @@ export const NAV_SECTIONS = [
       { route: 'categories', label: 'Danh mục', icon: 'list' },
       { route: 'business-types', label: 'Loại hình kinh doanh', icon: 'briefcase' },
       { route: 'promotions', label: 'Mã giảm giá', icon: 'coin' },
+      { route: 'expenses', label: 'Chi phí', icon: 'receipt' },
       { route: 'reports', label: 'Báo cáo', icon: 'report' },
     ],
   },
   {
-    label: 'TƯƠNG TÁC CHÉO',
+    label: 'TƯƠNG TÁC CHÉO (TTC)',
     collapsible: true,
     items: [
-      { route: 'ttc', label: 'Tổng quan TTC', icon: 'target' },
-      { route: 'admin/ttc', matchRoute: 'admin', permission: 'admin-ttc', label: 'Tổng quan TTC', icon: 'target' },
+      { route: 'ttc', label: 'TTC của tôi', icon: 'target' },
+      { route: 'admin/ttc', matchRoute: 'admin', permission: 'admin-ttc', label: 'Quản trị TTC', icon: 'target' },
       { route: 'admin-ttc-announcements', label: 'Thông báo', icon: 'alert' },
       { route: 'admin-ttc-campaigns', label: 'Tăng tương tác', icon: 'boost' },
       { route: 'admin-ttc-tasks', label: 'Duyệt nhiệm vụ', icon: 'check' },
@@ -78,7 +93,7 @@ export const NAV_SECTIONS = [
     ],
   },
   {
-    label: 'CÀI ĐẶT HỆ THỐNG',
+    label: 'HỆ THỐNG',
     collapsible: true,
     items: [
       { route: 'user-management', label: 'Quản lý người dùng', icon: 'users' },

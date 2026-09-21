@@ -1,5 +1,4 @@
 drop function if exists public.get_audit_logs(text, text, text, timestamptz, timestamptz, text, integer, integer);
-
 create function public.get_audit_logs(
   actor_filter text default null,
   module_filter text default null,
@@ -99,7 +98,6 @@ begin
   return result;
 end;
 $function$;
-
 revoke all on function public.get_audit_logs(text, text, text, timestamptz, timestamptz, text, boolean, integer, integer)
   from public, anon, authenticated;
 grant execute on function public.get_audit_logs(text, text, text, timestamptz, timestamptz, text, boolean, integer, integer)

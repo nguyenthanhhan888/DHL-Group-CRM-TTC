@@ -4,7 +4,6 @@
 
 create table if not exists private.public_renewal_authorizations(nonce_hash text primary key,kiosk_id bigint not null references public.kiosks(id),expires_at timestamptz not null,consumed_at timestamptz);
 revoke all on table private.public_renewal_authorizations from public,anon,authenticated;
-
 create or replace function public.register_public_renewal_authorization(kiosk_id_input bigint,nonce_hash_input text,expires_at_input timestamptz)
 returns void language plpgsql security definer set search_path='' as $function$
 begin
@@ -12,7 +11,6 @@ begin
  if expires_at_input<=now() or expires_at_input>now()+interval '15 minutes' then raise exception 'Hạn token không hợp lệ.' using errcode='22023'; end if;
  insert into private.public_renewal_authorizations(nonce_hash,kiosk_id,expires_at) values(nonce_hash_input,kiosk_id_input,expires_at_input);
 end;$function$;
-
 create or replace function public.prepare_public_kiosk_renewal(kiosk_id_input bigint, months_input integer, nonce_hash_input text)
 returns jsonb language plpgsql security definer set search_path = '' as $function$
 declare
@@ -37,7 +35,6 @@ begin
   returning * into payment_record;
   return jsonb_build_object('payment',to_jsonb(payment_record),'kiosk_name',kiosk_record.facebook_name,'business_type',package_record.name);
 end;$function$;
-
 create or replace function public.record_public_renewal_payos_order(
   payment_id_input bigint, order_code_input bigint, amount_input numeric, description_input text,
   checkout_url_input text default null, qr_code_input text default null,
@@ -54,14 +51,12 @@ begin
   where public.payos_orders.status='pending' returning * into order_record;
   return to_jsonb(order_record);
 end;$function$;
-
 revoke all on function public.register_public_renewal_authorization(bigint,text,timestamptz) from public,anon,authenticated;
 revoke all on function public.prepare_public_kiosk_renewal(bigint,integer,text) from public,anon,authenticated;
 revoke all on function public.record_public_renewal_payos_order(bigint,bigint,numeric,text,text,text,text,jsonb) from public,anon,authenticated;
 grant execute on function public.register_public_renewal_authorization(bigint,text,timestamptz) to service_role;
 grant execute on function public.prepare_public_kiosk_renewal(bigint,integer,text) to service_role;
 grant execute on function public.record_public_renewal_payos_order(bigint,bigint,numeric,text,text,text,text,jsonb) to service_role;
-
 create or replace function private.normalize_payos_renewal_period()
 returns trigger language plpgsql security definer set search_path = '' as $function$
 begin
@@ -74,7 +69,6 @@ end;$function$;
 drop trigger if exists normalize_payos_renewal_period_trigger on public.payments;
 create trigger normalize_payos_renewal_period_trigger before update on public.payments
 for each row execute function private.normalize_payos_renewal_period();
-
 create or replace function private.sync_completed_renewal_kiosk_period()
 returns trigger language plpgsql security definer set search_path = '' as $function$
 begin

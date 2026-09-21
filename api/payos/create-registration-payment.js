@@ -1,3 +1,4 @@
+const { prepareCheckoutRetry } = require('./_lifecycle');
 const {
   PAYOS_API_BASE_URL, PAYOS_CREATE_PAYMENT_PATH, createOrderCode, createPaymentExpiredAt,
   getSupabaseServiceConfig, normalizePayosDescription, parseJsonBody, requireEnv,
@@ -40,7 +41,7 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
 
     diagnostic.stage = 'CREATE_PAYOS_ORDER';
     logCheckoutStage('CREATE_PAYOS_ORDER', diagnostic);
-    const existingOrder = await fetchExistingPayosOrder(payment.id);
+    const existingOrder = await prepareCheckoutRetry(payment.id);
     if (existingOrder) {
       const readyOrder = existingOrder.checkout_url ? existingOrder : await waitForCheckout(payment.id, existingOrder.order_code);
       if (!readyOrder?.checkout_url) { const error = new Error('Link PayOS đang được tạo.'); error.code = 'CHECKOUT_IN_PROGRESS'; throw error; }
@@ -191,7 +192,7 @@ function normalizePhone(value) { const phone = String(value || '').replace(/[\s(
 function normalizePromotionCode(value) { const code = String(value || '').trim().toUpperCase(); if (code.length > 64 || (code && !/^[A-Z0-9_-]+$/.test(code))) throw new Error('Mã giảm giá không hợp lệ.'); return code || null; }
 function normalizeUrl(value) { const url = new URL(String(value || '').trim()); if (!['http:', 'https:'].includes(url.protocol)) throw new Error('URL chuyển hướng PayOS không hợp lệ.'); return url.toString(); }
 function enforceRateLimit(req) { const key = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown'; const now = Date.now(); const bucket = rateBuckets.get(key) || { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS }; if (bucket.resetAt <= now) { bucket.count = 0; bucket.resetAt = now + RATE_LIMIT_WINDOW_MS; } bucket.count += 1; rateBuckets.set(key, bucket); if (bucket.count > RATE_LIMIT_MAX) { const error = new Error('Bạn thao tác quá nhanh.'); error.status = 429; throw error; } }
-function publicRegistrationError(error) { if (error?.status === 429) return 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.'; if (error?.code === 'P0001' && error?.message) return String(error.message).slice(0, 180); if (error?.code === '42501') return 'Số điện thoại không khớp lô đăng ký.'; if (error?.code === 'CHECKOUT_IN_PROGRESS' || error?.code === '23505') return 'Link thanh toán đang được tạo. Vui lòng bấm Thanh toán lại sau vài giây.'; if (error?.code === 'MISSING_ENV') return 'Hệ thống thanh toán chưa được cấu hình đầy đủ.'; return 'Không tạo được thanh toán PayOS cho lô đăng ký. Vui lòng thử lại hoặc liên hệ hỗ trợ.'; }
+function publicRegistrationError(error) { if (['PAYMENT_REVIEW_REQUIRED','PAYOS_STATUS_UNAVAILABLE','PAYOS_AWAITING_WEBHOOK','PAYMENT_ALREADY_COMPLETED'].includes(error?.code)) return error.message; if (error?.status === 429) return 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.'; if (error?.code === 'P0001' && error?.message) return String(error.message).slice(0, 180); if (error?.code === '42501') return 'Số điện thoại không khớp lô đăng ký.'; if (error?.code === 'CHECKOUT_IN_PROGRESS' || error?.code === '23505') return 'Link thanh toán đang được tạo. Vui lòng bấm Thanh toán lại sau vài giây.'; if (error?.code === 'MISSING_ENV') return 'Hệ thống thanh toán chưa được cấu hình đầy đủ.'; return 'Không tạo được thanh toán PayOS cho lô đăng ký. Vui lòng thử lại hoặc liên hệ hỗ trợ.'; }
 function originFromRequest(req) { return `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000'}`; }
 function toUnixSeconds(value) { const time = Date.parse(value || ''); return Number.isFinite(time) ? Math.floor(time / 1000) : null; }
 async function safeJson(response) { return response.json().catch(() => null); }

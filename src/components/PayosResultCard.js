@@ -37,6 +37,15 @@ export function watchPayosPaymentStatus(root = document, { intervalMs = 3000, ti
     const tick = async () => {
       try {
         const status = await fetchPayosStatus(orderCode, paymentLinkId);
+        if (['review_required', 'expired', 'cancelled', 'failed'].includes(status?.status)) {
+          const review = status.status === 'review_required';
+          const pill = card.querySelector('[data-payos-status-pill]');
+          const note = card.querySelector('[data-payos-status-note]');
+          if (pill) pill.textContent = review ? 'Cần đối soát' : status.status === 'expired' ? 'Link hết hạn' : 'Chưa hoàn tất';
+          if (note) note.textContent = review ? 'Có giao dịch cần Admin đối soát. Không yêu cầu khách chuyển tiền thêm.' : 'Nếu khách chưa chuyển tiền, có thể tạo lại link trên cùng thanh toán. QR cũ vẫn có thể nhận tiền; không gửi lại QR cũ.';
+          card.querySelectorAll('.payos-actions a, .payos-actions [data-copy-text]').forEach((element) => { element.hidden = true; });
+          return;
+        }
         if (String(status?.status || '').toLowerCase() === 'paid') {
           markPaid(card);
           if (typeof onPaid === 'function') onPaid(status, card);
