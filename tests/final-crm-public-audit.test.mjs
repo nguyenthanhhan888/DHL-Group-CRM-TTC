@@ -45,7 +45,7 @@ test('notification badge counts only Admin-actionable review and reconciliation 
   assert.match(notifications, /unreadCount = pendingCount \+ reconciliationCount/);
   assert.match(notifications, /pendingReviewCount: pendingCount/);
   assert.match(notifications, /awaitingPaymentCount: awaitingCount/);
-  assert.match(notifications, /registrationCount: pendingCount \+ reconciliationCount/);
+  assert.match(notifications, /registrationCount: Number\(data\?\.actionableRegistrationCount/);
   assert.doesNotMatch(notifications, /request:awaiting_payment:/);
 });
 

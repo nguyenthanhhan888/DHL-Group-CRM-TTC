@@ -18,17 +18,30 @@ export function permissionForRoute(route) {
 }
 
 export function canAccessPermission(accessProfile, permission) {
-  if (!accessProfile) return false;
+  if (accessProfile?.status !== 'active' || accessProfile?.web_access_enabled !== true) return false;
   if (accessProfile.is_system_admin === true) return true;
   if (!permission) return false;
   return Array.isArray(accessProfile.permissions) && accessProfile.permissions.includes(permission);
 }
 
 export function canAccessRoute(accessProfile, route) {
+  if (accessProfile?.status !== 'active' || accessProfile?.web_access_enabled !== true) return false;
   if (accessProfile?.is_system_admin === true) return true;
   const routeName = String(route || '').split('?')[0];
+  if (routeName === 'settings') return canAccessPermission(accessProfile, PERMISSIONS.SETTINGS)
+    || canAccessPermission(accessProfile, PERMISSIONS.HOMEPAGE_CONTENT);
   if (PERSONAL_ROUTES.has(routeName)) {
     return accessProfile?.status === 'active' && accessProfile?.web_access_enabled === true;
   }
   return canAccessPermission(accessProfile, permissionForRoute(route));
+}
+
+export function accessFingerprint(profile) {
+  return JSON.stringify([profile?.user_id, profile?.status, profile?.web_access_enabled,
+    profile?.is_system_admin, [...(profile?.permissions || [])].sort()]);
+}
+
+export function canAddCustomerKiosk(profile) {
+  return (canAccessPermission(profile, PERMISSIONS.CUSTOMERS) || canAccessPermission(profile, PERMISSIONS.CUSTOMER_DETAIL))
+    && (canAccessPermission(profile, PERMISSIONS.KIOSKS) || canAccessPermission(profile, PERMISSIONS.KIOSK_DETAIL));
 }

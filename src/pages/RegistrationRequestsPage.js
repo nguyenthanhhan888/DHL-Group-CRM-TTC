@@ -1,3 +1,5 @@
+import { AuthService } from '../services/AuthService.js';
+import { canAccessPermission, PERMISSIONS } from '../constants/permissions.js';
 import { EmptyState } from '../components/EmptyState.js';
 import { Modal } from '../components/Modal.js';
 import { PageHeader } from '../components/PageHeader.js';
@@ -9,7 +11,7 @@ import { escapeHtml } from '../utils/html.js';
 import { renderIcon } from '../utils/icons.js';
 import { setButtonBusy } from '../utils/buttonState.js';
 
-const state = { status: '', busyId: null, searchTerm: '', rows: [] };
+const state = { canConfirmPayment: false, status: '', busyId: null, searchTerm: '', rows: [] };
 
 export function RegistrationRequestsPage() {
   return `
@@ -30,7 +32,8 @@ export function RegistrationRequestsPage() {
     </table></div>`;
 }
 
-RegistrationRequestsPage.afterRender = function afterRenderRequests() {
+RegistrationRequestsPage.afterRender = async function afterRenderRequests() {
+  state.canConfirmPayment = canAccessPermission(await AuthService.getCurrentStaffProfile(), PERMISSIONS.PAYMENTS);
   const filter = document.getElementById('request-status-filter');
   const search = document.getElementById('request-search');
   const requestedStatus = new URLSearchParams(String(window.location.hash || '').split('?')[1] || '').get('status');
@@ -89,14 +92,15 @@ function paymentState(item) {
 
 function requestStatus(item) {
   const labels = { awaiting_payment: 'Chờ thanh toán', pending: 'Chờ duyệt', approved: 'Đã hoàn tất', rejected: 'Đã từ chối', cancelled: 'Đã hủy' };
-  const badge = StatusBadge(item.status || 'pending', { labels });
+  const displayStatus = item.status === 'approved' && item.payment_status === 'pending' ? 'awaiting_payment' : item.status;
+  const badge = StatusBadge(displayStatus || 'pending', { labels });
   return item.rejection_reason ? `${badge}<br><span class="muted-text">${escapeHtml(item.rejection_reason)}</span>` : badge;
 }
 
 function actionButtons(item) {
-  if (item.status === 'awaiting_payment') return `<div class="request-actions"><button class="table-approve-button" type="button" data-request-action="external-complete" data-request-id="${item.id}">Chấp nhận</button><button class="table-cancel-button" type="button" data-request-action="awaiting-cancel" data-request-id="${item.id}">Hủy</button></div>`;
+  if (item.status === 'awaiting_payment') return `<div class="request-actions">${state.canConfirmPayment ? `<button class="table-approve-button" type="button" data-request-action="external-complete" data-request-id="${item.id}">Ghi nhận tiền ngoài PayOS</button>` : '<span class="muted-text">Chờ khách thanh toán</span>'}<button class="table-cancel-button" type="button" data-request-action="awaiting-cancel" data-request-id="${item.id}">Hủy</button></div>`;
   if (isLegacyRequest(item) && item.status === 'approved' && (!item.customer_id || !item.kiosk_id)) return `<div class="request-actions"><button class="table-approve-button" type="button" data-request-action="legacy-approve" data-request-id="${item.id}">Hoàn tất lưu</button></div>`;
-  if (item.status !== 'pending') return '—';
+  if (item.status !== 'pending' || item.metadata?.workflow === 'public_payos' || item.registration_batch_id) return '—';
   if (isLegacyRequest(item)) return `<div class="request-actions"><button class="table-approve-button" type="button" data-request-action="legacy-approve" data-request-id="${item.id}">Duyệt & lưu</button><button class="table-cancel-button" type="button" data-request-action="legacy-cancel" data-request-id="${item.id}">Hủy</button></div>`;
   return `<div class="request-actions"><button class="table-approve-button" type="button" data-request-action="approve" data-request-id="${item.id}">Duyệt hồ sơ</button><button class="table-cancel-button" type="button" data-request-action="reject" data-request-id="${item.id}">Từ chối</button></div>`;
 }
@@ -116,7 +120,7 @@ function openExternalComplete(item) {
   Modal.open({ title: 'Xác nhận thanh toán ngoài PayOS', className: 'registration-operation-modal', body: `
     <div class="operation-warning">${renderIcon('warning')}<p>Chỉ tiếp tục khi tiền đã được kiểm tra bên ngoài PayOS. Hệ thống sẽ ghi thanh toán <strong>external</strong>, hoàn tất toàn bộ lô và kích hoạt Kiosk đúng một lần.</p></div>
     <dl class="operation-summary"><div><dt>Hồ sơ</dt><dd>#${item.id} · ${escapeHtml(item.facebook_name || '—')}</dd></div><div><dt>Phạm vi</dt><dd>${Number(item.batch_item_count || 0) > 1 ? `Toàn bộ lô ${Number(item.batch_item_count)} Kiosk` : '1 Kiosk'}</dd></div><div><dt>Số tiền</dt><dd>${formatCurrency(item.batch_total_amount || item.total_amount || 0)}</dd></div><div><dt>PayOS</dt><dd>${escapeHtml(paymentStateText(item))}</dd></div></dl>
-    <label class="form-group"><span>Ghi chú đối soát</span><textarea id="external-payment-note" class="form-control" rows="3" placeholder="Ví dụ: Đã nhận chuyển khoản ngoài PayOS"></textarea></label>
+    <label class="form-group"><span>Ghi chú đối soát *</span><textarea id="external-payment-note" class="form-control" rows="3" placeholder="Ví dụ: Đã nhận chuyển khoản ngoài PayOS"></textarea></label>
     <div id="registration-operation-error" class="form-error hidden" role="alert"></div>
     <div class="modal-actions"><button class="btn-secondary" type="button" data-operation-close>Đóng</button><button class="btn-primary" type="button" data-operation-confirm>${renderIcon('check')} Xác nhận & kích hoạt</button></div>` });
   bindModalAction(item.id, 'external-complete');
@@ -137,6 +141,7 @@ function bindModalAction(id, action) {
     const button = event.currentTarget;
     const errorTarget = document.getElementById('registration-operation-error');
     const value = action === 'external-complete' ? document.getElementById('external-payment-note')?.value.trim() || '' : document.getElementById('awaiting-cancel-reason')?.value.trim() || '';
+    if (!value && action === 'external-complete') { errorTarget.textContent = 'Cần ghi chú đối soát khoản tiền đã nhận.'; errorTarget.classList.remove('hidden'); return; }
     if (action === 'awaiting-cancel' && !value) { errorTarget.textContent = 'Vui lòng nhập lý do hủy.'; errorTarget.classList.remove('hidden'); Toast.show('Vui lòng nhập lý do hủy hồ sơ.', 'warning'); document.getElementById('awaiting-cancel-reason')?.focus(); return; }
     state.busyId = id; setButtonBusy(button, true, { busyLabel: 'Đang xử lý...' });
     try {
@@ -170,7 +175,7 @@ async function runLegacyReviewAction(item, action) {
 function filterRequests(rows) { const query = normalizeSearch(state.searchTerm); if (!query) return rows; return rows.filter((item) => [item.id, item.facebook_name, item.facebook_id, item.phone, item.business_type_name, item.category_name, item.status, item.total_amount].map(normalizeSearch).join(' ').includes(query)); }
 function isLegacyRequest(item) { const source = String(item?.metadata?.request_type || item?.metadata?.source || '').toLowerCase(); return source.includes('legacy') || source.includes('additional'); }
 function requestPeriod(item) { return item.months ? `${Number(item.months)} tháng` : `${formatDateOnly(item.requested_start_date)} – ${formatDateOnly(item.requested_end_date)}`; }
-function paymentStateText(item) { const labels = { not_created: 'Chưa tạo liên kết thanh toán', preparing: 'Đang tạo PayOS', awaiting_customer: 'Đang chờ khách thanh toán', expired: 'Link thanh toán hết hạn', create_failed: 'Tạo PayOS thất bại', cancelled: 'PayOS đã hủy', completed: 'PayOS đã hoàn tất' }; return labels[item.payos_state] || 'Chưa có trạng thái PayOS'; }
+function paymentStateText(item) { const labels = { manual_pending: 'Chờ xác nhận thanh toán thủ công', not_created: 'Chưa tạo liên kết thanh toán', preparing: 'Đang tạo PayOS', awaiting_customer: 'Đang chờ khách thanh toán', expired: 'Link thanh toán hết hạn', create_failed: 'Tạo PayOS thất bại', cancelled: 'PayOS đã hủy', completed: 'PayOS đã hoàn tất' }; return labels[item.payos_state] || 'Chưa có trạng thái PayOS'; }
 function setRowButtonsDisabled(id, disabled) { document.querySelectorAll(`[data-request-id="${id}"]`).forEach((button) => { button.disabled = disabled; }); }
 function formatDateOnly(value) { if (!value) return '—'; return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short' }).format(new Date(`${value}T00:00:00`)); }
 function formatDateTime(value) { if (!value) return '—'; return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)); }

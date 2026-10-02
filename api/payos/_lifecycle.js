@@ -31,7 +31,12 @@ async function refreshOrder(order, { forRetry = false } = {}) {
   }
   let provider = null;
   try { provider = await providerOrder(order.order_code); }
-  catch (error) { if (forRetry) throw error; }
+  catch (error) {
+    // Display expiry releases generation, not settlement. Old mappings remain
+    // webhook-payable; the first valid settlement wins under the payment lock.
+    const expired = order.expires_at && Date.parse(order.expires_at) <= Date.now();
+    if (forRetry && !expired) throw error;
+  }
   const result = await callSupabaseRpc('sync_payos_order_status', {
     order_code_input: Number(order.order_code), provider_input: provider,
   }, { serviceRole: true });
@@ -55,6 +60,7 @@ async function prepareCheckoutRetry(paymentId) {
   if (!response.ok) throw new Error('Không đọc được lần thanh toán trước.');
   let order = rows?.[0];
   if (!order) return null;
+  if (order.status === 'failed' && order.provider_payload?.failure_stage && !order.reconciliation_required) return null;
   if (order.status === 'pending' && !order.checkout_url && Date.parse(order.created_at) > Date.now() - 30000) {
     const error = new Error('Link thanh toán đang được tạo. Vui lòng thử lại sau vài giây.');
     error.code = 'CHECKOUT_IN_PROGRESS'; throw error;

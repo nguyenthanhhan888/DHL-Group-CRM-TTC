@@ -1,3 +1,7 @@
+import { EmployeesPage } from './EmployeesPage.js';
+import { ExpenseNavigation } from '../components/ExpenseNavigation.js';
+import { DetailFields } from '../components/DetailFields.js';
+import { expenseEmployeeOptions, expenseAttribution } from '../utils/employeePresentation.js';
 import { EmptyState } from '../components/EmptyState.js';
 import { Modal } from '../components/Modal.js';
 import { PageHeader } from '../components/PageHeader.js';
@@ -17,7 +21,7 @@ const state = {
   rows: [],
   employees: [],
   categories: EXPENSE_CATEGORIES.map((item, index) => ({ id: index + 1, code: item.value, name: item.label, isActive: true, isSalary: item.value === 'salary' })),
-  filters: { startDate: initialRange.from, endDate: initialRange.to, category: '', employeeUserId: '' },
+  filters: { startDate: initialRange.from, endDate: initialRange.to, category: '', employeeId: '' },
   totalAmount: 0,
   totalRevenue: 0,
   netProfit: 0,
@@ -30,7 +34,8 @@ const PAYMENT_METHODS = [
   { value: 'other', label: 'Khác' },
 ];
 
-export function ExpensesPage() {
+export function ExpensesPage({ params } = {}) {
+  if (params?.get('tab') === 'employees') return EmployeesPage();
   return `
     <div class="expenses-page">
       ${PageHeader({
@@ -38,6 +43,7 @@ export function ExpensesPage() {
         description: 'Theo dõi các khoản chi vận hành; dữ liệu được tách riêng khỏi doanh thu Kiosk.',
         actions: `<div class="page-header-actions"><button class="btn-secondary" id="expense-category-button" type="button">Quản lý danh mục</button><button class="btn-primary" id="expense-add-button" type="button">${renderIcon('plus')}<span>Thêm chi phí</span></button></div>`,
       })}
+      ${ExpenseNavigation()}
       ${FilterBar({ label: 'Bộ lọc chi phí', className: 'expense-filter-panel', children: `
         ${DateRangeFields({ fromId: 'expense-start-date', toId: 'expense-end-date' })}
         <label class="filter-field"><span>Danh mục</span><select class="filter-select" id="expense-category-filter">${categoryOptions('', 'Tất cả danh mục')}</select></label>
@@ -57,13 +63,14 @@ export function ExpensesPage() {
   `;
 }
 
-ExpensesPage.afterRender = function afterRenderExpenses() {
+ExpensesPage.afterRender = function afterRenderExpenses({ params } = {}) {
+  if (params?.get('tab') === 'employees') return EmployeesPage.afterRender();
   document.getElementById('expense-add-button')?.addEventListener('click', () => openExpenseForm());
   document.getElementById('expense-category-button')?.addEventListener('click', openCategoryManager);
   document.getElementById('expense-filter-reset')?.addEventListener('click', resetFilters);
   for (const [id, key] of [
     ['expense-start-date', 'startDate'], ['expense-end-date', 'endDate'],
-    ['expense-category-filter', 'category'], ['expense-employee-filter', 'employeeUserId'],
+    ['expense-category-filter', 'category'], ['expense-employee-filter', 'employeeId'],
   ]) {
     document.getElementById(id)?.addEventListener('change', (event) => {
       state.filters[key] = event.currentTarget.value || '';
@@ -115,7 +122,7 @@ function renderExpenses() {
       <td data-label="Phương thức">${escapeHtml(paymentMethodLabel(item.payment_method))}</td>
       <td data-label="Số tiền"><strong class="expense-amount">${escapeHtml(formatCurrency(item.amount))}</strong></td>
       <td data-label="Ghi chú">${escapeHtml(item.note || '—')}</td>
-      <td data-label="Thao tác"><div class="expense-row-actions"><button class="table-action-button" type="button" data-expense-action="edit" data-expense-id="${item.id}">Sửa</button><button class="table-action-button is-danger" type="button" data-expense-action="archive" data-expense-id="${item.id}">Hủy</button></div></td>
+      <td data-label="Thao tác"><div class="expense-row-actions"><button class="table-action-button" type="button" data-expense-action="detail" data-expense-id="${item.id}">Chi tiết</button><button class="table-action-button" type="button" data-expense-action="edit" data-expense-id="${item.id}">Sửa</button><button class="table-action-button is-danger" type="button" data-expense-action="archive" data-expense-id="${item.id}">Hủy</button></div></td>
     </tr>`).join('');
 }
 
@@ -132,7 +139,8 @@ function handleRowAction(event) {
   if (!button) return;
   const item = state.rows.find((row) => String(row.id) === button.dataset.expenseId);
   if (!item) return;
-  if (button.dataset.expenseAction === 'edit') openExpenseForm(item);
+  if (button.dataset.expenseAction === 'detail') openExpenseDetail(item);
+  else if (button.dataset.expenseAction === 'edit') openExpenseForm(item);
   else openArchiveConfirmation(item);
 }
 
@@ -148,10 +156,11 @@ function openExpenseForm(item = null) {
           <label class="form-group"><span>Số tiền</span><input class="form-control" name="amount" inputmode="numeric" required value="${escapeHtml(item?.amount || '')}"></label>
           <label class="form-group"><span>Ngày chi</span><input class="form-control" name="expenseDate" type="date" required value="${escapeHtml(item?.expense_date || toDateOnly(startOfVietnamToday()))}"></label>
           <label class="form-group"><span>Phương thức</span><select class="form-control" name="paymentMethod" required>${paymentMethodOptions(item?.payment_method || 'bank_transfer')}</select></label>
-          <label class="form-group expense-employee-field"><span>Nhân viên</span><select class="form-control" name="employeeUserId">${employeeOptions(item?.employee_user_id)}</select></label>
+          <label class="form-group expense-employee-field"><span>Nhân viên</span><select class="form-control" name="employeeId">${expenseEmployeeOptions(state.employees, item?.employee_id, { current: item })}</select></label>
           <label class="form-group expense-salary-period-field"><span>Kỳ lương</span><input class="form-control" name="salaryPeriod" type="month" value="${escapeHtml(String(item?.salary_period || '').slice(0, 7))}"></label>
           <label class="form-group expense-form-note"><span>Ghi chú</span><textarea class="form-control" name="note" rows="3" maxlength="1000">${escapeHtml(item?.note || '')}</textarea></label>
         </div>
+        ${item ? `<p class="employee-history-note">${escapeHtml(expenseAttribution(item).name)}${expenseAttribution(item).note ? ` · ${escapeHtml(expenseAttribution(item).note)}` : ''}. Liên kết chỉ thay đổi khi bạn chọn lại nhân viên.</p>` : ''}
         <div id="expense-duplicate-warning" class="notice warning hidden" role="status">Đã có khoản lương cho nhân viên và kỳ này. Bạn vẫn có thể lưu nếu đây là khoản bổ sung.</div>
         <div id="expense-form-error" class="form-error hidden" role="alert"></div>
         <div class="modal-actions"><button class="btn-secondary" type="button" data-expense-cancel>Hủy</button><button class="btn-primary" type="submit">${item ? 'Lưu thay đổi' : 'Thêm chi phí'}</button></div>
@@ -162,13 +171,13 @@ function openExpenseForm(item = null) {
   const updateSalaryFields = () => {
     const salary = categoryIsSalary(form.elements.category.value);
     form.querySelector('.expense-salary-period-field')?.classList.toggle('hidden', !salary);
-    form.elements.employeeUserId.required = salary;
+    form.elements.employeeId.required = salary && !(item?.employee_user_id && !item?.employee_id);
     form.elements.salaryPeriod.required = salary;
     if (!salary) form.elements.salaryPeriod.value = '';
     checkDuplicateSalary(form, item?.id);
   };
   form?.elements.category.addEventListener('change', updateSalaryFields);
-  form?.elements.employeeUserId.addEventListener('change', () => checkDuplicateSalary(form, item?.id));
+  form?.elements.employeeId.addEventListener('change', () => checkDuplicateSalary(form, item?.id));
   form?.elements.salaryPeriod.addEventListener('change', () => checkDuplicateSalary(form, item?.id));
   form?.querySelector('[data-expense-cancel]')?.addEventListener('click', Modal.close);
   form?.addEventListener('submit', (event) => saveExpense(event, item?.id));
@@ -178,12 +187,12 @@ function openExpenseForm(item = null) {
 async function checkDuplicateSalary(form, excludeId) {
   const warning = document.getElementById('expense-duplicate-warning');
   if (!warning) return;
-  if (!categoryIsSalary(form.elements.category.value) || !form.elements.employeeUserId.value || !form.elements.salaryPeriod.value) {
+  if (!categoryIsSalary(form.elements.category.value) || !form.elements.employeeId.value || !form.elements.salaryPeriod.value) {
     warning.classList.add('hidden');
     return;
   }
   try {
-    const { data } = await ExpenseService.checkSalaryDuplicate(form.elements.employeeUserId.value, form.elements.salaryPeriod.value, excludeId);
+    const { data } = await ExpenseService.checkSalaryDuplicate(form.elements.employeeId.value, form.elements.salaryPeriod.value, excludeId);
     warning.classList.toggle('hidden', data !== true);
   } catch {
     warning.classList.add('hidden');
@@ -243,13 +252,13 @@ function openArchiveConfirmation(item) {
 
 function resetFilters() {
   const range = vietnamDateRangeYearToDate();
-  state.filters = { startDate: range.from, endDate: range.to, category: '', employeeUserId: '' };
+  state.filters = { startDate: range.from, endDate: range.to, category: '', employeeId: '' };
   syncFilterControls();
   loadExpenses();
 }
 
 function syncFilterControls() {
-  for (const [id, key] of [['expense-start-date','startDate'],['expense-end-date','endDate'],['expense-category-filter','category'],['expense-employee-filter','employeeUserId']]) {
+  for (const [id, key] of [['expense-start-date','startDate'],['expense-end-date','endDate'],['expense-category-filter','category'],['expense-employee-filter','employeeId']]) {
     const control = document.getElementById(id);
     if (control) control.value = state.filters[key];
   }
@@ -258,8 +267,8 @@ function syncFilterControls() {
 function renderEmployeeFilter() {
   const select = document.getElementById('expense-employee-filter');
   if (!select) return;
-  select.innerHTML = `<option value="">Tất cả nhân viên</option>${employeeOptions(state.filters.employeeUserId, false)}`;
-  select.value = state.filters.employeeUserId;
+  select.innerHTML = expenseEmployeeOptions(state.employees, state.filters.employeeId, { filter: true });
+  select.value = state.filters.employeeId;
 }
 
 function renderCategoryFilter() {
@@ -272,10 +281,6 @@ function renderCategoryFilter() {
 function categoryOptions(selected, firstLabel = '', includeArchived = false) {
   const categories = state.categories.filter((item) => includeArchived || item.isActive !== false || item.code === selected);
   return `${firstLabel ? `<option value="">${firstLabel}</option>` : ''}${categories.map((item) => `<option value="${escapeHtml(item.code)}" ${item.code === selected ? 'selected' : ''}>${escapeHtml(item.name)}${item.isActive === false ? ' (đã lưu trữ)' : ''}</option>`).join('')}`;
-}
-
-function employeeOptions(selected, includeEmpty = true) {
-  return `${includeEmpty ? '<option value="">Không áp dụng</option>' : ''}${state.employees.map((employee) => `<option value="${escapeHtml(employee.user_id)}" ${String(employee.user_id) === String(selected || '') ? 'selected' : ''}>${escapeHtml(employee.display_name || employee.username || 'Chưa có tên')}</option>`).join('')}`;
 }
 
 function paymentMethodOptions(selected) {
@@ -295,7 +300,8 @@ function paymentMethodLabel(value) {
 }
 
 function employeePeriod(item) {
-  const employee = escapeHtml(item.employee_name || '—');
+  const attribution = expenseAttribution(item);
+  const employee = `${escapeHtml(attribution.name)}${attribution.note ? `<small class="expense-salary-period">${escapeHtml(attribution.note)}</small>` : ''}`;
   if (!item.category_is_salary && !categoryIsSalary(item.category) || !item.salary_period) return employee;
   const [year, month] = String(item.salary_period).slice(0, 7).split('-');
   return `<span>${employee}</span><small class="expense-salary-period">Lương tháng ${escapeHtml(month)}/${escapeHtml(year)}</small>`;
@@ -325,4 +331,15 @@ function openCategoryManager() {
       Modal.close(); await loadExpenses(); Toast.show(save ? 'Đã đổi tên danh mục.' : 'Đã lưu trữ danh mục.');
     } catch (error) { Toast.show(error?.message || 'Không thể cập nhật danh mục.', 'error'); }
   });
+}
+
+function openExpenseDetail(item) {
+  const attribution = expenseAttribution(item);
+  Modal.open({ title: 'Chi tiết khoản chi', className: 'employee-detail-modal', body: DetailFields([
+    ['Danh mục', item.category_name || categoryLabel(item.category)], ['Số tiền', formatCurrency(item.amount)],
+    ['Ngày chi', formatDate(item.expense_date)], ['Nhân viên tại thời điểm ghi nhận', attribution.name],
+    ...(attribution.note ? [['Thông tin nhân viên', attribution.note]] : []),
+    ...(item.salary_period ? [['Kỳ lương', String(item.salary_period).slice(0, 7)]] : []),
+    ['Phương thức', paymentMethodLabel(item.payment_method)], ['Ghi chú', item.note || '—'], ['Người ghi nhận', item.creator_name || '—'],
+  ]) });
 }

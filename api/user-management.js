@@ -210,6 +210,7 @@ async function setLocked(req, body) {
   if (!target) throw httpError(404, 'Không tìm thấy người dùng.');
   if (target.is_system_admin) throw httpError(403, 'Không thể khóa hoặc mở khóa System Admin.');
   const locked = body.locked === true;
+  const reason = requiredText(body.reason, 500, 'Lý do');
   const next = {
     status: locked ? 'locked' : 'active',
     web_access_enabled: !locked,
@@ -231,7 +232,7 @@ async function setLocked(req, body) {
   }
   await writeAudit(actor, locked ? 'lock_user' : 'unlock_user', userId,
     { status: target.status, web_access_enabled: target.web_access_enabled }, next,
-    requiredText(body.reason, 500, 'Lý do'));
+    reason);
   return { ok: true, status: next.status, webAccessEnabled: next.web_access_enabled };
 }
 
@@ -244,10 +245,11 @@ async function resetPassword(req, body) {
   if (target.is_system_admin) throw httpError(403, 'Không thể đặt lại mật khẩu System Admin từ trang này.');
   const newPassword = String(body.newPassword || '');
   if (newPassword.length < 8) throw httpError(400, 'Mật khẩu mới cần ít nhất 8 ký tự.');
+  const reason = requiredText(body.reason, 500, 'Lý do');
   await serviceFetch(`/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
     method: 'PUT', body: { password: newPassword },
   });
-  await writeAudit(actor, 'reset_password', userId, null, { password_reset: true }, requiredText(body.reason, 500, 'Lý do'));
+  await writeAudit(actor, 'reset_password', userId, null, { password_reset: true }, reason);
   return { ok: true };
 }
 

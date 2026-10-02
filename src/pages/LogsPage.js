@@ -32,6 +32,7 @@ const ACTION_FILTERS = [
   { value: 'status', label: 'Trạng thái Kiosk' },
   { value: 'cancel', label: 'Hủy' },
   { value: 'expense', label: 'Chi phí' },
+  { value: 'employee', label: 'Nhân viên' },
   { value: 'website', label: 'Nội dung Website' },
   { value: 'reconciliation', label: 'Cần kiểm tra' },
 ];

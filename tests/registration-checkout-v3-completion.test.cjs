@@ -95,7 +95,7 @@ test('reports and notifications keep all four pending concepts separate', () => 
   for (const label of ['Hồ sơ cần xử lý', 'Hồ sơ chờ thanh toán', 'Kiosk hoạt động']) assert.match(overview, new RegExp(label));
   assert.match(notifications, /pendingReviewCount: pendingCount/);
   assert.match(notifications, /awaitingPaymentCount: awaitingCount/);
-  assert.match(notifications, /registrationCount: pendingCount \+ reconciliationCount/);
+  assert.match(notifications, /registrationCount: Number\(data\?\.actionableRegistrationCount/);
   assert.match(notifications, /get_registration_actionable_summary/);
 });
 

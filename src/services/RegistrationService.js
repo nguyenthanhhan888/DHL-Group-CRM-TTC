@@ -66,7 +66,8 @@ export const RegistrationService = {
       });
       const data = await safeJson(response);
       if (!response.ok || data?.success === false) {
-        throw new Error(data?.message || 'Không tạo được link PayOS.');
+        const error = new Error(data?.message || 'Không tạo được link PayOS.');
+        error.code = data?.code; throw error;
       }
       return {
         data: {
@@ -80,6 +81,7 @@ export const RegistrationService = {
         data: {
           ...submitted.data,
           payosError: error?.message || 'Không tạo được link PayOS.',
+          payosErrorCode: error?.code || null,
         },
       };
     }

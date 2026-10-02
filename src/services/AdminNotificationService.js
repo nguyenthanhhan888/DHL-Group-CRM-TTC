@@ -24,7 +24,7 @@ export const AdminNotificationService = {
       items: visibleItems,
       count: unreadCount,
       unreadCount,
-      registrationCount: pendingCount + reconciliationCount,
+      registrationCount: Number(data?.actionableRegistrationCount ?? (pendingCount + reconciliationCount)),
       pendingReviewCount: pendingCount,
       awaitingPaymentCount: awaitingCount,
       reconciliationCount,

@@ -15,6 +15,7 @@ const EXPENSE_LABELS = {
 // This is a view model for Logs only. It never changes stored events or Dashboard data.
 export function businessEventPresentation(event = {}, audit = null) {
   if (event.event_type === 'reconciliation') return reconciliationPresentation(event, audit || {});
+  if (event.event_type === 'employee') return { title: event.title || audit?.reason || 'Cập nhật nhân viên', secondary: '', actorName: event.actor_name || 'Hệ thống', source: event.source || 'CRM', activityLabel: 'Nhân viên', result: event.result || 'Hoàn tất' };
   const actorName = readable(event.actor_name) || readable(audit?.actor_name) || 'Hệ thống';
   const actor = /^(system|database trigger)$/i.test(actorName) ? 'Hệ thống' : actorName;
   const action = String(audit?.action || '').toLowerCase();

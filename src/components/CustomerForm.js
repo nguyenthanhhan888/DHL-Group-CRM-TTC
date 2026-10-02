@@ -115,7 +115,7 @@ function readCustomerPayload() {
     facebook_id: optionalValue('customer-facebook-id'),
     facebook_link: optionalValue('customer-facebook-link'),
     facebook_group_link: optionalValue('customer-facebook-group-link'),
-    phone: readValue('customer-phone'),
+    phone: readValue('customer-phone').replace(/\s/g, ''),
     address: optionalValue('customer-address'),
     status: readValue('customer-status') || 'active',
     note: optionalValue('customer-note'),
@@ -155,10 +155,25 @@ async function checkDuplicates(payload, excludeId) {
     phone: payload.phone,
     name: payload.facebook_name,
     excludeId,
+    facebookId: payload.facebook_id,
+    facebookLink: payload.facebook_link,
   });
 
   if (!duplicates.length) {
     return true;
+  }
+
+  const exact = duplicates.filter((item) => item.match_type === 'exact');
+  if (exact.length) {
+    const target = document.getElementById('customer-form-error');
+    target.innerHTML = `Khách hàng đã tồn tại. Hãy mở hồ sơ hiện tại để thêm Kiosk hoặc cập nhật thông tin: ${exact.map(item => `<a class="table-link" data-existing-customer href="#/customer-detail?id=${encodeURIComponent(item.id)}">${escapeHtml(item.facebook_name)} · ${escapeHtml(item.phone)}</a>`).join(', ')}`;
+    target.classList.remove('hidden');
+    target.setAttribute('role', 'alert');
+    target.tabIndex = -1;
+    target.focus();
+    target.scrollIntoView({ block: 'nearest' });
+    target.querySelectorAll('[data-existing-customer]').forEach(link => link.addEventListener('click', Modal.close));
+    return false;
   }
 
   const message = [

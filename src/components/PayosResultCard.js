@@ -48,6 +48,7 @@ export function watchPayosPaymentStatus(root = document, { intervalMs = 3000, ti
         }
         if (String(status?.status || '').toLowerCase() === 'paid') {
           markPaid(card);
+          window.dispatchEvent(new CustomEvent('dhl:actionable-registration-changed'));
           if (typeof onPaid === 'function') onPaid(status, card);
           return;
         }

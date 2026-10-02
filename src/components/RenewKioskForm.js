@@ -9,18 +9,24 @@ import { formatDate, parseDateOnly, startOfToday, toDateOnly } from '../utils/da
 import { escapeHtml } from '../utils/html.js';
 import { renderIcon } from '../utils/icons.js';
 import { setButtonBusy } from '../utils/buttonState.js';
+import { AuthService } from '../services/AuthService.js';
+import { PERMISSIONS, canAccessPermission } from '../constants/permissions.js';
 
 let currentKiosk = null;
 let appliedPromotion = null;
+let renewalAccess = null;
 
 export async function openRenewKioskForm({ kioskId, onSaved } = {}) {
   currentKiosk = null;
   appliedPromotion = null;
   Modal.open({ title: 'Gia hạn Kiosk', body: stateView('Đang tải Kiosk', 'Đang đọc thông tin Kiosk từ hệ thống.') });
   try {
+    renewalAccess = await AuthService.getCurrentStaffProfile();
+    if (!canAccessPermission(renewalAccess, PERMISSIONS.PAYMENTS)) throw new Error('Bạn không có quyền gia hạn Kiosk.');
     ({ data: currentKiosk } = await KioskService.getById(kioskId));
     Modal.open({ title: 'Gia hạn Kiosk', body: formView(currentKiosk) });
     bindForm(onSaved);
+    updatePath();
     updateCalculation();
   } catch (error) {
     Modal.open({ title: 'Gia hạn Kiosk', body: stateView('Không thể tải Kiosk', error?.message || 'Không đọc được thông tin Kiosk.') });
@@ -46,8 +52,8 @@ function formView(kiosk) {
       <div class="renew-total"><span>THÀNH TIỀN</span><strong id="renew-total">${formatCurrency(price)}</strong></div>
     </section>
     <fieldset class="renew-payment-paths"><legend>Trạng thái thanh toán</legend>
-      <label><input type="radio" name="renew-payment-path" value="paid" checked><span><strong>Đã nhận thanh toán</strong><small>Admin đã nhận tiền trực tiếp; không tạo QR.</small></span></label>
-      <label><input type="radio" name="renew-payment-path" value="payos"><span><strong>Khách hàng chưa thanh toán</strong><small>Tạo thanh toán Pending và link PayOS.</small></span></label>
+      ${renewalAccess?.is_system_admin ? '<label><input type="radio" name="renew-payment-path" value="paid" checked><span><strong>Đã nhận thanh toán</strong><small>Admin đã nhận tiền trực tiếp; không tạo QR.</small></span></label>' : ''}
+      <label><input type="radio" name="renew-payment-path" value="payos" ${renewalAccess?.is_system_admin ? '' : 'checked'}><span><strong>Khách hàng chưa thanh toán</strong><small>Tạo thanh toán Pending và link PayOS.</small></span></label>
     </fieldset>
     <label class="form-group" data-manual-method><span>Phương thức thanh toán *</span><select class="form-control" id="renew-payment-method"><option value="transfer">Chuyển khoản</option><option value="cash">Tiền mặt</option><option value="other">Khác</option></select></label>
     <label class="form-group"><span>Ghi chú</span><textarea class="form-control" id="renew-note" rows="2"></textarea></label>
@@ -66,6 +72,7 @@ function bindForm(onSaved) {
   form?.addEventListener('submit', async (event) => {
     event.preventDefault(); clearError();
     const values = readValues();
+    if (!canAccessPermission(renewalAccess, PERMISSIONS.PAYMENTS) || (values.path === 'paid' && !renewalAccess?.is_system_admin)) return showError('Bạn không có quyền thực hiện thao tác này.');
     const error = validate(values);
     if (error) return showError(error);
     const button = document.getElementById('renew-save-button');

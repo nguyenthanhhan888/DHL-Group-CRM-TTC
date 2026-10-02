@@ -1,3 +1,5 @@
+import { AuthService } from '../services/AuthService.js';
+import { canAddCustomerKiosk } from '../constants/permissions.js';
 import { EmptyState } from '../components/EmptyState.js';
 import { openCustomerForm } from '../components/CustomerForm.js';
 import { openKioskForm } from '../components/KioskForm.js';
@@ -16,6 +18,7 @@ import { deriveKioskStatus } from '../utils/kioskStatus.js';
 const RELATED_KIOSK_COLUMNS = ['Kiosk', 'Trạng thái', 'Ngày hết hạn'];
 const PAYMENT_HISTORY_COLUMNS = ['Kiosk', 'Số tiền', 'Trạng thái', 'Ngày xác nhận'];
 let currentCustomer = null;
+let accessProfile = null;
 const detailState = {
   kiosks: [],
   payments: [],
@@ -45,6 +48,7 @@ CustomerDetailPage.afterRender = async function afterRenderCustomerDetail({ para
   renderCustomerDetailState('Đang tải khách hàng', 'Đang tải thông tin khách hàng.');
 
   try {
+    accessProfile = await AuthService.getCurrentStaffProfile();
     const [{ data: customer }, { data: kiosks }, { data: payments }] = await Promise.all([
       CustomerService.getStatusById(id),
       KioskService.listByCustomer(id),
@@ -81,7 +85,7 @@ function renderCustomerDetail(customer, kiosks, payments) {
   header.innerHTML = PageHeader({
     title: customer.facebook_name,
     actions: `
-      <button class="btn-primary" id="customer-add-kiosk" type="button">+ Thêm Kiosk</button>
+      ${canAddCustomerKiosk(accessProfile) ? '<button class="btn-primary" id="customer-add-kiosk" type="button">+ Thêm Kiosk</button>' : ''}
       <button class="btn-secondary" id="customer-edit-button" type="button">Sửa</button>
       ${currentCustomer.status === 'active'
         ? '<button class="btn-danger" id="customer-deactivate-button" type="button">Vô hiệu hóa</button>'

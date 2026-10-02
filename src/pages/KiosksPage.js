@@ -14,6 +14,7 @@ import { formatDate } from '../utils/date.js';
 import { debounce } from '../utils/dom.js';
 import { escapeHtml } from '../utils/html.js';
 import { deriveKioskStatus } from '../utils/kioskStatus.js';
+import { PERMISSIONS, canAccessPermission } from '../constants/permissions.js';
 
 const PAGE_SIZE_OPTIONS = [12, 24, 48];
 function kioskStatusOptions() {
@@ -34,6 +35,7 @@ const state = {
   total: 0,
   requestId: 0,
   businessTypes: [],
+  profile: null,
 };
 
 export function KiosksPage() {
@@ -71,7 +73,11 @@ export function KiosksPage() {
   `;
 }
 
-KiosksPage.afterRender = function afterRenderKiosks() {
+KiosksPage.afterRender = function afterRenderKiosks({ profile } = {}) {
+  state.profile = profile || null;
+  if (!canAccessPermission(profile, PERMISSIONS.CUSTOMERS) && !canAccessPermission(profile, PERMISSIONS.CUSTOMER_DETAIL)) {
+    document.getElementById('add-kiosk-button')?.remove();
+  }
   syncKioskControls();
   bindKioskEvents();
   bindPagination('kiosks', {
@@ -239,7 +245,7 @@ function renderKioskCard(kiosk) {
       <div class="kiosk-card-footer">
         <div class="inline-actions">
           ${CompactAction({ label: 'Xem', icon: 'view', href: `#/kiosk-detail?id=${encodeURIComponent(kiosk.id)}` })}
-          ${CompactAction({ label: 'Gia hạn', icon: 'refresh', tone: 'positive', attrs: `data-kiosk-renew="${escapeHtml(kiosk.id)}"` })}
+          ${canAccessPermission(state.profile, PERMISSIONS.PAYMENTS) ? CompactAction({ label: 'Gia hạn', icon: 'refresh', tone: 'positive', attrs: `data-kiosk-renew="${escapeHtml(kiosk.id)}"` }) : ''}
         </div>
         <span class="kiosk-id">ID: ${escapeHtml(kiosk.id || '—')}</span>
       </div>

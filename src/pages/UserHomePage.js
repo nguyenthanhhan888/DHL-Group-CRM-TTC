@@ -547,7 +547,7 @@ function renderAnnouncements() {
   panel.innerHTML = state.announcements.map((item, index) => `
     <article class="user-announcement-card ${index === 0 ? 'is-featured' : ''}" style="--feed-index: ${index};">
       <header class="user-announcement-head">
-        <img src="images/avatar.PNG" alt="" loading="lazy">
+        <img src="images/avatar-1.PNG" alt="" loading="lazy">
         <div>
           <strong>${escapeHtml(item.author || 'Admin')} <span>✓</span></strong>
           <time>${escapeHtml(formatDateTime(item.createdAt))}</time>

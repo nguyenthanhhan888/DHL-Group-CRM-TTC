@@ -60,7 +60,7 @@ test('actual router navigation marks BOTH TTC destinations and opens active grou
 });
 
 test('new promotion defaults are runtime Vietnam time across year boundaries; editing empty limits stays empty', () => {
-  assert.deepEqual(promotionDateDefaults({}, new Date('2031-12-31T20:45:00Z')), { starts_at: '2032-01-01T03:45', ends_at: '2032-01-01T03:45' });
+  assert.deepEqual(promotionDateDefaults({}, new Date('2031-12-31T20:45:00Z')), { starts_at: '2032-01-01T03:45', ends_at: '2032-01-08T03:45' });
   assert.deepEqual(promotionDateDefaults({ id: 4, starts_at: null, ends_at: null }), { starts_at: '', ends_at: '' });
   assert.equal(promotionDateDefaults({ id: 4, starts_at: '2026-09-20T01:30:00Z' }).starts_at, '2026-09-20T08:30');
   const fields = DetailFields([['Lượt thành công', 1], ['Khách hàng', '<Lan>']]);

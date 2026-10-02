@@ -1,3 +1,5 @@
+import { AuthService } from '../services/AuthService.js';
+import { canAddCustomerKiosk } from '../constants/permissions.js';
 import { Modal } from './Modal.js';
 import { Toast } from './Toast.js';
 import { BusinessTypeService } from '../services/BusinessTypeService.js';
@@ -16,7 +18,11 @@ let categories = [];
 let businessTypes = [];
 let preferredCustomerId = '';
 
-export function openKioskForm({ customer = null, onSaved } = {}) {
+export async function openKioskForm({ customer = null, onSaved } = {}) {
+  let profile;
+  try { profile = await AuthService.getCurrentStaffProfile(); }
+  catch { Toast.show('Không thể kiểm tra quyền.'); return; }
+  if (!canAddCustomerKiosk(profile)) { Toast.show('Cần quyền Khách hàng và Kiosk để đăng ký thêm.'); return; }
   customers = [];
   categories = [];
   businessTypes = [];
@@ -176,6 +182,10 @@ async function loadCustomerOptions(searchTerm) {
   select.innerHTML = '<option value="">Đang tải khách hàng...</option>';
 
   try {
+    if (preferredCustomerId) {
+      const { data } = await CustomerService.getById(preferredCustomerId);
+      customers = data ? [data] : []; renderCustomerOptions(); return;
+    }
     const { data } = await CustomerService.list({
       searchTerm,
       sort: { column: 'facebook_name', ascending: true },

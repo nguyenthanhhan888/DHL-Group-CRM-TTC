@@ -4,6 +4,8 @@ import { BusinessTypeService } from '../services/BusinessTypeService.js';
 import { CategoryService } from '../services/CategoryService.js';
 import { CustomerService } from '../services/CustomerService.js';
 import { KioskService } from '../services/KioskService.js';
+import { AuthService } from '../services/AuthService.js';
+import { PERMISSIONS, canAccessPermission } from '../constants/permissions.js';
 import { bindFacebookIdResolvers, FacebookIdResolverFields } from './FacebookIdResolver.js';
 import { debounce } from '../utils/dom.js';
 import { escapeHtml } from '../utils/html.js';
@@ -25,13 +27,25 @@ let state = {
   isEdit: false,
 };
 
-export function openKioskEditForm({ kiosk = null, onSaved } = {}) {
+export async function openKioskEditForm({ kiosk = null, onSaved } = {}) {
+  let profile;
+  try { profile = await AuthService.getCurrentStaffProfile(); }
+  catch { Toast.show('Không thể kiểm tra quyền. Vui lòng thử lại.'); return; }
+  if (!canAccessPermission(profile, PERMISSIONS.KIOSKS) && !canAccessPermission(profile, PERMISSIONS.KIOSK_DETAIL)) {
+    Toast.show('Bạn không có quyền quản lý Kiosk.'); return;
+  }
+  const canChooseCustomer = canAccessPermission(profile, PERMISSIONS.CUSTOMERS)
+    || canAccessPermission(profile, PERMISSIONS.CUSTOMER_DETAIL);
+  if (!kiosk?.id && !canChooseCustomer) {
+    Toast.show('Cần quyền Khách hàng để chọn chủ sở hữu cho Kiosk mới.'); return;
+  }
   state = {
     kiosk,
     customers: [],
     categories: [],
     businessTypes: [],
     isEdit: Boolean(kiosk?.id),
+    canChooseCustomer,
   };
 
   Modal.open({
@@ -228,6 +242,12 @@ async function loadCustomerOptions(searchTerm = '', initialId = null) {
   const select = document.getElementById('kiosk-edit-customer');
   if (!select) return;
   select.disabled = true;
+  if (!state.canChooseCustomer) {
+    select.innerHTML = `<option value="${escapeHtml(String(state.kiosk.customer_id))}">${escapeHtml(state.kiosk.customers?.facebook_name || state.kiosk.customer_name || 'Khách hàng hiện tại')}</option>`;
+    const search = document.getElementById('kiosk-edit-customer-search');
+    if (search) { search.disabled = true; search.placeholder = 'Cần quyền Khách hàng để đổi chủ sở hữu'; }
+    return;
+  }
 
   try {
     const { data } = await CustomerService.list({ searchTerm, pagination: { page: 1, pageSize: 50 } });

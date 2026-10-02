@@ -7697,3 +7697,94 @@ body { color:var(--text-primary); background:var(--bg-page); }
 }
 .reports-page .report-grid .empty-state { min-height: 0; padding: 24px 16px; }
 .reports-page .empty-state-title { color: var(--text-primary); }
+
+/* Employee V1, inside the existing Expense workspace. */
+.expense-workspace-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.expense-workspace-tabs a { display: inline-flex; align-items: center; min-height: 44px; padding: 10px 16px; border: 1px solid var(--border-default); border-radius: 9px; color: var(--text-secondary); background: var(--bg-card); text-decoration: none; font-size: 14px; font-weight: 650; }
+.expense-workspace-tabs a[aria-current="page"] { background: var(--primary); color: var(--text-on-primary, #fff); border-color: var(--primary); }
+.expense-workspace-tabs a:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.employees-page { display: grid; gap: var(--space-card); min-width: 0; }
+.employees-page > .page-header, .employees-page > .table-card { margin: 0; }
+.employees-page .page-actions .btn-primary { display: inline-flex; gap: 8px; align-items: center; min-height: 44px; width: auto; }
+.employee-result-count { margin: 0; color: var(--text-secondary); font-size: 13px; }
+.employee-archive-filter { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; color: var(--text-secondary); }
+.employee-archive-filter input { width: 18px; height: 18px; }
+.employee-table-card { min-width: 0; }
+.employee-table { min-width: 0; width: 100%; }
+.employee-table th { white-space: normal; }
+.employee-table :is(th, td) { padding: 12px; overflow-wrap: anywhere; }
+.employee-table td:first-child { min-width: 140px; }
+.employee-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.employee-actions .table-action-button, .employee-detail-modal .table-action-button { min-height: 44px; min-width: 44px; }
+.employee-form-modal, .employee-detail-modal { width: min(640px, calc(100vw - 32px)); }
+.employee-form-modal button, .employee-detail-modal button, .expense-form-modal button { min-height: 44px; min-width: 44px; }
+.employee-form-modal .modal-close, .employee-detail-modal .modal-close, .expense-form-modal .modal-close { flex: 0 0 44px; }
+.employee-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.employee-form-grid .form-group { margin: 0; min-width: 0; }
+.employee-form-wide { grid-column: 1 / -1; }
+.employee-form-grid :is(input, select, textarea) { min-height: 44px; }
+.employee-history-note { margin: 16px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+.employee-detail-modal .detail-fields:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.employee-detail-modal .modal-actions { flex-wrap: wrap; }
+@media (max-width: 900px) {
+  .employee-table-card { background: transparent; border: 0; box-shadow: none; overflow: visible; }
+  .employee-table, .employee-table tbody { display: block; }
+  .employee-table thead { display: none; }
+  .employee-table tbody { display: grid; gap: 12px; }
+  .employee-table tr { display: grid; padding: 14px; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-card); }
+  .employee-table td { display: grid; grid-template-columns: minmax(110px,.8fr) minmax(0,1.2fr); gap: 12px; padding: 8px 0; border: 0; border-bottom: 1px solid var(--border-default); }
+  .employee-table td::before { content: attr(data-label); color: var(--text-secondary); font-size: 12px; font-weight: 650; }
+  .employee-table td:last-child { border: 0; }
+  .employee-table td[colspan] { display: block; }
+  .employee-table td[colspan]::before { content: none; }
+  .employee-table .status-badge { justify-self: start; }
+}
+@media (max-width: 680px) {
+  .employee-form-grid { grid-template-columns: 1fr; }
+  .employee-form-grid :is(input, select, textarea) { font-size: 16px; }
+  .employee-form-modal .modal-body, .employee-detail-modal .modal-body { padding: 16px; }
+  .employee-table td { grid-template-columns: 1fr; gap: 4px; }
+  .employee-actions .table-action-button { flex: 1; }
+}
+
+/* Promotions form only: fixed actions, independent time choices, existing CRM tokens. */
+.modal-overlay:has(.promotion-form-modal) { padding: 12px; }
+.promotion-form-modal { width: min(840px, 100%); height: min(88dvh, 820px); max-height: calc(100dvh - 24px); }
+.promotion-form-modal .modal-header { padding: 14px 20px; }
+.promotion-form-modal .modal-header h3 { font-size: 20px; }
+.promotion-form-modal .modal-body { display: flex; min-height: 0; overflow: hidden; padding: 0; }
+.promotion-form-modal .promotion-form { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
+.promotion-form-content { flex: 1; min-height: 0; overflow-y: auto; padding: 0 20px 20px; scroll-padding-block: 16px; }
+.promotion-form-modal .promotion-form-section { gap: 12px; padding: 18px 0; }
+.promotion-form-modal .promotion-form-section:first-child { border-top: 0; }
+.promotion-form-modal .promotion-form-section h3 { font-size: 16px; }
+.promotion-form-modal .promotion-section-note { margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.promotion-form-modal :is(button, input.form-control, select.form-control, .scope-option) { min-height: 44px; }
+.promotion-form-modal .modal-close, .promotion-detail-modal .modal-close { min-width: 44px; min-height: 44px; flex: 0 0 44px; }
+.promotion-form-modal .scope-chip { min-height: 44px; max-width: 100%; text-align: left; overflow-wrap: anywhere; }
+.promotion-form-modal .scope-option { align-items: center; }
+.promotion-form-modal .scope-option input { flex: 0 0 18px; width: 18px; height: 18px; margin: 0; }
+.promotion-form-modal .scope-option span { min-width: 0; overflow-wrap: anywhere; }
+.promotion-form-modal .form-group > span:first-child { color: var(--text-secondary); }
+.promotion-form-modal .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.promotion-form-modal .form-control[aria-invalid="true"] { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+.promotion-time-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.promotion-time-modes label { display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 10px 12px; border: 1px solid var(--border-default); border-radius: 10px; background: var(--bg-control); color: var(--text-secondary); font-size: 13px; font-weight: 650; cursor: pointer; }
+.promotion-time-modes label:has(:checked) { border-color: var(--primary); background: var(--primary-soft); color: var(--text-primary); }
+.promotion-time-modes label:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+.promotion-time-modes input { flex: 0 0 18px; width: 18px; height: 18px; margin: 0; accent-color: var(--primary); }
+.promotion-preview { padding: 14px 16px; border: 1px solid var(--border-default); border-radius: 10px; background: var(--bg-control); color: var(--text-primary); overflow-wrap: anywhere; }
+.promotion-preview h3 { margin: 0 0 8px; font-size: 14px; }
+.promotion-preview p { margin: 5px 0; font-size: 13px; line-height: 1.55; }
+.promotion-form-footer { flex: 0 0 auto; padding: 12px 20px; border-top: 1px solid var(--border-default); background: var(--bg-card); border-radius: 0 0 16px 16px; }
+.promotion-form-modal .promotion-form-actions { position: static; margin: 0; padding: 0; border: 0; box-shadow: none; background: transparent; }
+.promotion-form-footer .form-error { margin: 0 0 10px; font-size: 13px; line-height: 1.5; }
+@media (max-width: 640px) {
+  .promotion-form-modal { width: 100%; height: calc(100dvh - 24px); }
+  .promotion-form-modal .modal-header { padding: 12px 16px; }
+  .promotion-form-content { padding: 0 16px 16px; }
+  .promotion-form-footer { padding: 12px 16px; }
+  .promotion-form-modal .form-control { min-width: 0; width: 100%; font-size: 16px; }
+  .promotion-time-modes { grid-template-columns: 1fr; gap: 8px; }
+  .promotion-form-actions .btn-primary { flex: 1; }
+}

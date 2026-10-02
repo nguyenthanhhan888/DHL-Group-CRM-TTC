@@ -437,7 +437,13 @@ async function submitRegistration(event) {
     const payment = data?.payosPayment;
     const saved = { paymentLinkId: payment?.paymentLinkId, batchId: data?.registrationBatch?.id, requestIds: (data?.kiosks || []).map((item) => item?.request?.id).filter(Boolean), phone: read('register-phone'), promotionCode: state.promotion?.code || null };
     sessionStorage.setItem('registration-checkout-pending', JSON.stringify(saved));
-    if (!payment?.checkoutUrl) { hideRegistrationForm(); const target = document.getElementById('registration-success'); target?.classList.remove('hidden'); renderTerminal(target, 'failed', saved); return; }
+    if (!payment?.checkoutUrl) {
+      hideRegistrationForm(); const target = document.getElementById('registration-success'); target?.classList.remove('hidden');
+      renderTerminal(target, 'failed', saved);
+      const errorTarget = target?.querySelector('[data-registration-retry-error]');
+      if (errorTarget && data?.payosError) errorTarget.textContent = data.payosError;
+      return;
+    }
     sessionStorage.setItem(`registration-payos:${payment.orderCode}`, JSON.stringify(saved));
     redirecting = true;
     window.location.assign(payment.checkoutUrl);

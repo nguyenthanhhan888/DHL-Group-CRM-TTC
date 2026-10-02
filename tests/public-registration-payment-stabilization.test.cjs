@@ -67,7 +67,7 @@ test('retry reuses request ownership, batch, payment, Kiosk and active provider 
 test('awaiting-payment is visible but remains separate from Admin review', () => {
   assert.match(requestService, /admin_list_registration_requests/);
   assert.match(notifications, /get_registration_actionable_summary/);
-  assert.match(notifications, /registrationCount: pendingCount \+ reconciliationCount/);
+  assert.match(notifications, /registrationCount: Number\(data\?\.actionableRegistrationCount/);
   assert.doesNotMatch(notifications, /request:awaiting_payment:/);
   assert.match(completion, /'pendingReviewRequests'/);
   assert.match(completion, /'awaitingPaymentRequests'/);

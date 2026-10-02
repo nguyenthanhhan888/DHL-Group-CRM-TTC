@@ -292,6 +292,7 @@ export const PaymentService = {
         reason_input: requiredText(reason, 'Lý do'),
       }),
     );
+    globalThis.window?.dispatchEvent(new CustomEvent('dhl:actionable-registration-changed'));
     return { data };
   },
 
@@ -303,6 +304,7 @@ export const PaymentService = {
         reason_input: requiredText(reason, 'Lý do hủy'),
       }),
     );
+    globalThis.window?.dispatchEvent(new CustomEvent('dhl:actionable-registration-changed'));
     return { data };
   },
 

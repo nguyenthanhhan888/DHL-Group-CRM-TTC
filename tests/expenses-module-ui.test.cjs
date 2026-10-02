@@ -27,7 +27,7 @@ test('expense route and menu use the unified permission model', () => {
 test('expense UI provides CRUD, requested filters, salary fields and duplicate warning', () => {
   for (const category of ['Lương nhân viên', 'Thưởng', 'Quảng cáo', 'Hosting / Domain / API', 'Hoàn tiền', 'Chi khác']) assert.match(service, new RegExp(category.replaceAll('/', '\\/')));
   for (const id of ['expense-start-date', 'expense-end-date', 'expense-category-filter', 'expense-employee-filter']) assert.match(page, new RegExp(id));
-  assert.match(page, /name="employeeUserId"/);
+  assert.match(page, /name="employeeId"/);
   assert.match(page, /name="salaryPeriod" type="month"/);
   assert.match(page, /Đã có khoản lương[\s\S]*khoản bổ sung/);
   assert.match(page, /ExpenseService\.save/);

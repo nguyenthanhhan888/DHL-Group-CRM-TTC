@@ -1,4 +1,4 @@
-const { requirePermission, requireAuthenticatedUser } = require('../_auth');
+const { requirePermission, requireWebAccess } = require('../_auth');
 const { prepareCheckoutRetry } = require('./_lifecycle');
 const {
   PAYOS_API_BASE_URL,
@@ -43,7 +43,7 @@ module.exports = async function createPayosPaymentHandler(req, res) {
       if (existingOrder) return res.status(200).json(formatExistingOrder(existingOrder));
     }
 
-    if (payload.purpose === 'wallet_topup') await requireAuthenticatedUser(req);
+    if (payload.purpose === 'wallet_topup') await requireWebAccess(req);
     await recordPayosOrder(payload, accessToken, { stage: 'reserved', expiresAt: payload.request.expiredAt });
 
     const payosResponse = await fetch(`${PAYOS_API_BASE_URL}${PAYOS_CREATE_PAYMENT_PATH}`, {

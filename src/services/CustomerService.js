@@ -146,33 +146,18 @@ export const CustomerService = {
     return { data };
   },
 
-  async findDuplicates({ phone, name, excludeId = null }) {
-    const supabase = requireSupabaseClient();
-    // Re-use the internal helper function
-    return findDuplicates(supabase, { phone, name, excludeId });
+  async findDuplicates({ phone, name, facebookId = '', facebookLink = '', excludeId = null }) {
+    return runQuery(requireSupabaseClient().rpc('find_customer_duplicates', {
+      phone_input: phone || '', facebook_id_input: facebookId,
+      facebook_link_input: facebookLink, name_input: name || '',
+      exclude_id_input: excludeId ? Number(excludeId) : null,
+    }));
   },
 };
 
 function positiveInteger(value, fallback) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : fallback;
-}
-
-async function findDuplicates(supabase, { phone, name, excludeId = null }) {
-  const filters = [];
-  if (phone) filters.push(`phone.eq.${phone}`);
-  if (name) filters.push(`facebook_name.eq.${name}`);
-
-  if (!filters.length) return { data: [] };
-
-  let query = supabase.from('customers').select('id, facebook_name, phone').or(filters.join(','));
-  if (excludeId) {
-    query = query.not('id', 'eq', excludeId);
-  }
-
-  const { data, error } = await query.limit(5);
-  if (error) throw error;
-  return { data: data || [] };
 }
 
 function pickCustomerPayload(customer = {}) {

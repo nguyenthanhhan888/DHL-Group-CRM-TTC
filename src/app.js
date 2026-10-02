@@ -1,7 +1,7 @@
 import { Modal } from './components/Modal.js';
 import { Toast } from './components/Toast.js';
 import { NAV_SECTIONS, PAGE_TITLES } from './constants/navigation.js';
-import { PERMISSIONS, canAccessPermission, canAccessRoute } from './constants/permissions.js';
+import { PERMISSIONS, canAccessPermission, canAccessRoute, accessFingerprint } from './constants/permissions.js';
 import { AppLayout, bindSidebarPresentation, syncNavigationGroups } from './layouts/AppLayout.js';
 import { createRouter } from './router/index.js';
 import { getSupabaseStatus } from './supabase/client.js';
@@ -137,7 +137,7 @@ async function initApp() {
 }
 
 function renderAuthenticatedApp(root, profile) {
-  const userPermissions = profile.permissions || [];
+  const initialAccess = accessFingerprint(profile);
 
   const canAccess = (route) => {
     if (route === 'not-found') return true;
@@ -149,6 +149,7 @@ function renderAuthenticatedApp(root, profile) {
 
   window.addEventListener('hashchange', () => {
     if (PUBLIC_ROUTES.has(getRouteName())) {
+      router.stop();
       window.location.reload();
     }
   });
@@ -190,7 +191,11 @@ function renderAuthenticatedApp(root, profile) {
   updateSupabaseBadge(supabaseBadge);
   refreshTopbarWallet(profile);
   if (canAccessPermission(profile, PERMISSIONS.NOTIFICATIONS) || canAccessPermission(profile, PERMISSIONS.REGISTRATION_REQUESTS)) refreshAdminNotifications();
-  window.addEventListener('dhl:actionable-registration-changed', refreshAdminNotifications);
+  if (canAccessPermission(profile, PERMISSIONS.NOTIFICATIONS) || canAccessPermission(profile, PERMISSIONS.REGISTRATION_REQUESTS)) {
+    window.addEventListener('dhl:actionable-registration-changed', refreshAdminNotifications);
+    window.addEventListener('focus', refreshAdminNotifications);
+    window.setInterval(() => { if (!document.hidden) refreshAdminNotifications(); }, 30_000);
+  }
   window.addEventListener('dhl-wallet-updated', (event) => {
     if (!canAccessPermission(profile, PERMISSIONS.WALLET)) return;
     const wallet = event?.detail?.wallet;
@@ -219,6 +224,7 @@ function renderAuthenticatedApp(root, profile) {
       button.textContent = 'Đang đăng xuất...';
       try {
         await AuthService.signOut();
+        router.stop();
         window.location.hash = '#/login';
         window.location.reload();
       } catch (error) {
@@ -503,7 +509,7 @@ function renderAuthenticatedApp(root, profile) {
     Modal.close();
   });
 
-  createRouter({
+  const router = createRouter({
     outlet,
     routes,
     fallback: NotFoundPage,
@@ -517,30 +523,31 @@ function renderAuthenticatedApp(root, profile) {
         setSidebarOpen(false);
       }
     },
-  }).start();
+  });
+  router.start();
 
-  window.setInterval(async () => {
+  let refreshingAccess = false;
+  const refreshAccess = async () => {
+    if (refreshingAccess) return;
+    refreshingAccess = true;
     try {
       const session = await AuthService.initialize();
       const freshProfile = session ? await AuthService.getCurrentProfile(session.user.id) : null;
-      if (!isProfileAllowed(freshProfile)) {
-        await AuthService.signOut();
-        window.location.hash = '#/login';
+      if (!isProfileAllowed(freshProfile) || accessFingerprint(freshProfile) !== initialAccess) {
+        // Rebuild navigation and route context together; an open editor cannot retain old access.
+        Modal.close();
+        router.stop();
+        outlet.replaceChildren();
         window.location.reload();
-        return;
-      }
-
-      Object.assign(profile, freshProfile);
-      userPermissions.splice(0, userPermissions.length, ...(freshProfile.permissions || []));
-      profile.permissions = userPermissions;
-      if (!canAccess(getRouteName())) {
-        window.location.hash = `#/${firstAllowedRoute(profile)}`;
       }
     } catch {
       // A transient refresh failure should not destroy the current UI. Protected
       // database/Edge operations still perform their own active-user checks.
-    }
-  }, 30_000);
+    } finally { refreshingAccess = false; }
+  };
+  window.setInterval(refreshAccess, 30_000);
+  window.addEventListener('focus', refreshAccess);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAccess(); });
 }
 
 async function refreshAdminNotifications(){try{const data=await AdminNotificationService.getActionable();const items=[...data.items].sort((left,right)=>Date.parse(right.createdAt||0)-Date.parse(left.createdAt||0));const count=document.querySelector('[data-notification-count]');const navCount=document.querySelector('[data-registration-nav-count]');const list=document.querySelector('[data-notification-list]');const markAll=document.querySelector('[data-notification-mark-all]');if(count){count.textContent=String(data.unreadCount);count.classList.toggle('hidden',!data.unreadCount);}if(navCount){navCount.textContent=String(data.registrationCount);navCount.classList.toggle('hidden',!data.registrationCount);}if(markAll){markAll.disabled=!data.unreadCount;markAll.onclick=()=>{AdminNotificationService.markAllRead(items);refreshAdminNotifications();};}if(list){list.innerHTML=items.length?items.map(item=>`<a class="admin-notification-item is-${escapeHtml(item.tone)} ${item.read?'is-read':'is-unread'}" data-notification-id="${escapeHtml(item.id)}" href="${escapeHtml(item.href)}"><span aria-hidden="true">${renderIcon(item.icon)}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.description)}</small><time>${escapeHtml(item.timeLabel)}</time></span></a>`).join(''):'<p class="admin-notification-empty">Mọi việc đã được xử lý.</p>';list.querySelectorAll('[data-notification-id]').forEach(item=>item.addEventListener('click',()=>{AdminNotificationService.markRead(item.dataset.notificationId);document.querySelector('.admin-notification-center')?.removeAttribute('open');}));}}catch{const list=document.querySelector('[data-notification-list]');if(list)list.innerHTML='<p class="admin-notification-empty">Không thể tải thông báo.</p>';}}

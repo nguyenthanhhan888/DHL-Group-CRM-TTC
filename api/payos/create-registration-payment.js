@@ -14,6 +14,7 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return sendError(res, 405, 'METHOD_NOT_ALLOWED', 'Chỉ hỗ trợ phương thức POST.'); }
   const parsed = parseJsonBody(req.body);
   if (!parsed.ok) return sendError(res, 400, 'INVALID_JSON', 'Nội dung JSON không hợp lệ.');
+  let reserved = false;
   const diagnostic = { stage: 'SUBMIT_REQUEST', requestIds: [], batchId: null, paymentId: null, orderCode: null, payosReached: false };
   try {
     enforceRateLimit(req);
@@ -56,17 +57,30 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
     diagnostic.orderCode = orderCode;
     const request = { orderCode, amount, description: normalizePayosDescription(`DHL${payment.id}`, orderCode), returnUrl, cancelUrl, expiredAt: createPaymentExpiredAt() };
     request.signature = signPaymentRequest(request, requireEnv('PAYOS_CHECKSUM_KEY'));
+    const clientId = requireEnv('PAYOS_CLIENT_ID');
+    const apiKey = requireEnv('PAYOS_API_KEY');
     diagnostic.stage = 'RECORD_PAYOS_ORDER';
     logCheckoutStage('RECORD_PAYOS_ORDER', diagnostic, { phase: 'reserve' });
-    await recordOrder(payment.id, request, { stage: 'reserved', batchId: batch.id, expiresAt: request.expiredAt });
+    try {
+      await recordOrder(payment.id, request, { stage: 'reserved', batchId: batch.id, expiresAt: request.expiredAt });
+      reserved = true;
+    } catch (error) {
+      // Only the generation-slot conflict represents another in-flight checkout.
+      if (!isActiveSlotConflict(error)) throw error;
+      const ready = await waitForCheckout(payment.id, null);
+      if (ready?.checkout_url) return res.status(200).json({ success: true, batch: formatBatch(prepared), payment: formatPayment(ready, amount, true) });
+      error.code = 'CHECKOUT_IN_PROGRESS'; error.status = 409; throw error;
+    }
     diagnostic.stage = 'CREATE_PAYOS_ORDER';
     diagnostic.payosReached = true;
     logCheckoutStage('CREATE_PAYOS_ORDER', diagnostic, { providerReached: true });
-    const response = await fetch(`${PAYOS_API_BASE_URL}${PAYOS_CREATE_PAYMENT_PATH}`, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'x-client-id': requireEnv('PAYOS_CLIENT_ID'), 'x-api-key': requireEnv('PAYOS_API_KEY') }, body: JSON.stringify(request) });
+    const response = await fetch(`${PAYOS_API_BASE_URL}${PAYOS_CREATE_PAYMENT_PATH}`, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'x-client-id': clientId, 'x-api-key': apiKey }, signal: AbortSignal.timeout(10000), body: JSON.stringify(request) });
     const provider = await safeJson(response);
     if (!response.ok || provider?.code !== '00') {
       const providerError = new Error(provider?.desc || 'Không tạo được link PayOS cho lô đăng ký.');
       providerError.code = 'PAYOS_CREATE_FAILED';
+      // A structured provider rejection is definitive; a timeout/5xx is ambiguous.
+      providerError.releaseReservation = response.status < 500 && Boolean(provider?.code) && provider.code !== '00';
       providerError.details = `HTTP ${response.status}; provider code ${safeDiagnostic(provider?.code) || 'unknown'}`;
       throw providerError;
     }
@@ -78,7 +92,7 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
     logCheckoutStage('RETURN_CHECKOUT', diagnostic, { reused: false });
     return res.status(200).json({ success: true, batch: formatBatch(prepared), payment: formatPayment(saved, amount, false, request.expiredAt) });
   } catch (error) {
-    if (diagnostic.paymentId && diagnostic.orderCode && ['CREATE_PAYOS_ORDER', 'RECORD_PAYOS_ORDER'].includes(diagnostic.stage)) {
+    if (reserved && error?.releaseReservation === true) {
       await failReservedOrder(diagnostic.paymentId, diagnostic.orderCode, diagnostic.stage).catch((cleanupError) => {
         console.error('REGISTRATION_PAYOS_RESERVATION_RELEASE_FAILED', {
           stage: diagnostic.stage,
@@ -90,6 +104,8 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
         });
       });
     }
+    const conflict = classifyRegistrationConflict(error);
+    if (conflict) error.publicCode = conflict;
     const status = error?.status || (error?.code === 'MISSING_ENV' ? 500 : 400);
     console.error('REGISTRATION_BATCH_PAYOS_FAILED', {
       stage: diagnostic.stage,
@@ -102,9 +118,11 @@ module.exports = async function createRegistrationPaymentHandler(req, res) {
       message: safeDiagnostic(error?.message),
       details: safeDiagnostic(error?.details),
       hint: safeDiagnostic(error?.hint),
+      constraint: safeDiagnostic(error?.constraint),
+      classification: error.publicCode || null,
       status,
     });
-    return sendError(res, status, error?.code || 'REGISTRATION_BATCH_PAYOS_ERROR', publicRegistrationError(error));
+    return sendError(res, status, error.publicCode || error?.code || 'REGISTRATION_BATCH_PAYOS_ERROR', publicRegistrationError(error));
   }
 };
 
@@ -130,6 +148,7 @@ async function prepareBatch(requestIds, phone, promotionCode) {
     error.code = data?.code;
     error.details = data?.details;
     error.hint = data?.hint;
+    error.constraint = data?.constraint;
     throw error;
   }
   return data;
@@ -164,8 +183,8 @@ async function waitForCheckout(paymentId, orderCode) {
   for (let attempt = 0; attempt < 10; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 250));
     const order = await fetchExistingPayosOrder(paymentId);
-    if (!order || Number(order.order_code) !== Number(orderCode)) return order;
-    if (order.checkout_url) return order;
+    if (orderCode && order && Number(order.order_code) !== Number(orderCode)) return order;
+    if (order?.checkout_url) return order;
   }
   return null;
 }
@@ -180,6 +199,7 @@ async function recordOrder(paymentId, request, providerPayload, values = {}) {
     error.code = data?.code;
     error.details = data?.details;
     error.hint = data?.hint;
+    error.constraint = data?.constraint;
     throw error;
   }
   return Array.isArray(data) ? data[0] : data;
@@ -192,7 +212,21 @@ function normalizePhone(value) { const phone = String(value || '').replace(/[\s(
 function normalizePromotionCode(value) { const code = String(value || '').trim().toUpperCase(); if (code.length > 64 || (code && !/^[A-Z0-9_-]+$/.test(code))) throw new Error('Mã giảm giá không hợp lệ.'); return code || null; }
 function normalizeUrl(value) { const url = new URL(String(value || '').trim()); if (!['http:', 'https:'].includes(url.protocol)) throw new Error('URL chuyển hướng PayOS không hợp lệ.'); return url.toString(); }
 function enforceRateLimit(req) { const key = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown'; const now = Date.now(); const bucket = rateBuckets.get(key) || { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS }; if (bucket.resetAt <= now) { bucket.count = 0; bucket.resetAt = now + RATE_LIMIT_WINDOW_MS; } bucket.count += 1; rateBuckets.set(key, bucket); if (bucket.count > RATE_LIMIT_MAX) { const error = new Error('Bạn thao tác quá nhanh.'); error.status = 429; throw error; } }
-function publicRegistrationError(error) { if (['PAYMENT_REVIEW_REQUIRED','PAYOS_STATUS_UNAVAILABLE','PAYOS_AWAITING_WEBHOOK','PAYMENT_ALREADY_COMPLETED'].includes(error?.code)) return error.message; if (error?.status === 429) return 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.'; if (error?.code === 'P0001' && error?.message) return String(error.message).slice(0, 180); if (error?.code === '42501') return 'Số điện thoại không khớp lô đăng ký.'; if (error?.code === 'CHECKOUT_IN_PROGRESS' || error?.code === '23505') return 'Link thanh toán đang được tạo. Vui lòng bấm Thanh toán lại sau vài giây.'; if (error?.code === 'MISSING_ENV') return 'Hệ thống thanh toán chưa được cấu hình đầy đủ.'; return 'Không tạo được thanh toán PayOS cho lô đăng ký. Vui lòng thử lại hoặc liên hệ hỗ trợ.'; }
+function isActiveSlotConflict(error) {
+  return error?.code === '23505' && /payos_orders_one_active_payment_uidx/.test([error.constraint, error.message, error.hint].join(' '));
+}
+function classifyRegistrationConflict(error) {
+  if (error?.code !== '23505') return null;
+  const detail = [error.constraint, error.message, error.hint].join(' ');
+  if (/kiosks_facebook_id_unique|customers_facebook_id_key/.test(detail)) return 'FACEBOOK_ID_EXISTS';
+  if (/customers_phone_key/.test(detail)) return 'CUSTOMER_ALREADY_EXISTS';
+  return 'REGISTRATION_INTENT_CONFLICT';
+}
+function publicRegistrationError(error) {
+  if (error.publicCode === 'FACEBOOK_ID_EXISTS') return 'Facebook ID đã có Kiosk. Vui lòng tra cứu hoặc gia hạn Kiosk hiện tại.';
+  if (error.publicCode === 'CUSTOMER_ALREADY_EXISTS') return 'Khách hàng đã tồn tại. Vui lòng sử dụng thông tin khách hàng hiện tại.';
+  if (error.publicCode === 'REGISTRATION_INTENT_CONFLICT') return 'Thông tin đăng ký bị trùng hoặc thuộc hồ sơ khác. Vui lòng kiểm tra hồ sơ hiện tại hoặc liên hệ hỗ trợ.';
+ if (['PAYMENT_REVIEW_REQUIRED','PAYOS_STATUS_UNAVAILABLE','PAYOS_AWAITING_WEBHOOK','PAYMENT_ALREADY_COMPLETED'].includes(error?.code)) return error.message; if (error?.status === 429) return 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.'; if (error?.code === 'P0001' && error?.message) return String(error.message).slice(0, 180); if (error?.code === '42501') return 'Số điện thoại không khớp lô đăng ký.'; if (error?.code === 'CHECKOUT_IN_PROGRESS') return 'Link thanh toán đang được tạo. Vui lòng bấm Thanh toán lại sau vài giây.'; if (error?.code === 'MISSING_ENV') return 'Hệ thống thanh toán chưa được cấu hình đầy đủ.'; return 'Không tạo được thanh toán PayOS cho lô đăng ký. Vui lòng thử lại hoặc liên hệ hỗ trợ.'; }
 function originFromRequest(req) { return `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000'}`; }
 function toUnixSeconds(value) { const time = Date.parse(value || ''); return Number.isFinite(time) ? Math.floor(time / 1000) : null; }
 async function safeJson(response) { return response.json().catch(() => null); }

@@ -11,31 +11,31 @@ export const EXPENSE_CATEGORIES = Object.freeze([
 
 export const ExpenseService = {
   list(filters = {}) {
-    return runQuery(requireSupabaseClient().rpc('get_expenses_data', {
+    return runQuery(requireSupabaseClient().rpc('get_employee_expenses_data', {
       p_start_date: dateOrNull(filters.startDate),
       p_end_date: dateOrNull(filters.endDate),
       p_category: textOrNull(filters.category),
-      p_employee_user_id: textOrNull(filters.employeeUserId),
+      p_employee_id: filters.employeeId || null,
       p_include_archived: false,
     }));
   },
 
   save(values, id = null) {
-    return runQuery(requireSupabaseClient().rpc('save_expense', {
+    return runQuery(requireSupabaseClient().rpc('save_employee_expense', {
       p_id: id || null,
       p_category: values.category,
       p_amount: Number(values.amount),
       p_expense_date: values.expenseDate,
-      p_employee_user_id: textOrNull(values.employeeUserId),
+      p_employee_id: values.employeeId || null,
       p_salary_period: salaryPeriodDate(values.category, values.salaryPeriod),
       p_payment_method: values.paymentMethod,
       p_note: textOrNull(values.note),
     }));
   },
 
-  checkSalaryDuplicate(employeeUserId, salaryPeriod, excludeId = null) {
-    return runQuery(requireSupabaseClient().rpc('check_duplicate_salary_expense', {
-      p_employee_user_id: textOrNull(employeeUserId),
+  checkSalaryDuplicate(employeeId, salaryPeriod, excludeId = null) {
+    return runQuery(requireSupabaseClient().rpc('check_employee_salary_duplicate', {
+      p_employee_id: employeeId || null,
       p_salary_period: salaryPeriodDate('salary', salaryPeriod),
       p_exclude_id: excludeId || null,
     }));

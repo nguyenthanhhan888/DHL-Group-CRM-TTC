@@ -19,7 +19,7 @@ export function StaffPage() {
   return `
     ${PageHeader({
       title: 'Quản lý người dùng',
-      description: 'Quản lý hồ sơ TTC, ví xu và quyền truy cập web theo từng tài khoản.',
+      description: 'Quản lý tài khoản đăng nhập Website và quyền CRM. Tài khoản người dùng độc lập với Khách hàng, Kiosk và Nhân viên.',
     })}
     <div class="toolbar unified-users-toolbar">
       <label class="unified-user-search">
@@ -200,8 +200,9 @@ function accessPanel(user, canManageSecurity) {
   return `
     <section class="user-detail-card user-access-card">
       <div class="user-detail-card-head user-access-card-head"><div><span>Quyền truy cập Web</span><h3>Phạm vi truy cập trực tiếp</h3></div>${webAccessDetailStatus(user)}</div>
-      ${user.is_system_admin ? '<p class="modal-note">System Admin tự động có toàn bộ permission active; không tạo user_permissions riêng.</p>' : `
+      ${user.is_system_admin ? '<p class="modal-note">Quản trị hệ thống có toàn quyền; không cần cấp quyền riêng.</p>' : `
         <form id="user-permission-form" class="modal-form">
+          <p class="modal-note">Bỏ chọn tất cả quyền chỉ thu hồi quyền CRM; tài khoản vẫn đăng nhập được nếu đang hoạt động. Quyền Chi phí bao gồm quản lý Nhân viên.</p>
           <div class="permission-group-grid">${PERMISSION_GROUPS.map((group) => permissionGroup(group, selected, canManageSecurity)).join('')}</div>
           ${canManageSecurity ? `<div class="permission-action-bar"><div><strong data-permission-selection-count>${selected.size} quyền được chọn</strong><span data-permission-dirty>Chưa có thay đổi</span></div><button class="btn-primary" type="submit" data-permission-save disabled>Lưu quyền</button></div>` : '<p class="modal-note">Bạn có thể xem quyền; chỉ System Admin được cấp hoặc thu hồi.</p>'}
         </form>

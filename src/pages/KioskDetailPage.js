@@ -16,6 +16,7 @@ import { escapeHtml } from '../utils/html.js';
 import { deriveKioskStatus } from '../utils/kioskStatus.js';
 import { renderIcon } from '../utils/icons.js';
 import { setButtonBusy } from '../utils/buttonState.js';
+import { PERMISSIONS, canAccessPermission } from '../constants/permissions.js';
 
 const PAYMENT_COLUMNS = ['Ngày', 'Kỳ hạn', 'Số tháng', 'Số tiền', 'Phương thức', 'Trạng thái', 'Loại giao dịch', 'Ghi chú'];
 let currentKiosk = null;
@@ -58,7 +59,7 @@ KioskDetailPage.afterRender = async function afterRenderKioskDetail({ params, pr
     ]);
     detailState.canCorrectHistorical = canCorrectHistorical === true;
 
-    const { data: customerStatus } = kiosk?.customer_id
+    const { data: customerStatus } = kiosk?.customer_id && (canAccessPermission(accessProfile, PERMISSIONS.CUSTOMERS) || canAccessPermission(accessProfile, PERMISSIONS.CUSTOMER_DETAIL))
       ? await CustomerService.getStatusById(kiosk.customer_id)
       : { data: null };
     renderKioskDetail(kiosk, payments || [], customerStatus);
@@ -165,7 +166,7 @@ function renderStatusActions(kiosk) {
       <summary class="btn-primary kiosk-detail-action-trigger" aria-haspopup="menu" aria-expanded="false"><span>Thao tác</span>${renderIcon('chevron-down')}</summary>
       <div class="kiosk-detail-action-popover" role="menu">
         <button class="kiosk-detail-menu-item" id="edit-kiosk-detail-button" type="button" role="menuitem">${renderIcon('edit')}<span>Sửa thông tin</span></button>
-        <button class="kiosk-detail-menu-item" id="renew-kiosk-detail-button" type="button" role="menuitem">${renderIcon('refresh')}<span>Gia hạn</span></button>
+        ${canAccessPermission(detailState.profile, PERMISSIONS.PAYMENTS) ? `<button class="kiosk-detail-menu-item" id="renew-kiosk-detail-button" type="button" role="menuitem">${renderIcon('refresh')}<span>Gia hạn</span></button>` : ''}
         ${statusAction}
       </div>
     </details>

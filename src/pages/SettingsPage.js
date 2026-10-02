@@ -4,6 +4,7 @@ import { settingsService } from '../services/SettingsService.js';
 import { Toast } from '../components/Toast.js';
 import { escapeHtml } from '../utils/html.js';
 import { HomepageContentAdmin, mountHomepageContentAdmin } from './HomepageContentPage.js';
+import { PERMISSIONS, canAccessPermission } from '../constants/permissions.js';
 
 const fields = [
   { key: 'facebook_group_id', label: 'Mã nhóm Facebook', inputmode: 'numeric', pattern: '[0-9]+', help: 'Dùng để tạo liên kết thành viên Facebook.' },
@@ -123,8 +124,16 @@ export function SettingsPage() {
   `;
 }
 
-SettingsPage.afterRender = ({ outlet }) => {
-  loadAndRenderSettings(outlet);
+SettingsPage.afterRender = ({ outlet, profile }) => {
+  const operations = canAccessPermission(profile, PERMISSIONS.SETTINGS);
+  const website = canAccessPermission(profile, PERMISSIONS.HOMEPAGE_CONTENT);
+  for (const [name, allowed] of [['operations', operations], ['website', website]]) {
+    if (!allowed) {
+      outlet.querySelector(`[data-settings-workspace-tab="${name}"]`)?.remove();
+      outlet.querySelector(`[data-settings-workspace-panel="${name}"]`)?.remove();
+    }
+  }
+  if (operations) loadAndRenderSettings(outlet);
   let websiteLoaded = false;
   outlet.querySelectorAll('[data-settings-workspace-tab]').forEach((button) => button.addEventListener('click', () => {
     const active = button.dataset.settingsWorkspaceTab;
@@ -132,4 +141,5 @@ SettingsPage.afterRender = ({ outlet }) => {
     outlet.querySelectorAll('[data-settings-workspace-panel]').forEach((panel) => panel.classList.toggle('hidden', panel.dataset.settingsWorkspacePanel !== active));
     if (active === 'website' && !websiteLoaded) { websiteLoaded = true; mountHomepageContentAdmin(); }
   }));
+  outlet.querySelector('[data-settings-workspace-tab]')?.click();
 };

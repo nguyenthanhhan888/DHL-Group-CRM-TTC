@@ -51,7 +51,7 @@ test('public PayOS requests use a separate waiting-for-payment state', () => {
 test('Admin queue exposes awaiting-payment separately from Admin-review pending', () => {
   assert.match(requestService, /admin_list_registration_requests/);
   assert.match(notifications, /get_registration_actionable_summary/);
-  assert.match(notifications, /registrationCount: pendingCount \+ reconciliationCount/);
+  assert.match(notifications, /registrationCount: Number\(data\?\.actionableRegistrationCount/);
   assert.doesNotMatch(notifications, /request:awaiting_payment:/);
   assert.match(notifications, /awaitingPaymentCount: awaitingCount/);
 });
