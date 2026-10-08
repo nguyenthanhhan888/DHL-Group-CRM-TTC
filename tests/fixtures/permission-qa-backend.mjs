@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
 const require=createRequire(import.meta.url);
 const handlers={
+  '/api/facebook-id':require('../../api/facebook-id.js'),
   '/api/payos/create-registration-payment':require('../../api/payos/create-registration-payment.js'),
   '/api/public/kiosk-lookup':require('../../api/public/kiosk-lookup.js'),
   '/api/public/renew-kiosk':require('../../api/public/renew-kiosk.js'),
@@ -19,7 +20,7 @@ const split=value=>{let depth=0,start=0,parts=[];for(let i=0;i<value.length;i++)
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json',...headers}});
 export const QA_PASSWORD='Local-QA-Only-2026!';
 
-export async function createPermissionQaBackend({providerFetch=null}={}){
+export async function createPermissionQaBackend({providerFetch=null,facebookFetch=null}={}){
   const db=await createPermissionQaDatabase(),users=new Map(),tokens=new Map(),refreshes=new Map(),calls=[];
   const qaIp='qa-'+randomUUID();
   let queue=Promise.resolve(),baseUrl='http://permission-qa.invalid',originalFetch;
@@ -85,7 +86,7 @@ export async function createPermissionQaBackend({providerFetch=null}={}){
     const table=url.pathname.split('/').at(-1),params=url.searchParams,values=[],bind=value=>{values.push(value);return `$${values.length}`;};
     const conditions=[];
     for(const [key,value] of params){
-      if(['select','order','offset','limit','on_conflict'].includes(key))continue;
+      if(['select','order','offset','limit','on_conflict','columns'].includes(key))continue;
       if(key==='or'){
         const alternatives=value.slice(1,-1).split(',').map(item=>{const [field,op,...parts]=item.split('.'),val=parts.join('.'),column=`t.${identifier(field)}`;if(op==='is'&&val==='null')return `${column} is null`;if(op==='eq')return `${column}=${bind(val)}`;if(op==='neq')return `${column}<>${bind(val)}`;if(op!=='ilike')throw Error('Unsupported QA OR');return `${column} ilike ${bind(val.replaceAll('*','%'))}`;});
         conditions.push(`(${alternatives.join(' or ')})`);continue;
@@ -113,11 +114,17 @@ export async function createPermissionQaBackend({providerFetch=null}={}){
       result=await run(`insert into ${name}(${keys.map(identifier).join(',')}) values ${entries.join(',')} returning *`,values);
     }else throw Error('Unsupported QA REST method');
     let data=result.rows;
+    // PostgREST emits SQL DATE as YYYY-MM-DD; PGlite's default parser returns Date.
+    for(const field of result.fields.filter(field=>field.dataTypeID===1082)) for(const row of data) {
+      if(row[field.name] instanceof Date) row[field.name]=row[field.name].toISOString().slice(0,10);
+    }
     if(headers.get('accept')?.includes('vnd.pgrst.object')){if(data.length!==1)return json({message:'Expected one row',code:'PGRST116'},406);data=data[0];}
     return json(data,200,{'Content-Range':`0-${Math.max(0,result.rows.length-1)}/${total??result.rows.length}`});
   }
   async function fetchFixture(input,init={}){
-    const url=new URL(typeof input==='string'?input:input.url),method=init.method||'GET',headers=new Headers(init.headers||{}),token=(headers.get('authorization')||'').replace(/^Bearer /i,''),body=init.body?JSON.parse(init.body):{};
+    const url=new URL(typeof input==='string'?input:input.url),method=init.method||'GET',headers=new Headers(init.headers||{}),token=(headers.get('authorization')||'').replace(/^Bearer /i,'');
+    if(url.origin==='https://id.traodoisub.com' && facebookFetch) return facebookFetch(url,init);
+    const body=init.body?JSON.parse(init.body):{};
     if(url.origin==='https://api-merchant.payos.vn' && providerFetch) return providerFetch(url,init);
     if(url.origin!==new URL(baseUrl).origin)throw Error(`QA prevents external requests: ${url.origin}`);
     const service=token==='qa-service-only';calls.push({path:url.pathname,method,actor:tokens.get(token)|| (service?'service_role':'anon'),body});

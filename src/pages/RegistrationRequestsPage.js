@@ -1,3 +1,4 @@
+import { isLegacyRequest, registrationFollowup } from '../utils/registrationFollowup.js';
 import { AuthService } from '../services/AuthService.js';
 import { canAccessPermission, PERMISSIONS } from '../constants/permissions.js';
 import { EmptyState } from '../components/EmptyState.js';
@@ -6,6 +7,7 @@ import { PageHeader } from '../components/PageHeader.js';
 import { StatusBadge } from '../components/StatusBadge.js';
 import { Toast } from '../components/Toast.js';
 import { RegistrationRequestService } from '../services/RegistrationRequestService.js';
+import { formatDate as formatDateOnly, formatDateTime } from '../utils/date.js';
 import { formatCurrency } from '../utils/currency.js';
 import { escapeHtml } from '../utils/html.js';
 import { renderIcon } from '../utils/icons.js';
@@ -15,8 +17,8 @@ const state = { canConfirmPayment: false, status: '', busyId: null, searchTerm: 
 
 export function RegistrationRequestsPage() {
   return `
-    ${PageHeader({ title: 'Hồ sơ Kiosk', description: 'Theo dõi toàn bộ lifecycle: thanh toán công khai, duyệt Legacy/Bổ sung, hoàn tất và hủy/từ chối.' })}
-    <div class="request-state-note" role="note"><strong>Chờ thanh toán</strong> là hồ sơ PayOS chưa tạo doanh thu. <strong>Chờ duyệt</strong> là hồ sơ Legacy/Bổ sung cần xử lý thủ công.</div>
+    ${PageHeader({ title: 'Hồ sơ Kiosk', description: 'Theo dõi hồ sơ đăng ký, thanh toán, xét duyệt và trạng thái hoàn tất.' })}
+    <div class="request-state-note" role="note"><strong>Chờ thanh toán</strong> là hồ sơ chưa tạo doanh thu. <strong>Chờ duyệt</strong> là hồ sơ cần xử lý thủ công.</div>
     <div class="toolbar request-toolbar">
       <input id="request-search" class="form-control" type="search" placeholder="Tìm tên, SĐT, Facebook ID, dịch vụ hoặc mã hồ sơ" aria-label="Tìm hồ sơ Kiosk" autocomplete="off">
       <select id="request-status-filter" class="filter-select" aria-label="Lọc trạng thái hồ sơ">
@@ -53,6 +55,7 @@ async function loadRequests() {
   body.innerHTML = loadingRow();
   try {
     const { data } = await RegistrationRequestService.list(state.status);
+    window.dispatchEvent(new CustomEvent('dhl:registration-list-refreshed'));
     state.rows = Array.isArray(data) ? data : [];
     renderRows(state.rows);
   } catch (error) {
@@ -72,7 +75,7 @@ function renderRows(rows) {
 function rowMarkup(item) {
   return `<tr data-request-row="${item.id}">
     <td data-label="#">${item.id}</td>
-    <td data-label="Khách/Kiosk"><strong>${escapeHtml(item.facebook_name || '—')}</strong><br><span class="muted-text">FB ID: ${escapeHtml(item.facebook_id || '—')}</span>${isLegacyRequest(item) ? '<br><span class="badge badge-pending">Bổ sung/Legacy</span>' : ''}</td>
+    <td data-label="Khách/Kiosk"><strong>${escapeHtml(item.facebook_name || '—')}</strong><br><span class="muted-text">FB ID: ${escapeHtml(item.facebook_id || '—')}</span>${isLegacyRequest(item) ? '<br><span class="badge badge-pending">Bổ sung</span>' : ''}</td>
     <td data-label="Liên hệ">${escapeHtml(item.phone || '—')}<br>${safeHref(item.facebook_link) ? `<a class="table-link" href="${escapeHtml(safeHref(item.facebook_link))}" target="_blank" rel="noreferrer">Mở Facebook</a>` : ''}</td>
     <td data-label="Ngành nghề">${escapeHtml(item.business_type_name || item.service_name || '—')}<br><span class="muted-text">${escapeHtml(item.category_name || '')}</span></td>
     <td data-label="Thời hạn">${requestPeriod(item)}</td>
@@ -98,11 +101,12 @@ function requestStatus(item) {
 }
 
 function actionButtons(item) {
-  if (item.status === 'awaiting_payment') return `<div class="request-actions">${state.canConfirmPayment ? `<button class="table-approve-button" type="button" data-request-action="external-complete" data-request-id="${item.id}">Ghi nhận tiền ngoài PayOS</button>` : '<span class="muted-text">Chờ khách thanh toán</span>'}<button class="table-cancel-button" type="button" data-request-action="awaiting-cancel" data-request-id="${item.id}">Hủy</button></div>`;
-  if (isLegacyRequest(item) && item.status === 'approved' && (!item.customer_id || !item.kiosk_id)) return `<div class="request-actions"><button class="table-approve-button" type="button" data-request-action="legacy-approve" data-request-id="${item.id}">Hoàn tất lưu</button></div>`;
-  if (item.status !== 'pending' || item.metadata?.workflow === 'public_payos' || item.registration_batch_id) return '—';
-  if (isLegacyRequest(item)) return `<div class="request-actions"><button class="table-approve-button" type="button" data-request-action="legacy-approve" data-request-id="${item.id}">Duyệt & lưu</button><button class="table-cancel-button" type="button" data-request-action="legacy-cancel" data-request-id="${item.id}">Hủy</button></div>`;
-  return `<div class="request-actions"><button class="table-approve-button" type="button" data-request-action="approve" data-request-id="${item.id}">Duyệt hồ sơ</button><button class="table-cancel-button" type="button" data-request-action="reject" data-request-id="${item.id}">Từ chối</button></div>`;
+  const { actions } = registrationFollowup(item);
+  if (actions === 'awaiting-payment') return `<div class="request-actions">${state.canConfirmPayment ? `<button class="table-approve-button" type="button" data-request-action="external-complete" data-request-id="${item.id}">Xác nhận đã nhận tiền</button>` : '<span class="muted-text">Chờ khách thanh toán</span>'}<button class="table-cancel-button" type="button" data-request-action="awaiting-cancel" data-request-id="${item.id}">Hủy hồ sơ</button></div>`;
+  if (actions === 'needs-review') return '<span class="badge badge-pending">Cần kiểm tra</span>';
+  if (actions === 'none' || actions === 'follow-up') return '—';
+  if (actions === 'legacy-review') return `<div class="request-actions"><button class="table-approve-button" type="button" data-request-action="legacy-approve" data-request-id="${item.id}">Duyệt</button><button class="table-cancel-button" type="button" data-request-action="legacy-cancel" data-request-id="${item.id}">Từ chối</button></div>`;
+  return `<div class="request-actions"><button class="table-approve-button" type="button" data-request-action="approve" data-request-id="${item.id}">Duyệt</button><button class="table-cancel-button" type="button" data-request-action="reject" data-request-id="${item.id}">Từ chối</button></div>`;
 }
 
 function handleAction(event) {
@@ -117,12 +121,12 @@ function handleAction(event) {
 }
 
 function openExternalComplete(item) {
-  Modal.open({ title: 'Xác nhận thanh toán ngoài PayOS', className: 'registration-operation-modal', body: `
-    <div class="operation-warning">${renderIcon('warning')}<p>Chỉ tiếp tục khi tiền đã được kiểm tra bên ngoài PayOS. Hệ thống sẽ ghi thanh toán <strong>external</strong>, hoàn tất toàn bộ lô và kích hoạt Kiosk đúng một lần.</p></div>
+  Modal.open({ title: 'Xác nhận đã nhận tiền', className: 'registration-operation-modal', body: `
+    <div class="operation-warning">${renderIcon('warning')}<p>Chỉ tiếp tục khi khoản tiền đã được kiểm tra và thực nhận. Hệ thống sẽ hoàn tất toàn bộ lô và kích hoạt Kiosk đúng một lần.</p></div>
     <dl class="operation-summary"><div><dt>Hồ sơ</dt><dd>#${item.id} · ${escapeHtml(item.facebook_name || '—')}</dd></div><div><dt>Phạm vi</dt><dd>${Number(item.batch_item_count || 0) > 1 ? `Toàn bộ lô ${Number(item.batch_item_count)} Kiosk` : '1 Kiosk'}</dd></div><div><dt>Số tiền</dt><dd>${formatCurrency(item.batch_total_amount || item.total_amount || 0)}</dd></div><div><dt>PayOS</dt><dd>${escapeHtml(paymentStateText(item))}</dd></div></dl>
-    <label class="form-group"><span>Ghi chú đối soát *</span><textarea id="external-payment-note" class="form-control" rows="3" placeholder="Ví dụ: Đã nhận chuyển khoản ngoài PayOS"></textarea></label>
+    <label class="form-group"><span>Ghi chú xác nhận *</span><textarea id="external-payment-note" class="form-control" rows="3" placeholder="Ví dụ: Đã kiểm tra và nhận chuyển khoản"></textarea></label>
     <div id="registration-operation-error" class="form-error hidden" role="alert"></div>
-    <div class="modal-actions"><button class="btn-secondary" type="button" data-operation-close>Đóng</button><button class="btn-primary" type="button" data-operation-confirm>${renderIcon('check')} Xác nhận & kích hoạt</button></div>` });
+    <div class="modal-actions"><button class="btn-secondary" type="button" data-operation-close>Đóng</button><button class="btn-primary" type="button" data-operation-confirm>${renderIcon('check')} Xác nhận đã nhận tiền</button></div>` });
   bindModalAction(item.id, 'external-complete');
 }
 
@@ -141,13 +145,13 @@ function bindModalAction(id, action) {
     const button = event.currentTarget;
     const errorTarget = document.getElementById('registration-operation-error');
     const value = action === 'external-complete' ? document.getElementById('external-payment-note')?.value.trim() || '' : document.getElementById('awaiting-cancel-reason')?.value.trim() || '';
-    if (!value && action === 'external-complete') { errorTarget.textContent = 'Cần ghi chú đối soát khoản tiền đã nhận.'; errorTarget.classList.remove('hidden'); return; }
+    if (!value && action === 'external-complete') { errorTarget.textContent = 'Cần ghi chú xác nhận khoản tiền đã nhận.'; errorTarget.classList.remove('hidden'); return; }
     if (action === 'awaiting-cancel' && !value) { errorTarget.textContent = 'Vui lòng nhập lý do hủy.'; errorTarget.classList.remove('hidden'); Toast.show('Vui lòng nhập lý do hủy hồ sơ.', 'warning'); document.getElementById('awaiting-cancel-reason')?.focus(); return; }
     state.busyId = id; setButtonBusy(button, true, { busyLabel: 'Đang xử lý...' });
     try {
       if (action === 'external-complete') await RegistrationRequestService.completeExternal(id, value);
       else await RegistrationRequestService.cancelAwaiting(id, value);
-      Modal.close(); Toast.show(action === 'external-complete' ? 'Đã ghi nhận thanh toán ngoài PayOS và kích hoạt Kiosk.' : 'Đã hủy hồ sơ, lịch sử vẫn được lưu.', 'success');
+      Modal.close(); Toast.show(action === 'external-complete' ? 'Đã xác nhận tiền và kích hoạt Kiosk.' : 'Đã hủy hồ sơ, lịch sử vẫn được lưu.', 'success');
       window.dispatchEvent(new CustomEvent('dhl:actionable-registration-changed'));
       await loadRequests();
     } catch (error) { errorTarget.textContent = error?.message || 'Không thể xử lý hồ sơ.'; errorTarget.classList.remove('hidden'); Toast.show(errorTarget.textContent, 'error'); }
@@ -157,8 +161,8 @@ function bindModalAction(id, action) {
 
 async function runLegacyReviewAction(item, action) {
   let reason = '';
-  if (action === 'reject' || action === 'legacy-cancel') { reason = window.prompt(action === 'legacy-cancel' ? 'Nhập lý do hủy yêu cầu bổ sung:' : 'Nhập lý do từ chối đơn:')?.trim() || ''; if (!reason) return; }
-  else if (!window.confirm(action === 'legacy-approve' ? 'Duyệt hồ sơ và lưu thông tin vào Khách hàng/Kiosk?' : 'Duyệt hồ sơ đăng ký này?')) return;
+  if (action === 'reject' || action === 'legacy-cancel') { reason = window.prompt('Nhập lý do từ chối hồ sơ:')?.trim() || ''; if (!reason) return; }
+  else if (!window.confirm('Bạn có chắc muốn duyệt?')) return;
   state.busyId = item.id; setRowButtonsDisabled(item.id, true);
   try {
     if (action === 'approve') await RegistrationRequestService.approve(item.id);
@@ -173,12 +177,9 @@ async function runLegacyReviewAction(item, action) {
 }
 
 function filterRequests(rows) { const query = normalizeSearch(state.searchTerm); if (!query) return rows; return rows.filter((item) => [item.id, item.facebook_name, item.facebook_id, item.phone, item.business_type_name, item.category_name, item.status, item.total_amount].map(normalizeSearch).join(' ').includes(query)); }
-function isLegacyRequest(item) { const source = String(item?.metadata?.request_type || item?.metadata?.source || '').toLowerCase(); return source.includes('legacy') || source.includes('additional'); }
 function requestPeriod(item) { return item.months ? `${Number(item.months)} tháng` : `${formatDateOnly(item.requested_start_date)} – ${formatDateOnly(item.requested_end_date)}`; }
 function paymentStateText(item) { const labels = { manual_pending: 'Chờ xác nhận thanh toán thủ công', not_created: 'Chưa tạo liên kết thanh toán', preparing: 'Đang tạo PayOS', awaiting_customer: 'Đang chờ khách thanh toán', expired: 'Link thanh toán hết hạn', create_failed: 'Tạo PayOS thất bại', cancelled: 'PayOS đã hủy', completed: 'PayOS đã hoàn tất' }; return labels[item.payos_state] || 'Chưa có trạng thái PayOS'; }
 function setRowButtonsDisabled(id, disabled) { document.querySelectorAll(`[data-request-id="${id}"]`).forEach((button) => { button.disabled = disabled; }); }
-function formatDateOnly(value) { if (!value) return '—'; return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short' }).format(new Date(`${value}T00:00:00`)); }
-function formatDateTime(value) { if (!value) return '—'; return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)); }
 function safeHref(value) { if (!value) return ''; try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } }
 function normalizeSearch(value) { return String(value || '').trim().toLocaleLowerCase('vi'); }
 function loadingRow() { return stateRow('Đang tải hồ sơ Kiosk', 'Vui lòng chờ trong giây lát.'); }

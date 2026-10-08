@@ -83,5 +83,5 @@ test('migration and services route every active status consumer through one SQL 
   assert.match(kioskService, /rpc\('get_kiosk_status_data'/);
   assert.match(customerService, /rpc\('get_customer_status_data'/);
   assert.match(dashboardService, /rpc\('get_dashboard_data'/);
-  assert.match(reportService, /rpc\('get_reports_data'/);
+  assert.match(reportService, /rpc\('get_reports_data_filtered'/);
 });

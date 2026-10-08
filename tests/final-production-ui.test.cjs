@@ -55,7 +55,6 @@ test('detail headings, tabs, and information banners use semantic colors', async
   }
   assert.match(css, /Theme-neutral component layer[\s\S]*?color:var\(--text-primary\)/);
   assert.match(css, /\.admin-user-tab\s*\{[\s\S]*?color:\s*var\(--text-secondary\)/);
-  assert.match(css, /\.ttc-tab-button\s*\{[\s\S]*?color:\s*var\(--text-secondary\)/);
   assert.match(css, /\.legacy-scope-notice,\s*\.legacy-payment-proof\s*\{[\s\S]*?color:\s*var\(--info-text\)/);
   assert.match(css, /\.notice strong\s*\{\s*color:\s*inherit/);
 });

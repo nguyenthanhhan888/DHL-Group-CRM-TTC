@@ -11,6 +11,7 @@ const webhook = read('api/payos/webhook.js');
 const page = read('src/pages/RegistrationRequestsPage.js');
 const requestService = read('src/services/RegistrationRequestService.js');
 const notifications = read('src/services/AdminNotificationService.js');
+const notificationMigration = read('supabase/migrations/20261008172650_persist_crm_notifications.sql');
 const reports = read('src/pages/ReportsPage.js');
 const register = read('src/pages/RegisterPage.js');
 
@@ -93,10 +94,11 @@ test('reports and notifications keep all four pending concepts separate', () => 
   for (const key of ['pendingPayments', 'awaitingPaymentRequests', 'pendingKiosks', 'pendingReviewRequests']) assert.match(sql, new RegExp(`'${key}'`));
   const overview = reports.match(/function renderOverview[\s\S]*?function renderRevenue/)?.[0] || '';
   for (const label of ['Hồ sơ cần xử lý', 'Hồ sơ chờ thanh toán', 'Kiosk hoạt động']) assert.match(overview, new RegExp(label));
-  assert.match(notifications, /pendingReviewCount: pendingCount/);
-  assert.match(notifications, /awaitingPaymentCount: awaitingCount/);
-  assert.match(notifications, /registrationCount: Number\(data\?\.actionableRegistrationCount/);
-  assert.match(notifications, /get_registration_actionable_summary/);
+  assert.match(notifications, /get_crm_notifications/);
+  assert.match(notifications, /Number\(data\?\.unreadCount \|\| 0\)/);
+  assert.doesNotMatch(notifications, /pendingReviewCount|awaitingPaymentCount|registrationCount/);
+  assert.match(notificationMigration, /'registration_review'/);
+  assert.match(notificationMigration, /'payment_reconciliation'/);
 });
 
 test('promotion UI and signed webhook remain connected without weakening idempotency', () => {

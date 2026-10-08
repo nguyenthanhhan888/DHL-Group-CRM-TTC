@@ -14,6 +14,7 @@ const intentHardening = read('supabase/migrations/20260815120000_harden_payos_pa
 const webhook = read('api/payos/webhook.js');
 const requestService = read('src/services/RegistrationRequestService.js');
 const notifications = read('src/services/AdminNotificationService.js');
+const notificationMigration = read('supabase/migrations/20261008172650_persist_crm_notifications.sql');
 const legacy = read('supabase/migrations/20260729224250_create_public_legacy_registration_requests.sql');
 const completion = read('supabase/migrations/20260825160000_complete_registration_checkout_v3.sql');
 
@@ -66,9 +67,10 @@ test('retry reuses request ownership, batch, payment, Kiosk and active provider 
 
 test('awaiting-payment is visible but remains separate from Admin review', () => {
   assert.match(requestService, /admin_list_registration_requests/);
-  assert.match(notifications, /get_registration_actionable_summary/);
-  assert.match(notifications, /registrationCount: Number\(data\?\.actionableRegistrationCount/);
-  assert.doesNotMatch(notifications, /request:awaiting_payment:/);
+  assert.match(notifications, /get_crm_notifications/);
+  assert.doesNotMatch(notifications, /registrationCount|awaitingPaymentCount/);
+  assert.match(notificationMigration, /r\.status = 'pending'/);
+  assert.match(notificationMigration, /coalesce\(r\.metadata ->> 'workflow', ''\) <> 'public_payos'/);
   assert.match(completion, /'pendingReviewRequests'/);
   assert.match(completion, /'awaitingPaymentRequests'/);
   assert.match(legacy, /'request_type', 'legacy'/);

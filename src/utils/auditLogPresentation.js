@@ -48,7 +48,7 @@ const FIELD_LABELS = Object.freeze({
   actual_amount: 'Số tiền thực nhận', amount: 'Số tiền', balance: 'Số dư', balance_before: 'Số dư trước',
   balance_after: 'Số dư sau', discount: 'Giảm giá', discount_value: 'Giá trị giảm', discount_type: 'Loại giảm giá',
   is_active: 'Trạng thái áp dụng', web_access_enabled: 'Quyền truy cập Web', permissions: 'Quyền được cấp',
-  tier: 'Cấp bậc TTC', credit_limit: 'Hạn mức', note: 'Ghi chú', reason: 'Lý do', kiosk_count: 'Số Kiosk',
+  note: 'Ghi chú', reason: 'Lý do', kiosk_count: 'Số Kiosk',
   expense_date: 'Ngày chi', salary_period: 'Kỳ lương', employee_user_id: 'Nhân viên', category: 'Danh mục chi phí',
 });
 

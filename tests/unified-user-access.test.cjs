@@ -88,11 +88,11 @@ test.afterEach(() => {
   delete global.fetch;
 });
 
-test('canonical permission map contains all 26 active production permissions', () => {
-  assert.equal(ALL_PERMISSIONS.length, 26);
-  assert.equal(new Set(ALL_PERMISSIONS).size, 26);
+test('canonical permission map contains 19 CRM permissions', () => {
+  assert.equal(ALL_PERMISSIONS.length, 19);
+  assert.equal(new Set(ALL_PERMISSIONS).size, 19);
   assert.equal(ROUTE_PERMISSIONS['user-management'], PERMISSIONS.USER_MANAGEMENT);
-  assert.equal(ROUTE_PERMISSIONS['admin-ttc-wallets'], PERMISSIONS.WALLET);
+  assert.equal(ROUTE_PERMISSIONS['admin-ttc-wallets'], undefined);
 });
 
 test('locked session is rejected from sensitive API using current database access state', async () => {
@@ -290,21 +290,14 @@ test('System Admin target cannot be permission-modified or locked', async () => 
   assert.equal(lockRes.statusCode, 403);
 });
 
-test('wallet adjustment reuses ledger RPC and preserves idempotency key', async () => {
+test('removed wallet actions are rejected without any write', async () => {
   const writes = [];
-  global.fetch = createSensitiveFetch({
-    onWrite(entry) { writes.push(entry); },
-    walletResult: { already_processed: true, ledger: { id: 99, balance_before: 10, balance_after: 15 } },
-  });
-  const res = await callHandler({
-    action: 'adjust_wallet', userId: TARGET_ID, amount: 5, reason: 'Điều chỉnh',
-    idempotencyKey: 'wallet:test:fixed', adminPassword: 'admin-password',
-  });
-  assert.equal(res.statusCode, 200);
-  assert.equal(res.payload.result.already_processed, true);
-  const rpc = writes.find((item) => item.path === '/rest/v1/rpc/admin_post_wallet_ledger');
-  assert.equal(rpc.body.idempotency_key_input, 'wallet:test:fixed');
-  assert.equal(rpc.body.reason_input, 'Điều chỉnh');
+  global.fetch = createSensitiveFetch({ onWrite(entry) { writes.push(entry); } });
+  for (const action of ['adjust_wallet', 'wallet_ledger']) {
+    const res = await callHandler({ action, userId: TARGET_ID });
+    assert.equal(res.statusCode, 400);
+  }
+  assert.equal(writes.length, 0);
 });
 
 test('password reset response and audit never contain plaintext passwords', async () => {

@@ -15,17 +15,10 @@
     CATEGORIES: 'categories',
     BUSINESS_TYPES: 'business-types',
     REGISTRATION_REQUESTS: 'registration-requests',
-    TTC: 'ttc',
-    SERVICES: 'services',
     NOTIFICATIONS: 'notifications',
-    TASKS: 'tasks',
     USER_MANAGEMENT: 'user-management',
-    WALLET: 'wallet',
-    PRICING: 'pricing',
-    VIOLATIONS: 'violations',
     LOGS: 'logs',
     SETTINGS: 'settings',
-    ADMIN_TTC: 'admin-ttc',
   });
 
   const ALL_PERMISSIONS = Object.freeze(Object.values(PERMISSIONS));
@@ -44,26 +37,11 @@
     categories: PERMISSIONS.CATEGORIES,
     'business-types': PERMISSIONS.BUSINESS_TYPES,
     'registration-requests': PERMISSIONS.REGISTRATION_REQUESTS,
-    ttc: PERMISSIONS.TTC,
-    'ttc-earn': PERMISSIONS.TTC,
-    'ttc-campaign-create': PERMISSIONS.TTC,
-    'ttc-campaigns': PERMISSIONS.TTC,
-    'admin-ttc-campaigns': PERMISSIONS.SERVICES,
-    'admin-ttc-announcements': PERMISSIONS.NOTIFICATIONS,
-    'admin-ttc-tasks': PERMISSIONS.TASKS,
     'user-management': PERMISSIONS.USER_MANAGEMENT,
     staff: PERMISSIONS.USER_MANAGEMENT,
     permissions: PERMISSIONS.USER_MANAGEMENT,
-    'admin-ttc-users': PERMISSIONS.USER_MANAGEMENT,
-    'admin-ttc-wallets': PERMISSIONS.WALLET,
-    'ttc-wallet': PERMISSIONS.WALLET,
-    'ttc-wallet-history': PERMISSIONS.WALLET,
-    'admin-ttc-settings': PERMISSIONS.PRICING,
-    'admin-ttc-logs': PERMISSIONS.VIOLATIONS,
     logs: PERMISSIONS.LOGS,
     settings: PERMISSIONS.SETTINGS,
-    admin: PERMISSIONS.ADMIN_TTC,
-    'admin-ttc': PERMISSIONS.ADMIN_TTC,
   });
 
   const PERMISSION_GROUPS = Object.freeze([
@@ -81,21 +59,9 @@
     },
     { label: 'Tài chính', permissions: [PERMISSIONS.PAYMENTS, PERMISSIONS.PAYMENT_DETAIL, PERMISSIONS.EXPENSES] },
     {
-      label: 'TTC',
-      permissions: [
-        PERMISSIONS.TTC,
-        PERMISSIONS.SERVICES,
-        PERMISSIONS.NOTIFICATIONS,
-        PERMISSIONS.TASKS,
-        PERMISSIONS.WALLET,
-        PERMISSIONS.PRICING,
-        PERMISSIONS.VIOLATIONS,
-        PERMISSIONS.ADMIN_TTC,
-      ],
-    },
-    {
       label: 'Hệ thống',
       permissions: [
+        PERMISSIONS.NOTIFICATIONS,
         PERMISSIONS.SOURCES,
         PERMISSIONS.CATEGORIES,
         PERMISSIONS.BUSINESS_TYPES,
@@ -112,10 +78,10 @@
     'customer-detail': 'Chi tiết khách hàng', kiosks: 'Kiosk', 'kiosk-detail': 'Chi tiết Kiosk',
     'legacy-registration': 'Dữ liệu cũ', payments: 'Thanh toán', 'payment-detail': 'Chi tiết thanh toán', expenses: 'Chi phí',
     sources: 'Nguồn', categories: 'Danh mục', 'business-types': 'Loại hình kinh doanh',
-    'registration-requests': 'Hồ sơ đăng ký', ttc: 'Tổng quan TTC', services: 'Dịch vụ TTC',
-    notifications: 'Thông báo', tasks: 'Nhiệm vụ', 'user-management': 'Quản lý người dùng',
-    wallet: 'Ví xu', pricing: 'Bảng giá', violations: 'Vi phạm', logs: 'Nhật ký',
-    settings: 'Cài đặt hệ thống', 'homepage-content': 'Nội dung trang chủ', 'admin-ttc': 'Quản trị TTC',
+    'registration-requests': 'Hồ sơ đăng ký',
+    notifications: 'Thông báo', 'user-management': 'Quản lý người dùng',
+    logs: 'Nhật ký',
+    settings: 'Cài đặt hệ thống', 'homepage-content': 'Nội dung trang chủ',
   });
 
   const model = Object.freeze({

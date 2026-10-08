@@ -12,10 +12,12 @@ const reports = read('src/pages/ReportsPage.js');
 const promotions = read('src/pages/PromotionsPage.js');
 const statusBadge = read('src/components/StatusBadge.js');
 const css = read('src/styles/app.css');
+const notificationMigration = read('supabase/migrations/20261008172650_persist_crm_notifications.sql');
 
 test('Dashboard stays standalone and section labels keep permitted items visible', () => {
   assert.match(navigation, /label: 'TỔNG QUAN',[\s\S]*standalone: true/);
-  for (const label of ['QUẢN LÝ CRM', 'TƯƠNG TÁC CHÉO', 'HỆ THỐNG']) assert.match(navigation, new RegExp(label));
+  for (const label of ['QUẢN LÝ CRM', 'HỆ THỐNG']) assert.match(navigation, new RegExp(label));
+  assert.doesNotMatch(navigation, /TƯƠNG TÁC CHÉO|ttc/i);
   assert.match(layout, /<div class="nav-section"[\s\S]*<div class="nav-section-label">/);
   assert.match(layout, /section\.collapsible[\s\S]*nav-section-collapsible/);
   assert.doesNotMatch(app, /collapsibleNavSections|activeSection/);
@@ -32,9 +34,11 @@ test('Reports overview contains exactly the six business-facing KPI cards', () =
   assert.match(css, /\.reports-page\{display:grid;gap:var\(--space-card\)/);
 });
 
-test('notification popup is presentation-sorted and closes outside or with Escape without summary copy', () => {
+test('notification popup uses server ordering and closes outside or with Escape without summary copy', () => {
   assert.doesNotMatch(layout, /data-notification-summary/);
-  assert.match(app, /\.sort\(\(left,right\)=>Date\.parse\(right\.createdAt/);
+  assert.match(app, /const items = data\.items/);
+  assert.match(read('src/services/AdminNotificationService.js'), /get_crm_notifications/);
+  assert.match(notificationMigration, /order by \(read_at is null\) desc, \(resolved_at is null\) desc, created_at desc, id desc/);
   assert.match(app, /notificationCenter\?\.open && !notificationCenter\.contains/);
   assert.match(app, /event\.key !== 'Escape'[\s\S]*notificationCenter\?\.open/);
   assert.match(css, /\.admin-notification-popover\{width:min\(380px/);

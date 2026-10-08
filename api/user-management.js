@@ -29,8 +29,6 @@ module.exports = async function userManagementHandler(req, res) {
     if (action === 'detail') return send(res, await getUserDetail(req, body));
     if (action === 'update_profile') return send(res, await updateProfile(req, body));
     if (action === 'sync_permissions') return send(res, await syncPermissions(req, body));
-    if (action === 'adjust_wallet') return send(res, await adjustWallet(req, body));
-    if (action === 'wallet_ledger') return send(res, await listWalletLedger(req, body));
     if (action === 'set_locked') return send(res, await setLocked(req, body));
     if (action === 'reset_password') return send(res, await resetPassword(req, body));
     return res.status(400).json({ ok: false, message: 'Thao tác không hợp lệ.' });
@@ -46,7 +44,7 @@ async function listUsers(req, body) {
   await requirePermission(req, PERMISSIONS.USER_MANAGEMENT);
   const { page, pageSize, from, to } = pagination(body);
   const params = new URLSearchParams({
-    select: 'user_id,username,display_name,email,phone,status,metadata,web_access_enabled,is_system_admin,web_access_updated_at,created_at,updated_at,wallets(balance,total_earned,total_spent),user_facebook_accounts(id,facebook_id,facebook_id_status,is_primary,facebook_url_original)',
+    select: 'user_id,username,display_name,email,phone,status,metadata,web_access_enabled,is_system_admin,web_access_updated_at,created_at,updated_at,user_facebook_accounts(id,facebook_id,facebook_id_status,is_primary,facebook_url_original)',
     order: 'created_at.desc',
     offset: String(from),
     limit: String(to - from + 1),
@@ -104,10 +102,6 @@ async function updateProfile(req, body) {
     patch.phone = phone;
   }
 
-  const metadata = before.metadata && typeof before.metadata === 'object' ? { ...before.metadata } : {};
-  if (has(body, 'tier')) metadata.tier = allowedTier(body.tier);
-  if (has(body, 'creditLimit')) metadata.credit_limit = nonNegativeNumber(body.creditLimit, 'Hạn mức');
-  if (has(body, 'tier') || has(body, 'creditLimit')) patch.metadata = metadata;
   if (!Object.keys(patch).length && !has(body, 'facebookId')) throw httpError(400, 'Không có thông tin hợp lệ để cập nhật.');
   if (Object.keys(patch).length) {
     patch.updated_at = new Date().toISOString();
@@ -159,48 +153,7 @@ async function syncPermissions(req, body) {
   return { ok: true, permissions: requested, webAccessEnabled: webAccess };
 }
 
-async function adjustWallet(req, body) {
-  const actor = await requireSystemAdmin(req);
-  await reauthenticateSystemAdmin(actor, body.adminPassword);
-  const userId = requiredUserId(body.userId);
-  const target = await getProfile(userId, false);
-  if (!target) throw httpError(404, 'Không tìm thấy người dùng.');
-  if (target.is_system_admin) throw httpError(403, 'Không thể sửa ví System Admin.');
-  const amount = nonZeroNumber(body.amount, 'Số xu');
-  const reason = requiredText(body.reason, 500, 'Lý do');
-  const idempotencyKey = requiredText(body.idempotencyKey, 180, 'Idempotency key');
-  const result = await userRpc('admin_post_wallet_ledger', {
-    wallet_user_id_input: userId,
-    amount_input: amount,
-    transaction_type_input: 'admin_adjustment',
-    related_table_input: null,
-    related_id_input: null,
-    idempotency_key_input: idempotencyKey,
-    description_input: nullableText(body.description, 500),
-    reason_input: reason,
-    metadata_input: { source: 'unified_user_management' },
-  }, actor.accessToken);
-  return { ok: true, result };
-}
 
-async function listWalletLedger(req, body) {
-  await requirePermission(req, PERMISSIONS.USER_MANAGEMENT);
-  const userId = requiredUserId(body.userId);
-  const { page, pageSize, from, to } = pagination(body);
-  const params = new URLSearchParams({
-    select: 'id,wallet_user_id,actor_id,actor_type,transaction_type,amount,balance_before,balance_after,description,reason,idempotency_key,created_at',
-    wallet_user_id: `eq.${userId}`,
-    order: 'created_at.desc,id.desc',
-    offset: String(from),
-    limit: String(to - from + 1),
-  });
-  const result = await serviceFetch(`/rest/v1/wallet_ledger?${params.toString()}`, {
-    headers: { Prefer: 'count=exact' },
-    includeResponse: true,
-  });
-  const rows = Array.isArray(result.data) ? result.data : [];
-  return { ok: true, rows, page, pageSize, total: contentRangeTotal(result.response.headers.get('content-range'), rows.length) };
-}
 
 async function setLocked(req, body) {
   const actor = await requireSystemAdmin(req);
@@ -255,7 +208,7 @@ async function resetPassword(req, body) {
 
 async function getProfile(userId, includeRelations) {
   const select = includeRelations
-    ? '*,wallets(balance,total_earned,total_spent),user_facebook_accounts(id,facebook_id,facebook_id_status,is_primary,facebook_url_original)'
+    ? '*,user_facebook_accounts(id,facebook_id,facebook_id_status,is_primary,facebook_url_original)'
     : 'user_id,username,display_name,email,phone,status,metadata,web_access_enabled,is_system_admin,web_access_updated_at,created_at,updated_at';
   const params = new URLSearchParams({ select, user_id: `eq.${userId}`, limit: '1' });
   const rows = await serviceFetch(`/rest/v1/user_profiles?${params.toString()}`);
@@ -436,11 +389,6 @@ function nonZeroNumber(value, label) {
   return number;
 }
 
-function allowedTier(value) {
-  const tier = String(value || 'customer');
-  if (!['customer', 'silver', 'gold', 'diamond'].includes(tier)) throw httpError(400, 'Cấp bậc TTC không hợp lệ.');
-  return tier;
-}
 
 function has(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key);
@@ -451,7 +399,6 @@ function send(res, payload) {
 }
 
 module.exports.__test = {
-  allowedTier,
   contentRangeTotal,
   safeSearch,
 };

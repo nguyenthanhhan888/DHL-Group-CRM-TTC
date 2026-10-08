@@ -289,6 +289,7 @@ function escapeIdentity(value) {
 }
 
 function friendlyResolverMessage(error) {
+  if (error?.code === 'FACEBOOK_ID_PROVIDER_BLOCKED') return 'Dịch vụ lấy Facebook ID hiện đang yêu cầu xác minh CAPTCHA. Vui lòng nhập Facebook ID thủ công hoặc thử lại sau.';
   if (['INVALID_URL', 'INVALID_FACEBOOK_DOMAIN'].includes(error?.code)) return 'Link này chưa được hỗ trợ. Hãy sao chép link trang cá nhân hoặc Fanpage.';
   if (error?.code === 'FACEBOOK_ID_NOT_FOUND') return 'Không thể nhận diện link này. Hãy thử link trang cá nhân hoặc Fanpage chính thức, hoặc nhập ID thủ công.';
   if (error?.code === 'UPSTREAM_TIMEOUT') return 'Quá trình xác thực mất quá nhiều thời gian. Vui lòng thử lại.';
@@ -301,6 +302,7 @@ function setStatus(element, state, message) {
 }
 
 function resolverErrorState(code) {
+  if (code === 'FACEBOOK_ID_PROVIDER_BLOCKED') return 'provider-blocked';
   if (['FACEBOOK_URL_REQUIRED', 'INVALID_URL', 'INVALID_FACEBOOK_DOMAIN'].includes(code)) return 'invalid-url';
   if (code === 'FACEBOOK_ID_NOT_FOUND') return 'not-found';
   if (code === 'UPSTREAM_TIMEOUT') return 'timeout';

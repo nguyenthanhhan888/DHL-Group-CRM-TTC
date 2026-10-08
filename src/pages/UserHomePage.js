@@ -6,11 +6,9 @@ import { Toast } from '../components/Toast.js';
 import { StatusBadge } from '../components/StatusBadge.js';
 import { AnnouncementService } from '../services/AnnouncementService.js';
 import { FacebookIdService } from '../services/FacebookIdService.js';
-import { PayosService } from '../services/PayosService.js';
 import { PaymentService } from '../services/PaymentService.js';
 import { AuthService } from '../services/AuthService.js';
 import { UserProfileService } from '../services/UserProfileService.js';
-import { WalletService } from '../services/WalletService.js';
 import { getOrganizationSetting } from '../config/organization.js';
 import { bindCurrencyInput, formatCurrency, formatVndNumber, parseCurrencyInput } from '../utils/currency.js';
 import { isMissingDatabaseFeatureError } from '../utils/databaseFeature.js';
@@ -19,25 +17,16 @@ import { getUserAvatarPath } from '../utils/avatar.js';
 import { escapeHtml } from '../utils/html.js';
 import { renderIcon } from '../utils/icons.js';
 
-const WALLET_POLL_INTERVAL_MS = 4000;
-const WALLET_POLL_MAX_MS = 90_000;
-const WALLET_FOCUS_THROTTLE_MS = 1500;
 
 let pageLifecycle = null;
-let walletPollTimer = null;
-let walletPollStartedAt = 0;
-let lastWalletRefreshAt = 0;
 
 const state = {
   profile: null,
-  wallet: null,
   customerLinks: [],
   payments: [],
-  walletLedger: [],
   facebookAccounts: [],
   kioskSearchTerm: '',
   paymentSearchTerm: '',
-  walletLedgerSearchTerm: '',
   facebookSearchTerm: '',
   announcements: [],
 };
@@ -45,7 +34,7 @@ const state = {
 const USER_ROUTE_CONFIG = {
   user: {
     title: 'Trang chủ',
-    description: 'Bảng tin cập nhật, điểm xu và xếp hạng cộng đồng.',
+    description: 'Bảng tin cập nhật từ hệ thống.',
     sections: ['homeFeed'],
   },
   'user-profile': {
@@ -78,19 +67,9 @@ const USER_ROUTE_CONFIG = {
     description: 'Theo dõi khoản thanh toán Kiosk của tài khoản. Hệ thống tự hoàn tất khi ngân hàng xác nhận.',
     sections: ['paymentNotice'],
   },
-  'ttc-wallet': {
-    title: 'Ví xu',
-    description: 'Xem số dư, nạp tiền và dùng xu để tạo tương tác.',
-    sections: ['wallet'],
-  },
-  'ttc-wallet-history': {
-    title: 'Lịch sử giao dịch',
-    description: 'Theo dõi các lần cộng/trừ xu và số dư sau mỗi giao dịch.',
-    sections: ['walletLedger'],
-  },
   'user-facebook': {
     title: 'Tài khoản Facebook',
-    description: 'Liên kết Facebook ID để nhận nhiệm vụ kiếm xu trong tương tác chéo.',
+    description: 'Quản lý tài khoản Facebook đã liên kết.',
     sections: ['facebookForm', 'facebookList'],
   },
 };
@@ -119,38 +98,6 @@ export function UserHomePage({ route = 'user' } = {}) {
         </div>
       </form>
     </section>` : ''}
-    ${hasSection('walletSummary') ? `<section class="dash-card">
-      <div class="dash-card-header">
-        <h3>Ví xu</h3>
-        <a class="btn-secondary link-button" href="#/ttc-wallet">Nạp xu</a>
-      </div>
-      <div id="user-wallet-panel">
-        ${EmptyState({ title: 'Đang tải ví xu', message: 'Vui lòng chờ trong giây lát.' })}
-      </div>
-    </section>` : ''}
-    ${hasSection('wallet') ? `<section class="dash-card">
-      <div class="dash-card-header"><h3>Ví xu</h3></div>
-      <div id="user-wallet-return-status"></div>
-      <div id="user-wallet-panel">
-        ${EmptyState({ title: 'Đang tải ví xu', message: 'Vui lòng chờ trong giây lát.' })}
-      </div>
-      <form id="wallet-topup-form" class="wallet-topup-form wallet-topup-card">
-        <div class="wallet-topup-heading">
-          <strong>Nạp tiền</strong>
-          <span>Tạo mã thanh toán để cộng xu vào ví sau khi ngân hàng xác nhận.</span>
-        </div>
-        <div class="wallet-topup-presets" aria-label="Chọn nhanh số tiền nạp">
-          <button type="button" data-topup-amount="50000">50.000 VNĐ</button>
-          <button type="button" data-topup-amount="100000">100.000 VNĐ</button>
-          <button type="button" data-topup-amount="200000">200.000 VNĐ</button>
-        </div>
-        <label class="wallet-topup-input">
-          <span>Số tiền muốn nạp</span>
-          <input class="form-control" name="amount" type="text" inputmode="numeric" placeholder="0 VNĐ" aria-label="Số tiền nạp" required>
-        </label>
-        <button class="btn-primary wallet-topup-submit" type="submit">Nạp tiền</button>
-      </form>
-    </section>` : ''}
     ${hasSection('kioskEntry') ? `<section class="dash-card user-kiosk-entry-card">
       <div class="dash-card-header"><h3>Mua Kiosk mới</h3></div>
       <p class="muted-text">Form đăng ký tạo hồ sơ Khách hàng/Kiosk và QR/link thanh toán cho chính khoản dịch vụ Kiosk. Khoản này không nạp vào ví xu.</p>
@@ -171,15 +118,6 @@ export function UserHomePage({ route = 'user' } = {}) {
         ${EmptyState({ title: 'Đang tải thanh toán', message: 'Đang đọc thanh toán theo khách hàng đã liên kết.' })}
       </div>
       <a class="btn-secondary link-button" href="#/register">Đăng ký Kiosk mới</a>
-    </section>` : ''}
-    ${hasSection('wallet') || hasSection('walletLedger') ? `<section class="dash-card">
-      <div class="dash-card-header"><h3>Lịch sử ví</h3></div>
-      <div class="list-search-bar">
-        <input id="user-wallet-ledger-search" class="form-control" type="search" placeholder="Tìm theo mô tả, loại giao dịch hoặc số xu" aria-label="Tìm lịch sử ví của tôi" autocomplete="off">
-      </div>
-      <div id="user-wallet-ledger">
-        ${EmptyState({ title: 'Đang tải lịch sử', message: 'Đang đọc giao dịch xu gần đây.' })}
-      </div>
     </section>` : ''}
     ${hasSection('facebookForm') ? `<section class="dash-card">
       <div class="dash-card-header"><h3>Thêm Facebook</h3></div>
@@ -221,10 +159,7 @@ UserHomePage.afterRender = function afterRenderUserHome() {
   bindAccountPasswordForm();
   bindAccountSecurityActions();
   bindFacebookForm();
-  bindWalletTopupForm();
   bindUserListSearch();
-  bindWalletAutoRefresh(pageLifecycle.signal);
-  renderPayosReturnStatus();
   loadUserPortalData();
 };
 
@@ -237,10 +172,7 @@ function bindUserListSearch() {
     state.paymentSearchTerm = event.currentTarget.value || '';
     renderMyPayments();
   });
-  document.getElementById('user-wallet-ledger-search')?.addEventListener('input', (event) => {
-    state.walletLedgerSearchTerm = event.currentTarget.value || '';
-    renderWalletLedger();
-  });
+
   document.getElementById('user-facebook-search')?.addEventListener('input', (event) => {
     state.facebookSearchTerm = event.currentTarget.value || '';
     renderFacebookAccounts();
@@ -248,52 +180,7 @@ function bindUserListSearch() {
 }
 
 function renderUserHomeFeed() {
-  return `
-    <section class="user-social-home">
-      <div class="user-social-feed">
-        <div class="user-social-toolbar">
-          <div>
-            <strong>Bảng tin hệ thống</strong>
-            <span>Cập nhật từ admin, thay đổi giá xu và hướng dẫn mới.</span>
-          </div>
-          <div class="user-live-strip" aria-label="Trạng thái hệ thống">
-            <span><i></i> Live nhiệm vụ</span>
-            <span>+128 lượt hôm nay</span>
-          </div>
-          <a class="btn-secondary link-button" href="#/ttc-wallet">Nạp xu</a>
-        </div>
-        <div class="user-social-metrics" aria-label="Tổng quan nhanh">
-          <div class="user-social-metric">
-            <span>Đang chạy</span>
-            <strong>24</strong>
-            <small>tương tác Facebook</small>
-          </div>
-          <div class="user-social-metric">
-            <span>Thưởng hôm nay</span>
-            <strong>18.4K</strong>
-            <small>xu đã phát</small>
-          </div>
-          <div class="user-social-metric">
-            <span>Tốc độ duyệt</span>
-            <strong>2m</strong>
-            <small>trung bình</small>
-          </div>
-        </div>
-        <div id="user-announcement-feed">
-          ${EmptyState({ title: 'Đang tải bảng tin', message: 'Đang đọc thông báo hệ thống.' })}
-        </div>
-      </div>
-      <aside class="user-social-aside">
-        <div class="user-rank-card">
-          <div class="user-rank-head">
-            <h3>Bảng xếp hạng</h3>
-            <span>Page 1 VNĐ</span>
-          </div>
-          ${renderLeaderboard()}
-        </div>
-      </aside>
-    </section>
-  `;
+  return `<section class="dash-card"><div id="user-announcement-feed">${EmptyState({ title: 'Đang tải bảng tin', message: 'Đang đọc thông báo hệ thống.' })}</div></section>`;
 }
 
 function renderAnnouncementsSection() {
@@ -350,101 +237,16 @@ function supportHref(label, value) {
   return '';
 }
 
-function renderLeaderboard() {
-  const ranks = [
-    ['10q31****', 'Thách đấu', 194320],
-    ['Hala****', 'Đại cao thủ', 171900],
-    ['Halad****', 'Cao thủ', 170820],
-    ['Hala****', 'Kim cương', 168040],
-    ['hala****', 'Vàng', 167830],
-    ['halad****', 'Đồng nhất', 165470],
-  ];
-  return ranks.map(([name, tier, score], index) => `
-    <div class="user-rank-row ${index < 3 ? 'is-podium' : ''}">
-      <img src="${escapeHtml(getRankAvatar(index))}" alt="" loading="lazy">
-      <div>
-        <strong><span class="user-rank-position">#${index + 1}</span>${escapeHtml(name)}</strong>
-        <span>${escapeHtml(tier)} · Điểm: ${formatNumber(score)}</span>
-      </div>
-    </div>
-  `).join('');
-}
 
-function getRankAvatar(index) {
-  const avatars = [
-    'images/avatars/avatar_01.webp',
-    'images/avatars/avatar_02.webp',
-    'images/avatars/avatar_03.webp',
-    'images/avatars/avatar_05.webp',
-    'images/avatars/avatar_06.webp',
-    'images/avatars/avatar_07.webp',
-  ];
-  return avatars[index % avatars.length];
-}
 
 function resetPageLifecycle() {
-  stopWalletPolling();
   pageLifecycle?.abort();
   pageLifecycle = new AbortController();
 }
 
-function bindWalletAutoRefresh(signal) {
-  const refreshIfVisible = () => {
-    if (document.visibilityState === 'hidden') return;
-    const now = Date.now();
-    if (now - lastWalletRefreshAt < WALLET_FOCUS_THROTTLE_MS) return;
-    lastWalletRefreshAt = now;
-    loadWalletAndLedger();
-  };
 
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') refreshIfVisible();
-  }, { signal });
 
-  window.addEventListener('focus', refreshIfVisible, { signal });
-  window.addEventListener('pageshow', refreshIfVisible, { signal });
-}
 
-function startWalletPolling(reason = '') {
-  stopWalletPolling();
-  walletPollStartedAt = Date.now();
-  lastWalletRefreshAt = 0;
-  loadWalletAndLedger();
-
-  walletPollTimer = window.setInterval(() => {
-    if (Date.now() - walletPollStartedAt >= WALLET_POLL_MAX_MS) {
-      stopWalletPolling();
-      return;
-    }
-    if (document.visibilityState === 'hidden') return;
-    loadWalletAndLedger();
-  }, WALLET_POLL_INTERVAL_MS);
-
-  if (reason) {
-    const panel = document.getElementById('user-wallet-return-status');
-    if (panel && !panel.innerHTML.trim()) {
-      panel.innerHTML = `
-        <div class="notice success wallet-return-notice">
-          <strong>Đang chờ xác nhận thanh toán</strong>
-          <span>Số dư và lịch sử ví sẽ tự làm mới khi ngân hàng xác nhận thanh toán.</span>
-        </div>
-      `;
-    }
-  }
-}
-
-function stopWalletPolling() {
-  if (walletPollTimer) {
-    window.clearInterval(walletPollTimer);
-    walletPollTimer = null;
-  }
-  walletPollStartedAt = 0;
-}
-
-async function loadWalletAndLedger() {
-  lastWalletRefreshAt = Date.now();
-  await Promise.allSettled([loadWallet(), loadWalletLedger()]);
-}
 
 function bindProfileForm() {
   document.getElementById('user-profile-form')?.addEventListener('submit', async (event) => {
@@ -520,7 +322,6 @@ async function loadUserPortalData() {
   loadAnnouncements();
   await Promise.allSettled([
     loadCurrentProfile(),
-    loadWalletAndLedger(),
     loadFacebookAccounts(),
     loadCustomerLinks(),
     loadMyPayments(),
@@ -606,8 +407,8 @@ function renderAccountProfileSection() {
               <input class="form-control" name="email" type="email" autocomplete="email">
             </label>
             <label class="form-group">
-              <span>${accountIcon('facebook')}FB liên kết TTC</span>
-              <input class="form-control" id="user-ttc-facebook" value="Đang tải" readonly>
+              <span>${accountIcon('facebook')}Facebook đã liên kết</span>
+              <input class="form-control" id="user-linked-facebook" value="Đang tải" readonly>
             </label>
             <label class="form-group">
               <span>${accountIcon('link')}FB liên kết Kiosk</span>
@@ -929,58 +730,7 @@ function renderUserMfaError(error) {
   document.querySelector('[data-user-mfa-close]')?.addEventListener('click', Modal.close);
 }
 
-function renderPayosReturnStatus() {
-  const panel = document.getElementById('user-wallet-return-status');
-  if (!panel) return;
-  const params = readHashQueryParams();
-  const status = String(params.get('status') || params.get('code') || '').toLowerCase();
-  const hasPayosSignal = params.has('orderCode') || params.has('id') || params.has('status') || params.has('code');
-  if (!hasPayosSignal) {
-    panel.innerHTML = '';
-    return;
-  }
 
-  const isCancelled = ['cancelled', 'cancel', 'canceled'].includes(status);
-  panel.innerHTML = `
-    <div class="notice ${isCancelled ? 'warning' : 'success'} wallet-return-notice">
-      <strong>${isCancelled ? 'Thanh toán đã hủy' : 'Đang chờ ngân hàng xác nhận'}</strong>
-      <span>${isCancelled
-        ? 'Bạn có thể tạo lại link nạp xu khi cần.'
-        : 'Mình đang làm mới ví và lịch sử giao dịch. Nếu webhook chưa về, số dư sẽ cập nhật sau vài giây.'}</span>
-    </div>
-  `;
-
-  if (!isCancelled) startWalletPolling('payos-return');
-}
-
-async function loadWallet() {
-  const panel = document.getElementById('user-wallet-panel');
-  const hasSummary = Boolean(document.getElementById('user-account-summary'));
-  if (!panel && !hasSummary) return;
-  try {
-    const { data } = await WalletService.getMyWallet();
-    state.wallet = data || null;
-    window.dispatchEvent(new CustomEvent('dhl-wallet-updated', {
-      detail: { wallet: state.wallet },
-    }));
-    if (panel) panel.innerHTML = `
-      <div class="stats-grid">
-        <div><strong>${escapeHtml(String(data?.balance ?? 0))}</strong><br><span class="muted-text">Số dư hiện tại</span></div>
-        <div><strong>${escapeHtml(String(data?.total_earned ?? 0))}</strong><br><span class="muted-text">Tổng kiếm được</span></div>
-        <div><strong>${escapeHtml(String(data?.total_spent ?? 0))}</strong><br><span class="muted-text">Tổng đã dùng</span></div>
-      </div>
-    `;
-    renderAccountSummaryIntoDom();
-  } catch (error) {
-    showMigrationNotice(error, 'cổng thành viên và ví xu');
-    if (panel) panel.innerHTML = EmptyState({
-      title: 'Chưa có ví xu',
-      message: isMissingDatabaseFeatureError(error)
-        ? userFriendlyFeatureMessage('ví xu')
-        : error?.message || 'Lưu hồ sơ để khởi tạo ví xu.',
-    });
-  }
-}
 
 async function loadCustomerLinks() {
   const panel = document.getElementById('user-kiosk-links');
@@ -1095,96 +845,9 @@ function renderMyPayments() {
     `).join('');
 }
 
-async function loadWalletLedger() {
-  const panel = document.getElementById('user-wallet-ledger');
-  if (!panel) return;
-  try {
-    const { data } = await WalletService.getMyLedger({ page: 1, pageSize: 10 });
-    state.walletLedger = data || [];
-    renderWalletLedger();
-  } catch (error) {
-    showMigrationNotice(error, 'lịch sử ví xu');
-    panel.innerHTML = EmptyState({
-      title: 'Không tải được lịch sử ví',
-      message: isMissingDatabaseFeatureError(error)
-        ? userFriendlyFeatureMessage('lịch sử ví')
-        : error?.message || 'Vui lòng thử lại sau.',
-    });
-  }
-}
 
-function renderWalletLedger() {
-  const panel = document.getElementById('user-wallet-ledger');
-  if (!panel) return;
-  if (!state.walletLedger.length) {
-    panel.innerHTML = EmptyState({
-      title: 'Chưa có giao dịch',
-      message: 'Các lần cộng/trừ xu sẽ hiển thị tại đây.',
-    });
-    return;
-  }
-  const entries = filterWalletLedger(state.walletLedger);
-  if (!entries.length) {
-    panel.innerHTML = EmptyState({
-      title: 'Không tìm thấy giao dịch',
-      message: 'Thử tìm bằng mô tả, loại giao dịch hoặc số xu khác.',
-    });
-    return;
-  }
-  panel.innerHTML = `
-    <div class="report-table-wrap wallet-ledger-table-wrap">
-      <table class="data-table wallet-ledger-table">
-        <thead>
-          <tr>
-            <th>Mã giao dịch</th>
-            <th>Loại giao dịch</th>
-            <th>Nội dung</th>
-            <th>Liên quan</th>
-            <th>Số xu</th>
-            <th>Số dư trước</th>
-            <th>Số dư sau</th>
-            <th>Thời gian</th>
-            <th>Ghi chú</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${entries.map(renderWalletLedgerRow).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
 
-function renderWalletLedgerRow(entry) {
-  const amount = Number(entry.amount || 0);
-  const sign = amount > 0 ? '+' : '';
-  const label = ledgerTransactionLabel(entry);
-  return `
-    <tr>
-      <td class="tabular-cell">#${escapeHtml(String(entry.id || '—'))}</td>
-      <td><span class="status-pill ${amount < 0 ? 'danger' : 'success'}">${escapeHtml(label)}</span></td>
-      <td>${escapeHtml(entry.description || label)}</td>
-      <td>${renderLedgerRelation(entry)}</td>
-      <td class="tabular-cell ${amount < 0 ? 'wallet-negative' : 'wallet-positive'}">${sign}${escapeHtml(formatNumber(amount))}</td>
-      <td class="tabular-cell">${escapeHtml(formatNumber(entry.balance_before ?? 0))}</td>
-      <td class="tabular-cell">${escapeHtml(formatNumber(entry.balance_after ?? 0))}</td>
-      <td>${formatDateTime(entry.created_at)}</td>
-      <td>${escapeHtml(entry.reason || entry.metadata?.note || '—')}</td>
-    </tr>
-  `;
-}
 
-function renderLedgerRelation(entry) {
-  const table = String(entry.related_table || '').trim();
-  const id = String(entry.related_id || '').trim();
-  if (!table || !id) return '—';
-  if (table === 'ttc_campaigns') {
-    return `<a class="link-button" href="#/ttc-campaigns?campaign=${escapeHtml(id)}">Xem chiến dịch #${escapeHtml(id)}</a>`;
-  }
-  if (table === 'ttc_tasks') return `Nhiệm vụ #${escapeHtml(id)}`;
-  if (table === 'payos_orders') return `PayOS #${escapeHtml(id)}`;
-  return `${escapeHtml(table)} #${escapeHtml(id)}`;
-}
 
 function bindFacebookForm() {
   document.getElementById('user-facebook-form')?.addEventListener('submit', async (event) => {
@@ -1252,68 +915,11 @@ function markFacebookFormError(resolverRoot, message) {
   urlInput?.focus();
 }
 
-function bindWalletTopupForm() {
-  const form = document.getElementById('wallet-topup-form');
-  if (!form) return;
-  bindCurrencyInput(form.elements.amount);
 
-  form.querySelectorAll('[data-topup-amount]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const input = form.elements.amount;
-      if (!input) return;
-      input.value = formatVndNumber(button.dataset.topupAmount);
-      input.focus();
-    });
-  });
-
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const button = form.querySelector('button[type="submit"]');
-    const amount = parseCurrencyInput(new FormData(form).get('amount'));
-    if (!Number.isInteger(amount) || amount <= 0) {
-      Toast.show('Số tiền nạp phải là số nguyên dương.');
-      return;
-    }
-
-    button.disabled = true;
-    button.textContent = 'Đang tạo...';
-    try {
-      const walletUserId = await resolveCurrentUserId();
-      const { data } = await PayosService.createWalletTopup({
-        walletUserId,
-        amount,
-        description: 'DHLTOPUP',
-        returnUrl: buildPayosRouteUrl('#/ttc-wallet'),
-        cancelUrl: buildPayosRouteUrl('#/ttc-wallet'),
-      });
-      showWalletPayosResult(amount, data);
-      startWalletPolling('topup-created');
-      form.reset();
-    } catch (error) {
-      Toast.show(isMissingDatabaseFeatureError(error)
-        ? userFriendlyFeatureMessage('nạp xu')
-        : error?.message || 'Không tạo được link nạp tiền.');
-    } finally {
-      button.disabled = false;
-      button.textContent = 'Nạp tiền';
-    }
-  });
-}
-
-async function resolveCurrentUserId() {
-  const { data: profile } = await UserProfileService.getCurrentAppProfile();
-  if (profile?.user_id) return profile.user_id;
-  const { data: createdProfile } = await UserProfileService.ensureMyProfile({
-    metadata: { source: 'wallet_topup' },
-  });
-  if (createdProfile?.profile?.user_id) return createdProfile.profile.user_id;
-  if (createdProfile?.user_id) return createdProfile.user_id;
-  throw new Error('Không xác định được user hiện tại.');
-}
 
 async function loadFacebookAccounts() {
   const panel = document.getElementById('user-facebook-panel');
-  const needsAccountStatus = Boolean(document.getElementById('user-ttc-facebook') || document.getElementById('user-account-summary'));
+  const needsAccountStatus = Boolean(document.getElementById('user-linked-facebook') || document.getElementById('user-account-summary'));
   if (!panel && !needsAccountStatus) return;
   try {
     const { data } = await UserProfileService.listMyFacebookAccounts();
@@ -1359,9 +965,9 @@ async function enrichFacebookAccountNames(accounts = []) {
 }
 
 function renderAccountFacebookStatuses() {
-  const ttcField = document.getElementById('user-ttc-facebook');
+  const facebookField = document.getElementById('user-linked-facebook');
   const kioskField = document.getElementById('user-kiosk-facebook');
-  if (ttcField) ttcField.value = facebookAccountStatusText(getPrimaryTtcFacebookAccount());
+  if (facebookField) facebookField.value = facebookAccountStatusText(getPrimaryFacebookAccount());
   if (kioskField) kioskField.value = kioskFacebookStatusText(getPrimaryKioskLink());
 }
 
@@ -1374,7 +980,6 @@ function renderAccountSummaryIntoDom() {
 
 function renderAccountSummary() {
   const profile = state.profile || {};
-  const wallet = state.wallet || profile.wallet || {};
   const displayName = profile.display_name || profile.username || 'Người dùng';
   const usernameLine = getProfileUsername(profile);
   const email = profile.email || '—';
@@ -1388,15 +993,11 @@ function renderAccountSummary() {
       <p>${escapeHtml(usernameLine)}</p>
       <p>Thành viên</p>
     </div>
-    <div class="account-summary-metrics">
-      ${accountMetric('Số dư hiện tại', `${formatNumber(wallet.balance)} xu`, 'wallet', 'wallet')}
-      ${accountMetric('Tổng xu đã nhận', `${formatNumber(wallet.total_earned)} xu`, 'earned', 'coin')}
-      ${accountMetric('Tổng xu đã dùng', `${formatNumber(wallet.total_spent)} xu`, 'spent', 'chart')}
-    </div>
+
     <div class="account-summary-details">
       ${summaryRow('Email', email, 'mail')}
       ${summaryRow('Số điện thoại', profile.phone || '—', 'phone')}
-      ${summaryRow('FB TTC', facebookAccountStatusText(getPrimaryTtcFacebookAccount()), 'facebook')}
+      ${summaryRow('Facebook', facebookAccountStatusText(getPrimaryFacebookAccount()), 'facebook')}
       ${summaryRow('FB Kiosk', kioskFacebookStatusText(getPrimaryKioskLink()), 'link')}
       ${summaryRow('Ngày tham gia', formatDate(profile.created_at || profile.createdAt), 'calendar')}
       ${summaryRow('Trạng thái', status, 'badge')}
@@ -1404,7 +1005,7 @@ function renderAccountSummary() {
   `;
 }
 
-function getPrimaryTtcFacebookAccount() {
+function getPrimaryFacebookAccount() {
   return state.facebookAccounts.find((account) => account.is_primary) || state.facebookAccounts[0] || null;
 }
 
@@ -1423,11 +1024,11 @@ function getPrimaryKioskLink() {
 }
 
 function facebookAccountStatusText(account) {
-  if (!account) return 'Chưa liên kết TTC';
+  if (!account) return 'Chưa liên kết Facebook';
   const value = account.facebook_id || account.facebook_url_normalized || account.facebook_url_original || '';
   const name = getFacebookAccountName(account);
   const status = facebookIdStatusLabel(account.facebook_id_status);
-  if (!value) return 'Đang chờ xác minh TTC';
+  if (!value) return 'Đang chờ xác minh Facebook';
   return name ? `${name} * ${value} · ${status}` : `${value} · ${status}`;
 }
 
@@ -1442,14 +1043,6 @@ function kioskFacebookStatusText(link) {
   return value ? `${value} · ${name}` : `${name} · chưa có FB ID`;
 }
 
-function accountMetric(label, value, tone, icon) {
-  return `
-    <div class="account-summary-metric metric-${tone}">
-      <span><span class="account-metric-icon" aria-hidden="true">${accountIcon(icon)}</span>${escapeHtml(label)}</span>
-      <strong>${escapeHtml(value)}</strong>
-    </div>
-  `;
-}
 
 function summaryRow(label, value, icon) {
   return `
@@ -1571,22 +1164,7 @@ function validateFacebookUrl(value) {
   return '';
 }
 
-function transactionLabel(type) {
-  return {
-    earn_task: 'Thưởng nhiệm vụ TTC',
-    spend_campaign: 'Tạo tăng tương tác TTC',
-    bonus_signup: 'Thưởng tài khoản',
-    admin_adjustment: 'Điều chỉnh Admin',
-    refund_campaign: 'Hoàn tăng tương tác TTC',
-    spend_kiosk: 'Mua gói Kiosk',
-    refund_kiosk: 'Hoàn gói Kiosk',
-  }[type] || 'Giao dịch xu';
-}
 
-function ledgerTransactionLabel(entry = {}) {
-  if (String(entry.related_table || '') === 'payos_orders') return 'Nạp xu PayOS';
-  return transactionLabel(entry.transaction_type);
-}
 
 function paymentStatusLabel(status) {
   return {
@@ -1648,25 +1226,6 @@ function filterPayments(payments) {
   ].map(normalizeSearch).join(' ').includes(query));
 }
 
-function filterWalletLedger(entries) {
-  const query = normalizeSearch(state.walletLedgerSearchTerm);
-  if (!query) return entries;
-  return entries.filter((entry) => [
-    entry.id,
-    entry.transaction_type,
-    transactionLabel(entry.transaction_type),
-    ledgerTransactionLabel(entry),
-    entry.description,
-    entry.reason,
-    entry.related_table,
-    entry.related_id,
-    entry.amount,
-    entry.balance_before,
-    entry.balance_after,
-    entry.metadata?.note,
-    entry.created_at,
-  ].map(normalizeSearch).join(' ').includes(query));
-}
 
 function filterFacebookAccounts(accounts) {
   const query = normalizeSearch(state.facebookSearchTerm);
@@ -1686,55 +1245,11 @@ function normalizeSearch(value) {
   return String(value || '').trim().toLocaleLowerCase('vi');
 }
 
-function buildPayosRouteUrl(route) {
-  return `${window.location.origin}${window.location.pathname}${route}`;
-}
 
-function showWalletPayosResult(amount, data = {}) {
-  if (data.checkoutUrl) {
-    window.location.assign(data.checkoutUrl);
-    return;
-  }
-  Modal.open({
-    title: 'Nạp tiền',
-    body: `
-      <div class="approval-message">
-        <p>Đã tạo yêu cầu nạp <strong>${formatCurrency(amount)}</strong>. Xu sẽ tự cộng vào ví sau khi ngân hàng xác nhận thanh toán.</p>
-        <p class="form-error">Chưa nhận được link thanh toán PayOS. Vui lòng thử lại.</p>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-secondary" type="button" data-payos-close>Đóng</button>
-      </div>
-    `,
-  });
-  document.querySelector('[data-payos-close]')?.addEventListener('click', Modal.close);
-}
 
-function readHashQueryParams() {
-  const hash = window.location.hash || '';
-  const queryIndex = hash.indexOf('?');
-  if (queryIndex === -1) return new URLSearchParams(window.location.search);
-  return new URLSearchParams(hash.slice(queryIndex + 1));
-}
 
-function qrCodeImageSource(value) {
-  const raw = String(value || '').trim();
-  if (!raw) return '';
-  if (raw.startsWith('data:image')) return raw;
-  if (raw.startsWith('<svg')) return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(raw)}`;
-  return raw;
-}
 
-function formatDateTimeSafe(value) {
-  try {
-    return new Intl.DateTimeFormat('vi-VN', {
-      dateStyle: 'short',
-      timeStyle: 'short',
-    }).format(new Date(value));
-  } catch {
-    return String(value || '');
-  }
-}
+function formatDateTimeSafe(value) { return formatDateTime(value); }
 
 function showMigrationNotice(error, featureName) {
   if (!isMissingDatabaseFeatureError(error)) return;

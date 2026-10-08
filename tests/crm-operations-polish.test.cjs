@@ -22,8 +22,8 @@ test('Hồ sơ Kiosk copy keeps payment, review and Kiosk states distinct', () =
   const overviewCards = overview.match(/renderSummaryCards\(\[([\s\S]*?)\]\)/)?.[1] || '';
   assert.match(navigation, /'registration-requests': 'Hồ sơ Kiosk'/);
   assert.match(requests, /title: 'Hồ sơ Kiosk'/);
-  assert.match(requests, /Chờ thanh toán[\s\S]*PayOS chưa tạo doanh thu/);
-  assert.match(requests, /Chờ duyệt[\s\S]*Legacy\/Bổ sung/);
+  assert.match(requests, /Chờ thanh toán[\s\S]*hồ sơ chưa tạo doanh thu/);
+  assert.match(requests, /Chờ duyệt[\s\S]*hồ sơ cần xử lý thủ công/);
   assert.match(overview, /Hồ sơ cần xử lý/);
   assert.match(overview, /Hồ sơ chờ thanh toán/);
   assert.match(overview, /Kiosk hoạt động/);
@@ -42,16 +42,14 @@ test('global toast and reusable busy button expose accessible compact states', (
 });
 
 test('notification badge counts unread lifecycle-deduped items and supports mark all read', () => {
-  assert.match(notifications, /new Map\(items\.map/);
-  assert.match(notifications, /request:pending:/);
-  assert.doesNotMatch(notifications, /request:awaiting_payment:/);
-  assert.match(notifications, /reconciliation:summary:/);
-  assert.match(notifications, /pendingCount \+ reconciliationCount/);
-  assert.match(notifications, /unreadCount/);
-  assert.match(notifications, /markAllRead/);
+  assert.match(notifications, /get_crm_notifications/);
+  assert.match(notifications, /Number\(data\?\.unreadCount \|\| 0\)/);
+  assert.match(notifications, /mark_crm_notification_read/);
+  assert.match(notifications, /mark_all_crm_notifications_read/);
+  assert.doesNotMatch(notifications, /localStorage|get_admin_notification_feed/);
   assert.match(layout, /data-notification-mark-all/);
   assert.match(app, /data\.unreadCount/);
-  assert.match(app, /is-read':'is-unread/);
+  assert.match(app, /is-read' : 'is-unread/);
 });
 
 test('business logs name Admin cancellation while raw identifiers stay in technical details', () => {

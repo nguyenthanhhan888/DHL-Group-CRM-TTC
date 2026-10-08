@@ -1,3 +1,5 @@
+import { isValidDateOnly } from './formValidation.js';
+
 export const BUSINESS_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 
 export function formatToday() {
@@ -12,6 +14,9 @@ export function formatToday() {
 
 export function formatDate(value) {
   if (!value) return '—';
+  const pure = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (pure) return isValidDateOnly(String(value)) ? `${pure[3]}/${pure[2]}/${pure[1]}` : '—';
+  if (Number.isNaN(new Date(value).getTime())) return '—';
   return new Intl.DateTimeFormat('vi-VN', {
     timeZone: BUSINESS_TIME_ZONE,
     day: '2-digit',
@@ -24,24 +29,24 @@ export function formatDateTime(value) {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('vi-VN', {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
     timeZone: BUSINESS_TIME_ZONE,
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(date);
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date).map(part => [part.type, part.value]));
+  return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}`;
 }
 
 export function daysUntil(value) {
-  const target = new Date(value);
-  const today = startOfToday();
-  target.setHours(0, 0, 0, 0);
-  return Math.ceil((target - today) / 86400000);
+  if (!value || Number.isNaN(new Date(value).getTime())) return NaN;
+  const text = String(value || '');
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : new Intl.DateTimeFormat('en-CA', { timeZone: BUSINESS_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value));
+  const today = vietnamDateRangeYearToDate().to;
+  return (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000;
 }
 
 export function startOfToday() {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date;
+  return startOfVietnamToday();
 }
 
 export function startOfVietnamToday(now = new Date()) {
@@ -93,4 +98,36 @@ export function toDateOnly(date) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+// Only create fields explicitly opting into a today default should use this helper.
+export function createDateValue(record, storedValue, now = new Date()) {
+  return record ? storedValue ?? '' : vietnamDateRangeYearToDate(now).to;
+}
+
+export function toVietnamDateTimeInput(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('sv-SE', {
+    timeZone: BUSINESS_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date).map(part => [part.type, part.value]));
+  const seconds = date.getUTCSeconds() || date.getUTCMilliseconds()
+    ? `:${parts.second}${date.getUTCMilliseconds() ? `.${String(date.getUTCMilliseconds()).padStart(3, '0')}` : ''}` : '';
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}${seconds}`;
+}
+
+export function fromVietnamDateTimeInput(value) {
+  if (!value) return null;
+  // Unedited timestamps retain the original offset and sub-millisecond precision.
+  if (/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value)) {
+    if (!Number.isFinite(Date.parse(value))) throw Error('Thời gian không hợp lệ.');
+    return value;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?$/.test(value)) throw Error('Thời gian không hợp lệ.');
+  const date = new Date(`${value}+07:00`);
+  const roundTrip = toVietnamDateTimeInput(date);
+  if (!roundTrip || roundTrip.slice(0,16) !== value.slice(0,16)) throw Error('Thời gian không hợp lệ.');
+  return date.toISOString();
 }

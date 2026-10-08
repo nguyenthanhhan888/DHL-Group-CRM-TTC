@@ -189,23 +189,15 @@ test('canonical Registration approval restores original pending-payment behavior
   assert.equal(await scalar('select status from public.registration_requests where id=$1',[publicRequest]),'cancelled');
 });
 
-test('TTC user RPCs require ttc, not merely authenticated; legacy admin cannot bypass revoke',async()=>{
-  await db.query("insert into public.user_facebook_accounts(user_id,facebook_id,facebook_url_original,facebook_url_normalized,facebook_id_status,is_primary) values($1,'7777777001','https://www.facebook.com/7777777001','https://www.facebook.com/7777777001','manual_verified',true)",[qaUsers.selective]);
-  for(const sql of ['select public.list_available_ttc_tasks()','select public.list_my_ttc_tasks()','select public.list_available_ttc_campaigns()']){
-    await denied(()=>call('zero',sql));await denied(()=>call('legacy',sql));
-    await grant('ttc');assert.ok((await call('selective',sql)).length);await revoke();await denied(()=>call('selective',sql));
-  }
-});
-
-test('wallet order reservation blocks disabled account and unrelated TTC admin CRM access; personal wallet remains active-user area',async()=>{
+test('retained PayOS compatibility reservation rejects disabled accounts and unrelated CRM access',async()=>{
   const wallet="select public.record_payos_payment_link('wallet_topup',null,auth.uid(),$1,10000,'TEST wallet')";
   await call('zero',wallet,[990001]);
   await denied(()=>call('disabled',wallet,[990002]));
   await qaDisabledWeb();
   await denied(()=>call('selective',wallet,[990003]));
-  await denied(()=>call('selective','select public.get_my_wallet()'));
+  await assert.rejects(()=>call('selective','select public.get_my_wallet()'),e=>e.code==='42883');
   await db.query('update public.user_profiles set web_access_enabled=true where user_id=$1',[qaUsers.selective]);
-  await grant('admin-ttc');
+  await grant('customers');
   await denied(()=>call('selective',"select public.record_payos_payment_link('crm_payment',null,null,990004,10000,'TEST CRM')"));
   async function qaDisabledWeb(){await db.query('update public.user_profiles set web_access_enabled=false where user_id=$1',[qaUsers.selective]);}
 });

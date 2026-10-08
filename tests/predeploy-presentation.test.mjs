@@ -10,21 +10,15 @@ import { integrityPresentation, reviewReference, eventReviewReference } from '..
 import { businessEventPresentation } from '../src/utils/businessEventPresentation.js';
 import { DetailFields } from '../src/components/DetailFields.js';
 
-test('sidebar preserves every route and permission, with CRM expanded and only TTC/System collapsible', () => {
+test('sidebar preserves every route and permission, with CRM expanded and only System collapsible', () => {
   assert.deepEqual(NAV_SECTIONS.flatMap(section => section.items.map(item => item.route)), [
     'user', 'user-profile', 'user-kiosks', 'user-register-kiosk', 'payments-mine', 'user-announcements', 'user-support', 'dashboard',
     'customers', 'kiosks', 'register', 'registration-requests', 'categories', 'business-types', 'promotions', 'expenses', 'reports',
-    'ttc', 'admin/ttc', 'admin-ttc-announcements', 'admin-ttc-campaigns', 'admin-ttc-tasks', 'admin-ttc-wallets', 'admin-ttc-settings', 'admin-ttc-logs',
     'user-management', 'logs', 'settings',
   ]);
   const crm = NAV_SECTIONS.find(section => section.label === 'QUẢN LÝ CRM');
   assert.ok(!crm.collapsible);
-  assert.equal(NAV_SECTIONS.filter(section => section.collapsible).length, 2);
-  const ttc = NAV_SECTIONS.find(section => section.items.some(item => item.route === 'ttc'));
-  const admin = ttc.items.find(item => item.route === 'admin/ttc');
-  assert.equal(admin.permission, 'admin-ttc');
-  assert.equal(admin.matchRoute, 'admin');
-  assert.notEqual(admin.label, ttc.items.find(item => item.route === 'ttc').label);
+  assert.equal(NAV_SECTIONS.filter(section => section.collapsible).length, 1);
   const markup = AppLayout({ navSections: NAV_SECTIONS, user: { display_name: 'Tên thật <QA>', is_system_admin: true } });
   assert.doesNotMatch(markup, /<details[^>]*data-nav-group[^>]*\sopen/);
   assert.match(markup, /Tên thật &lt;QA&gt;/);
@@ -35,11 +29,11 @@ test('sidebar preserves every route and permission, with CRM expanded and only T
   assert.doesNotMatch(personal, /Quản trị hệ thống/);
 });
 
-test('actual router navigation marks BOTH TTC destinations and opens active groups after navigation', () => {
+test('actual router navigation marks CRM destinations and opens active groups after navigation', () => {
   const app = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
   const source = app.slice(app.indexOf('function getRouteSubPath()'), app.indexOf('function updateSupabaseBadge'));
-  const routes = ['ttc', 'admin/ttc', 'logs', 'settings'];
-  const links = routes.map(route => ({ dataset: { navRoute: route, ...(route === 'admin/ttc' ? { navMatchRoute: 'admin' } : {}) },
+  const routes = ['customers', 'kiosks', 'logs', 'settings'];
+  const links = routes.map(route => ({ dataset: { navRoute: route, ...(route === 'settings' ? { navMatchRoute: 'settings' } : {}) },
     active: false, attributes: {}, classList: { toggle(_, value) { links.find(link => link.classList === this).active = value; } },
     setAttribute(key, value) { this.attributes[key] = value; }, removeAttribute(key) { delete this.attributes[key]; } }));
   const groups = [routes.slice(0, 2), routes.slice(2)].map(children => ({ open: false,
@@ -49,11 +43,11 @@ test('actual router navigation marks BOTH TTC destinations and opens active grou
   const document = { querySelectorAll: selector => selector === '[data-nav-route]' ? links : groups };
   const box = { document, window: { location: { hash: '' } }, syncNavigationGroups: () => syncNavigationGroups(document) };
   vm.createContext(box); vm.runInContext(source, box);
-  for (const [hash, route, active] of [['#/ttc', 'ttc', 'ttc'], ['#/admin/ttc', 'admin', 'admin/ttc'], ['#/ttc-earn', 'ttc-earn', 'ttc'], ['#/logs', 'logs', 'logs'], ['#/homepage-content', 'homepage-content', 'settings']]) {
+  for (const [hash, route, active] of [['#/customers', 'customers', 'customers'], ['#/kiosks', 'kiosks', 'kiosks'], ['#/logs', 'logs', 'logs'], ['#/homepage-content', 'homepage-content', 'settings']]) {
     box.window.location.hash = hash;
     box.setActiveNavigation(route);
     assert.deepEqual(links.filter(link => link.active).map(link => link.dataset.navRoute), [active]);
-    assert.equal(groups[0].open, ['ttc', 'admin/ttc'].includes(active));
+    assert.equal(groups[0].open, ['customers', 'kiosks'].includes(active));
     assert.equal(groups[1].open, ['logs', 'settings'].includes(active));
     assert.equal(links.find(link => link.active).attributes['aria-current'], 'page');
   }

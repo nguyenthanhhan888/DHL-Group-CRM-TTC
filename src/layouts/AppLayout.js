@@ -94,7 +94,7 @@ function renderAdminTopbar({ displayName, username, roleLabel, avatarPath }) {
         <div class="top-bar-right top-bar-user-actions">
           <span class="connection-badge" data-supabase-badge>Chưa kết nối dữ liệu</span>
           <span class="current-date" data-current-date></span>
-          <details class="admin-notification-center"><summary class="top-icon-link" aria-label="Mở thông báo quản trị">${renderIcon('alert')}<span class="notification-count hidden" data-notification-count></span></summary><div class="admin-notification-popover"><header><strong>Việc cần chú ý</strong><button class="notification-mark-all" type="button" data-notification-mark-all>Đánh dấu tất cả đã đọc</button></header><div data-notification-list></div></div></details>
+          <details class="admin-notification-center"><summary class="top-icon-link" aria-label="Mở thông báo quản trị">${renderIcon('alert')}<span class="notification-count hidden" data-notification-count></span></summary><div class="admin-notification-popover"><header><strong>Thông báo</strong><button class="notification-mark-all" type="button" data-notification-mark-all>Đánh dấu tất cả đã đọc</button></header><div data-notification-list></div></div></details>
           <button class="top-icon-link theme-toggle-button" type="button" data-theme-toggle aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
             ${renderIcon('moon')}
           </button>
@@ -125,10 +125,6 @@ function renderUserTopbar({ displayName, username, roleLabel, avatarPath, permis
       <button class="top-icon-link theme-toggle-button" type="button" data-theme-toggle aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
         ${renderIcon('moon')}
       </button>
-      ${permissions.has('wallet') ? `<a class="top-wallet-pill" href="#/admin-ttc-wallets" aria-label="Mở ví xu">
-        <span class="top-action-icon" aria-hidden="true">${renderIcon('wallet')}</span>
-        <span data-topbar-wallet>-- xu</span>
-      </a>` : ''}
       ${permissions.has('settings') ? `<a class="top-icon-link" href="#/settings" aria-label="Cài đặt hệ thống" title="Cài đặt hệ thống">
         ${renderIcon('settings')}
       </a>` : ''}
@@ -143,7 +139,6 @@ function renderUserTopbar({ displayName, username, roleLabel, avatarPath, permis
             <span class="user-role-badge">${escapeHtml(roleLabel)}</span>
           </div>
           ${permissions.has('settings') ? `<a href="#/settings"><span class="nav-icon" aria-hidden="true">${renderIcon('settings')}</span>Cài đặt</a>` : ''}
-          ${permissions.has('wallet') ? `<a href="#/admin-ttc-wallets"><span class="nav-icon" aria-hidden="true">${renderIcon('wallet')}</span>Ví xu</a>` : ''}
           <button type="button" data-logout><span class="nav-icon" aria-hidden="true">${renderIcon('logout')}</span>Đăng xuất</button>
         </div>
       </details>

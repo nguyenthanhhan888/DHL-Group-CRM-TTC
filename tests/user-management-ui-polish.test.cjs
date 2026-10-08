@@ -9,7 +9,7 @@ const staff = readFileSync(path.join(root, 'src/pages/StaffPage.js'), 'utf8');
 const css = readFileSync(path.join(root, 'src/styles/app.css'), 'utf8');
 
 test('user list keeps the requested compact columns and one Manage action', () => {
-  for (const heading of ['Người dùng', 'Liên hệ', 'TTC / Ví', 'Quyền Web', 'Trạng thái', 'Đăng nhập gần nhất', 'Quản lý']) {
+  for (const heading of ['Người dùng', 'Liên hệ', 'Quyền Web', 'Trạng thái', 'Đăng nhập gần nhất', 'Quản lý']) {
     assert.match(staff, new RegExp(`<th>${heading.replace('/', '\\/')}</th>`));
   }
   const rowActions = functionSource('rowActions', 'openUserDetail');
@@ -19,10 +19,10 @@ test('user list keeps the requested compact columns and one Manage action', () =
   assert.doesNotMatch(functionSource('renderRows', 'rowActions'), /Facebook ID/);
 });
 
-test('Manage button opens User Detail and all five tabs remain wired', () => {
+test('Manage button opens User Detail and all three CRM tabs remain wired', () => {
   assert.match(staff, /openUserDetail\(action\.dataset\.userId, 'account'\)/);
   const tabs = [...staff.matchAll(/detailTab\('([^']+)', '([^']+)'\)/g)].map((match) => match[1]);
-  assert.deepEqual(tabs, ['account', 'ttc', 'access', 'ledger', 'security']);
+  assert.deepEqual(tabs, ['account', 'access', 'security']);
   assert.match(staff, /data-detail-tab=/);
   assert.match(staff, /state\.activeTab = button\.dataset\.detailTab/);
 });
@@ -30,7 +30,7 @@ test('Manage button opens User Detail and all five tabs remain wired', () => {
 test('permission groups cover the unchanged canonical catalog with Vietnamese labels only', () => {
   const grouped = PERMISSION_GROUPS.flatMap((group) => group.permissions);
   assert.deepEqual(new Set(grouped), new Set(ALL_PERMISSIONS));
-  assert.equal(ALL_PERMISSIONS.length, 26);
+  assert.equal(ALL_PERMISSIONS.length, 19);
   for (const permission of ALL_PERMISSIONS) {
     assert.equal(typeof PERMISSION_LABELS[permission], 'string');
     assert.ok(PERMISSION_LABELS[permission].length > 0);
@@ -48,7 +48,7 @@ test('saving permissions opens a confirmation dialog and reuses the existing bac
   assert.match(accessMarkup, /permissionConfirmationDialog\(\)/);
   assert.doesNotMatch(accessMarkup, /adminPasswordField\(\).*Lý do.*Lưu tập quyền/s);
 
-  const confirmation = functionSource('permissionConfirmationDialog', 'ledgerPanel');
+  const confirmation = functionSource('permissionConfirmationDialog', 'securityPanel');
   assert.match(confirmation, /role="dialog" aria-modal="true"/);
   assert.match(confirmation, /\$\{adminPasswordField\(\)\}/);
   assert.match(functionSource('adminPasswordField', 'bindDetailEvents'), /Xác nhận mật khẩu quản trị/);
@@ -65,7 +65,7 @@ test('saving permissions opens a confirmation dialog and reuses the existing bac
 test('table keeps user data bindings and web access uses explicit business copy', () => {
   const rows = functionSource('renderRows', 'rowActions');
   for (const binding of ['display_name', 'username', 'email', 'phone', 'last_sign_in_at']) assert.match(rows, new RegExp(binding));
-  assert.match(rows, /userWallet\(user\)/);
+  assert.doesNotMatch(rows, /userWallet\(user\)/);
   assert.match(rows, /webAccessSummary\(user\)/);
   assert.match(staff, /Quyền truy cập Web/);
   assert.match(staff, /Đang bật/);

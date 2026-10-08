@@ -1,3 +1,5 @@
+import { RegistrationRequestService } from './services/RegistrationRequestService.js';
+import { mountDateInputs } from './components/DateInput.js';
 import { Modal } from './components/Modal.js';
 import { Toast } from './components/Toast.js';
 import { NAV_SECTIONS, PAGE_TITLES } from './constants/navigation.js';
@@ -7,10 +9,9 @@ import { createRouter } from './router/index.js';
 import { getSupabaseStatus } from './supabase/client.js';
 import { AuthService } from './services/AuthService.js';
 import { settingsService } from './services/SettingsService.js';
-import { WalletService } from './services/WalletService.js';
 import { AdminNotificationService } from './services/AdminNotificationService.js';
 import { HomepageContentService } from './services/HomepageContentService.js';
-import { formatToday } from './utils/date.js';
+import { formatToday, formatDateTime } from './utils/date.js';
 import { escapeHtml } from './utils/html.js';
 import { renderIcon } from './utils/icons.js';
 import { syncThemeLogos } from './utils/themeLogo.js';
@@ -37,8 +38,6 @@ import { AccountRegisterPage } from './pages/AccountRegisterPage.js';
 import { RegistrationRequestsPage } from './pages/RegistrationRequestsPage.js';
 import { StaffPage } from './pages/StaffPage.js';
 import { UserHomePage } from './pages/UserHomePage.js';
-import { TtcPage } from './pages/TtcPage.js';
-import { AdminTtcPage } from './pages/AdminTtcPage.js';
 import { HomePage } from './pages/HomePage.js';
 import { LookupPage } from './pages/LookupPage.js';
 import { applyPublicHomepageContent, bindPublicLayout, PublicLayout } from './components/PublicLayout.js';
@@ -73,20 +72,6 @@ const routes = {
   'user-register-kiosk': UserHomePage,
   'user-facebook': UserHomePage,
   'payments-mine': UserHomePage,
-  ttc: TtcPage,
-  'ttc-earn': TtcPage,
-  'ttc-campaign-create': TtcPage,
-  'ttc-campaigns': TtcPage,
-  'ttc-wallet': UserHomePage,
-  'ttc-wallet-history': UserHomePage,
-  admin: AdminTtcPage,
-  'admin-ttc-campaigns': AdminTtcPage,
-  'admin-ttc-announcements': AdminTtcPage,
-  'admin-ttc-tasks': AdminTtcPage,
-  'admin-ttc-users': StaffPage,
-  'admin-ttc-wallets': AdminTtcPage,
-  'admin-ttc-settings': AdminTtcPage,
-  'admin-ttc-logs': AdminTtcPage,
 };
 
 const PUBLIC_ROUTES = new Set(['home', 'register', 'legacy-registration', 'lookup', 'login', 'signup']);
@@ -154,7 +139,7 @@ function renderAuthenticatedApp(root, profile) {
     }
   });
 
-  if (['staff', 'permissions', 'admin-ttc-users'].includes(getRouteName())) {
+  if (['staff', 'permissions'].includes(getRouteName())) {
     window.location.hash = '#/user-management';
   } else if (getRouteName() === 'login') {
     window.location.hash = `#/${defaultRoute}`;
@@ -189,22 +174,20 @@ function renderAuthenticatedApp(root, profile) {
   if (currentDate) currentDate.textContent = formatToday();
   bindThemeToggle();
   updateSupabaseBadge(supabaseBadge);
-  refreshTopbarWallet(profile);
   if (canAccessPermission(profile, PERMISSIONS.NOTIFICATIONS) || canAccessPermission(profile, PERMISSIONS.REGISTRATION_REQUESTS)) refreshAdminNotifications();
   if (canAccessPermission(profile, PERMISSIONS.NOTIFICATIONS) || canAccessPermission(profile, PERMISSIONS.REGISTRATION_REQUESTS)) {
     window.addEventListener('dhl:actionable-registration-changed', refreshAdminNotifications);
     window.addEventListener('focus', refreshAdminNotifications);
     window.setInterval(() => { if (!document.hidden) refreshAdminNotifications(); }, 30_000);
   }
-  window.addEventListener('dhl-wallet-updated', (event) => {
-    if (!canAccessPermission(profile, PERMISSIONS.WALLET)) return;
-    const wallet = event?.detail?.wallet;
-    if (wallet && Object.prototype.hasOwnProperty.call(wallet, 'balance')) {
-      updateTopbarWalletLabel(wallet);
-      return;
-    }
-    refreshTopbarWallet(profile, { showLoading: false });
-  });
+
+  if (canAccessPermission(profile, PERMISSIONS.REGISTRATION_REQUESTS)) {
+    refreshRegistrationBadge();
+    window.addEventListener('dhl:actionable-registration-changed', refreshRegistrationBadge);
+    window.addEventListener('dhl:registration-list-refreshed', refreshRegistrationBadge);
+    window.addEventListener('focus', refreshRegistrationBadge);
+    window.setInterval(() => { if (!document.hidden) refreshRegistrationBadge(); }, 30_000);
+  }
 
   const openLogoutModal = () => {
     Modal.open({
@@ -470,16 +453,7 @@ function renderAuthenticatedApp(root, profile) {
     return raw;
   }
 
-  function formatDateTimeSafe(value) {
-    try {
-      return new Intl.DateTimeFormat('vi-VN', {
-        dateStyle: 'short',
-        timeStyle: 'short',
-      }).format(new Date(value));
-    } catch {
-      return String(value || '');
-    }
-  }
+  function formatDateTimeSafe(value) { return formatDateTime(value); }
 
   const setSidebarOpen = (isOpen) => {
     sidebar?.classList.toggle('open', isOpen);
@@ -550,7 +524,106 @@ function renderAuthenticatedApp(root, profile) {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshAccess(); });
 }
 
-async function refreshAdminNotifications(){try{const data=await AdminNotificationService.getActionable();const items=[...data.items].sort((left,right)=>Date.parse(right.createdAt||0)-Date.parse(left.createdAt||0));const count=document.querySelector('[data-notification-count]');const navCount=document.querySelector('[data-registration-nav-count]');const list=document.querySelector('[data-notification-list]');const markAll=document.querySelector('[data-notification-mark-all]');if(count){count.textContent=String(data.unreadCount);count.classList.toggle('hidden',!data.unreadCount);}if(navCount){navCount.textContent=String(data.registrationCount);navCount.classList.toggle('hidden',!data.registrationCount);}if(markAll){markAll.disabled=!data.unreadCount;markAll.onclick=()=>{AdminNotificationService.markAllRead(items);refreshAdminNotifications();};}if(list){list.innerHTML=items.length?items.map(item=>`<a class="admin-notification-item is-${escapeHtml(item.tone)} ${item.read?'is-read':'is-unread'}" data-notification-id="${escapeHtml(item.id)}" href="${escapeHtml(item.href)}"><span aria-hidden="true">${renderIcon(item.icon)}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.description)}</small><time>${escapeHtml(item.timeLabel)}</time></span></a>`).join(''):'<p class="admin-notification-empty">Mọi việc đã được xử lý.</p>';list.querySelectorAll('[data-notification-id]').forEach(item=>item.addEventListener('click',()=>{AdminNotificationService.markRead(item.dataset.notificationId);document.querySelector('.admin-notification-center')?.removeAttribute('open');}));}}catch{const list=document.querySelector('[data-notification-list]');if(list)list.innerHTML='<p class="admin-notification-empty">Không thể tải thông báo.</p>';}}
+let registrationBadgeRefreshId = 0;
+async function refreshRegistrationBadge() {
+  const refreshId = ++registrationBadgeRefreshId;
+  const badge = document.querySelector('[data-registration-nav-count]');
+  if (!badge) return;
+  try {
+    const count = await RegistrationRequestService.getActionableCount();
+    if (refreshId !== registrationBadgeRefreshId || !badge.isConnected) return;
+    badge.textContent = String(count);
+    badge.classList.toggle('hidden', count === 0);
+  } catch {
+    if (refreshId !== registrationBadgeRefreshId || !badge.isConnected) return;
+    // An unavailable count must not leave a stale number presented as current.
+    badge.textContent = '';
+    badge.classList.add('hidden');
+  }
+}
+
+let notificationRefreshId = 0;
+async function refreshAdminNotifications() {
+  const refreshId = ++notificationRefreshId;
+  const count = document.querySelector('[data-notification-count]');
+  const list = document.querySelector('[data-notification-list]');
+  const markAll = document.querySelector('[data-notification-mark-all]');
+  try {
+    const data = await AdminNotificationService.getActionable();
+    if (refreshId !== notificationRefreshId) return;
+    const items = data.items;
+    let unreadCount = data.unreadCount;
+    let mutationPending = false;
+    const paintUnread = () => {
+      if (count) {
+        count.textContent = unreadCount ? String(unreadCount) : '';
+        count.classList.toggle('hidden', !unreadCount);
+      }
+      if (markAll) markAll.disabled = mutationPending || !unreadCount;
+    };
+    const stateText = item => `${item.read ? 'Đã đọc' : 'Chưa đọc'} · ${item.resolved ? 'Đã kết thúc' : 'Cần xử lý'}`;
+    const showMutationError = () => {
+      const policy = list?.querySelector('.admin-notification-policy');
+      if (policy) {
+        policy.textContent = 'Không thể lưu trạng thái đã đọc. Vui lòng thử lại.';
+        policy.setAttribute('role', 'alert');
+      }
+    };
+    const renderList = () => {
+      if (!list) return;
+      const empty = unreadCount === 0 ? '<p class="admin-notification-empty">Không có thông báo mới</p>' : '';
+      list.innerHTML = `<p class="admin-notification-policy">${escapeHtml(data.summaryText || '')}</p>${empty}`
+        + items.map(item => `<a class="admin-notification-item is-${escapeHtml(item.tone)} ${item.read ? 'is-read' : 'is-unread'}" data-notification-id="${escapeHtml(item.id)}" href="${escapeHtml(item.href)}"><span aria-hidden="true">${renderIcon(item.icon)}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.description)}</small><time>${escapeHtml(item.timeLabel)} · ${stateText(item)}</time></span></a>`).join('');
+      list.querySelectorAll('[data-notification-id]').forEach(node => node.addEventListener('click', async event => {
+        const item = items.find(entry => entry.id === node.dataset.notificationId);
+        if (!item || item.read) return;
+        if (mutationPending) { event.preventDefault(); return; }
+        event.preventDefault();
+        mutationPending = true;
+        item.read = true;
+        unreadCount = Math.max(0, unreadCount - 1);
+        paintUnread();
+        renderList();
+        try {
+          await AdminNotificationService.markRead(item.id, item.userId);
+          document.querySelector('.admin-notification-center')?.removeAttribute('open');
+          window.location.href = item.href;
+        } catch {
+          item.read = false;
+          unreadCount += 1;
+          renderList();
+          showMutationError();
+        } finally {
+          mutationPending = false;
+          paintUnread();
+        }
+      }));
+    };
+    paintUnread();
+    renderList();
+    if (markAll) markAll.onclick = async () => {
+      if (mutationPending || !unreadCount) return;
+      mutationPending = true;
+      paintUnread();
+      try {
+        await AdminNotificationService.markAllRead(items);
+        items.forEach(item => { item.read = true; });
+        unreadCount = 0;
+        renderList();
+      } catch {
+        showMutationError();
+      } finally {
+        mutationPending = false;
+        paintUnread();
+      }
+    };
+  } catch {
+    if (refreshId !== notificationRefreshId) return;
+    if (count) { count.textContent = ''; count.classList.add('hidden'); }
+    if (markAll) { markAll.disabled = true; markAll.onclick = null; }
+    if (list) list.innerHTML = '<p class="admin-notification-empty" role="alert">Không thể tải thông báo.</p>';
+  }
+}
 
 function applySavedTheme() {
   const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
@@ -589,7 +662,6 @@ function updateThemeToggle(button) {
 function normalizeRouteForPermission(route) {
   const routeName = String(route || '').split('?')[0];
   if (routeName && routeName !== route) return normalizeRouteForPermission(routeName);
-  if (route === 'admin/ttc') return 'admin';
   return route;
 }
 
@@ -616,8 +688,6 @@ function firstAllowedRoute(profile) {
   const preferred = [
     'dashboard', 'reports', 'customers', 'customer-detail', 'kiosks', 'kiosk-detail',
     'registration-requests', 'payments', 'payment-detail', 'expenses', 'categories', 'business-types',
-    'ttc', 'admin-ttc-campaigns', 'admin-ttc-announcements', 'admin-ttc-tasks',
-    'admin-ttc-wallets', 'admin-ttc-settings', 'admin-ttc-logs', 'admin',
     'user-management', 'logs', 'settings', 'homepage-content', 'user',
   ];
   return preferred.find((route) => canAccessRoute(profile, route)) || 'user';
@@ -680,19 +750,6 @@ function setActiveNavigation(route) {
     'user-kiosks': 'user-kiosks',
     'user-register-kiosk': 'user-register-kiosk',
     'user-facebook': 'user-facebook',
-    'ttc-earn': 'ttc',
-    'ttc-campaign-create': 'ttc',
-    'ttc-campaigns': 'ttc',
-    'ttc-wallet': 'ttc',
-    'ttc-wallet-history': 'ttc',
-    'admin-ttc-campaigns': 'admin-ttc-campaigns',
-    'admin-ttc-announcements': 'admin-ttc-announcements',
-    'admin-ttc-tasks': 'admin-ttc-tasks',
-    'admin-ttc-users': 'admin-ttc-users',
-    'admin-ttc-wallets': 'admin-ttc-wallets',
-    'admin-ttc-settings': 'admin-ttc-settings',
-    'admin-ttc-logs': 'admin-ttc-logs',
-    admin: getRouteSubPath() === 'ttc' ? 'admin/ttc' : 'admin',
   }[route] || route;
 
   document.querySelectorAll('[data-nav-route]').forEach((link) => {
@@ -718,27 +775,10 @@ function updateSupabaseBadge(element) {
   element.classList.toggle('ready', status.configured);
 }
 
-async function refreshTopbarWallet(profile, options = {}) {
-  if (!canAccessPermission(profile, PERMISSIONS.WALLET)) return;
-  const walletLabel = document.querySelector('[data-topbar-wallet]');
-  if (!walletLabel) return;
-  if (options.showLoading !== false) walletLabel.textContent = 'Đang tải';
-  try {
-    const { data } = await WalletService.getMyWallet();
-    updateTopbarWalletLabel(data);
-  } catch {
-    walletLabel.textContent = '0 xu';
-  }
-}
 
-function updateTopbarWalletLabel(wallet) {
-  const walletLabel = document.querySelector('[data-topbar-wallet]');
-  if (!walletLabel) return;
-  walletLabel.textContent = `${formatNumber(wallet?.balance ?? 0)} xu`;
-}
 
 function formatNumber(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value || 0));
 }
 
-document.addEventListener('DOMContentLoaded', initApp);
+document.addEventListener('DOMContentLoaded', () => { mountDateInputs(); initApp(); });

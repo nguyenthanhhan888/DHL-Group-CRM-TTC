@@ -1,4 +1,5 @@
 import { requireSupabaseClient, runQuery } from './BaseService.js';
+import { reportPeriod } from '../utils/reportPeriod.js';
 
 const ALLOWED_TABS = new Set([
   'overview',
@@ -16,7 +17,7 @@ export const ReportService = {
     const { data: first } = await this.getReportData(tab, snapshot, { ...options, page: 1, pageSize: 100 });
     if (tab === 'overview') return { data: first };
     const rows = [...first.rows];
-    const signature = (report) => JSON.stringify([report.pagination.totalRows, report.summary, report.groups]);
+    const signature = (report) => JSON.stringify([report.pagination.totalRows, report.summary, report.groups, report.financial]);
     for (let page = 2; page <= first.pagination.totalPages; page += 1) {
       const { data } = await this.getReportData(tab, snapshot, { ...options, page, pageSize: 100 });
       if (signature(data) !== signature(first)) throw new Error('Dữ liệu đã thay đổi trong lúc xuất. Vui lòng tải lại báo cáo và thử lại.');
@@ -31,11 +32,11 @@ export const ReportService = {
     const requestedPageSize = positiveInteger(options.pageSize, 50);
     const pageSize = ALLOWED_PAGE_SIZES.has(requestedPageSize) ? requestedPageSize : 50;
     const supabase = requireSupabaseClient();
-    const [{ data }, { data: operations }, { data: expenseSummary }, { data: financialKpis }] = await Promise.all([
-      runQuery(supabase.rpc('get_reports_data', {
+    const period = reportPeriod(filters);
+    const reportArgs = {
         p_report_type: normalizedTab,
-        p_start_date: normalizeDate(filters.startDate),
-        p_end_date: normalizeDate(filters.endDate),
+        p_start_date: period.selected.startDate,
+        p_end_date: period.selected.endDate,
         p_customer_id: optionalInteger(filters.customerId),
         p_kiosk_id: optionalInteger(filters.kioskId),
         p_category_id: optionalInteger(filters.categoryId),
@@ -46,20 +47,36 @@ export const ReportService = {
         p_sort_direction: options.sortDirection === 'asc' ? 'asc' : 'desc',
         p_page: page,
         p_page_size: pageSize,
-      })),
+        p_search: optionalText(filters.search),
+    };
+    const revenue = (range) => runQuery(supabase.rpc('get_reports_data_filtered', {
+      ...reportArgs, p_report_type: 'revenue', p_start_date: range.startDate, p_end_date: range.endDate, p_page: 1,
+    }));
+    const [{ data }, { data: operations }, { data: expenseSummary }, yearData, monthData] = await Promise.all([
+      runQuery(supabase.rpc('get_reports_data_filtered', reportArgs)),
       runQuery(supabase.rpc('get_registration_operations_summary')),
       runQuery(supabase.rpc('get_expense_report_summary', {
-        p_start_date: normalizeDate(filters.startDate),
-        p_end_date: normalizeDate(filters.endDate),
+        p_start_date: period.selected.startDate,
+        p_end_date: period.selected.endDate,
       })),
-      runQuery(supabase.rpc('get_current_financial_kpis')),
+      normalizedTab === 'revenue' && period.custom ? revenue(period.yearRange) : null,
+      normalizedTab === 'revenue' && period.mode === 'ytd' ? revenue(period.monthRange) : null,
     ]);
-
-    return { data: normalizeResponse(data, normalizedTab, page, pageSize, operations, expenseSummary, financialKpis) };
+    const result = normalizeResponse(data, normalizedTab, page, pageSize, operations, expenseSummary);
+    const selectedRevenue = Number(result.summary.totalRevenue || 0);
+    const yearRevenue = Number(yearData?.data?.summary?.totalRevenue ?? selectedRevenue);
+    result.financial = {
+      period,
+      values: [period.custom ? yearRevenue : selectedRevenue,
+        period.custom ? selectedRevenue : Number(monthData?.data?.summary?.totalRevenue || 0),
+        result.summary.totalExpense,
+        selectedRevenue - result.summary.totalExpense],
+    };
+    return { data: result };
   },
 };
 
-function normalizeResponse(data, tab, page, pageSize, operations = {}, expenseSummary = {}, financialKpis = {}) {
+function normalizeResponse(data, tab, page, pageSize, operations = {}, expenseSummary = {}) {
   const report = data && typeof data === 'object' ? data : {};
   const pagination = report.pagination || {};
   const summary = {};
@@ -72,13 +89,7 @@ function normalizeResponse(data, tab, page, pageSize, operations = {}, expenseSu
   summary.pendingKiosks = nonNegativeNumber(operations?.pendingKiosks ?? summary.pendingKiosks);
   summary.pendingReviewRequests = nonNegativeNumber(operations?.pendingReviewRequests);
   summary.totalExpense = nonNegativeNumber(expenseSummary?.totalExpense);
-  summary.estimatedProfit = Number(summary.totalRevenue || 0) - summary.totalExpense;
-  summary.currentYear = Number(financialKpis?.year || 0);
-  summary.currentMonth = Number(financialKpis?.month || 0);
-  summary.currentYearRevenue = nonNegativeNumber(financialKpis?.yearRevenue);
-  summary.currentMonthRevenue = nonNegativeNumber(financialKpis?.monthRevenue);
-  summary.currentYearExpense = nonNegativeNumber(financialKpis?.yearExpense);
-  summary.currentYearProfit = Number(financialKpis?.yearProfit || 0);
+  summary.netProfit = Number(summary.totalRevenue || 0) - summary.totalExpense;
 
   return {
     tab: report.tab || tab,
@@ -136,9 +147,4 @@ function optionalInteger(value) {
 function optionalText(value) {
   const text = String(value || '').trim();
   return text || null;
-}
-
-function normalizeDate(value) {
-  const text = String(value || '');
-  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
 }

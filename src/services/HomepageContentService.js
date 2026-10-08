@@ -1,3 +1,4 @@
+import { toVietnamDateTimeInput, fromVietnamDateTimeInput } from '../utils/date.js';
 import { requireSupabaseClient } from './BaseService.js';
 
 export class HomepageContentService {
@@ -20,7 +21,7 @@ export class HomepageContentService {
   }
 
   static async saveBusiness(business) {
-    const { data, error } = await requireSupabaseClient().rpc('save_featured_business', { p_business: business });
+    const { data, error } = await requireSupabaseClient().rpc('save_featured_business', { p_business: { ...business, visibilityStart: fromVietnamDateTimeInput(business.visibilityStart), visibilityEnd: fromVietnamDateTimeInput(business.visibilityEnd) } });
     if (error) throw error;
     return data;
   }
@@ -82,16 +83,10 @@ function normalizeAdminData(data = {}) {
       badge: item.badge || '',
       enabled: item.enabled !== false,
       displayOrder: Number(item.display_order || 0),
-      visibilityStart: toLocalDateTime(item.visibility_start),
-      visibilityEnd: toLocalDateTime(item.visibility_end),
+      visibilityStartInstant: item.visibility_start,
+      visibilityEndInstant: item.visibility_end,
+      visibilityStart: toVietnamDateTimeInput(item.visibility_start),
+      visibilityEnd: toVietnamDateTimeInput(item.visibility_end),
     })),
   };
-}
-
-function toLocalDateTime(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const offset = date.getTimezoneOffset() * 60000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }

@@ -1,3 +1,4 @@
+import { createDateValue } from '../utils/date.js';
 import { EmployeesPage } from './EmployeesPage.js';
 import { ExpenseNavigation } from '../components/ExpenseNavigation.js';
 import { DetailFields } from '../components/DetailFields.js';
@@ -154,7 +155,7 @@ function openExpenseForm(item = null) {
         <div class="expense-form-grid">
           <label class="form-group"><span>Danh mục</span><select class="form-control" name="category" required>${categoryOptions(selectedCategory)}</select></label>
           <label class="form-group"><span>Số tiền</span><input class="form-control" name="amount" inputmode="numeric" required value="${escapeHtml(item?.amount || '')}"></label>
-          <label class="form-group"><span>Ngày chi</span><input class="form-control" name="expenseDate" type="date" required value="${escapeHtml(item?.expense_date || toDateOnly(startOfVietnamToday()))}"></label>
+          <label class="form-group"><span>Ngày chi</span><input class="form-control" name="expenseDate" type="date" required value="${escapeHtml(createDateValue(item, item?.expense_date))}"></label>
           <label class="form-group"><span>Phương thức</span><select class="form-control" name="paymentMethod" required>${paymentMethodOptions(item?.payment_method || 'bank_transfer')}</select></label>
           <label class="form-group expense-employee-field"><span>Nhân viên</span><select class="form-control" name="employeeId">${expenseEmployeeOptions(state.employees, item?.employee_id, { current: item })}</select></label>
           <label class="form-group expense-salary-period-field"><span>Kỳ lương</span><input class="form-control" name="salaryPeriod" type="month" value="${escapeHtml(String(item?.salary_period || '').slice(0, 7))}"></label>

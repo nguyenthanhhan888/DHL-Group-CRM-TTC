@@ -1,6 +1,28 @@
+import { countActionableRegistrations } from '../utils/registrationFollowup.js';
 import { requireSupabaseClient, runQuery } from './BaseService.js';
 
 export const RegistrationRequestService = {
+  async getActionableCount() {
+    const client = requireSupabaseClient();
+    const rows = [];
+    let lastId = null;
+    // Read-only and independent of notification windows/read state. Keyset paging
+    // also works when the server's response cap is lower than the requested limit.
+    for (;;) {
+      let query = client.from('registration_requests')
+        .select('id,status,metadata,customer_id,kiosk_id,payment_id,total_amount,registration_batch_id')
+        .order('id', { ascending: true }).limit(500);
+      if (lastId !== null) query = query.gt('id', lastId);
+      const { data } = await runQuery(query);
+      if (!data?.length) break;
+      const nextId = data[data.length - 1].id;
+      if (nextId == null || String(nextId) === String(lastId)) throw new Error('Không thể đọc đủ hồ sơ Kiosk.');
+      rows.push(...data);
+      lastId = nextId;
+    }
+    return countActionableRegistrations(rows);
+  },
+
   async list(status = '') {
     return runQuery(requireSupabaseClient().rpc('admin_list_registration_requests', {
       status_input: status || null,

@@ -35,10 +35,8 @@ test('Revenue summary includes expense-backed operational KPIs without changing 
   const revenue = reports.match(/function renderRevenue[\s\S]*?function renderKiosks/)?.[0] || '';
   const cards = revenue.match(/renderSummaryCards\(\[([\s\S]*?)\], 'report-revenue-stats'\)/)?.[1] || '';
   assert.equal((cards.match(/\bcard\(/g) || []).length, 4);
-  assert.match(cards, /currentYearRevenue[\s\S]*Doanh thu năm/);
-  assert.match(cards, /currentMonthRevenue[\s\S]*Doanh thu tháng/);
-  assert.match(cards, /currentYearExpense[\s\S]*Chi tiêu năm/);
-  assert.match(cards, /currentYearProfit[\s\S]*Lợi nhuận ước tính năm/);
+  for (let index = 0; index < 4; index += 1) assert.ok(cards.includes(`labels[${index}]`));
+  assert.match(revenue, /report\.financial/);
   assert.doesNotMatch(cards, /averagePayment|highestPayment|lowestPayment/);
   assert.match(revenue, /Chi tiết thanh toán hoàn thành/);
 });

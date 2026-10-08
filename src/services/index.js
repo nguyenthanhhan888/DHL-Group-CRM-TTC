@@ -9,7 +9,4 @@ export { PayosService } from './PayosService.js';
 export { RegistrationService } from './RegistrationService.js';
 export { ReportService } from './ReportService.js';
 export { SettingsService } from './SettingsService.js';
-export { TtcAdminService } from './TtcAdminService.js';
-export { TtcService } from './TtcService.js';
 export { UserProfileService } from './UserProfileService.js';
-export { WalletService } from './WalletService.js';

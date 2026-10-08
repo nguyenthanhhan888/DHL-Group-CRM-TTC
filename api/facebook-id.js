@@ -19,6 +19,9 @@ module.exports = async function facebookIdHandler(req, res) {
     return sendError(res, 400, validation.code, validation.message);
   }
 
+  const directId = facebookIdFromProfileUrl(validation.url);
+  if (directId) return res.status(200).json({ success: true, facebook_id: directId, facebook_url: validation.url });
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -54,6 +57,9 @@ module.exports = async function facebookIdHandler(req, res) {
       );
     }
 
+    if (Number(upstreamData?.code) === 403 || /captcha/i.test(String(upstreamData?.error || ''))) {
+      return sendError(res, 503, 'FACEBOOK_ID_PROVIDER_BLOCKED', 'Dịch vụ lấy Facebook ID hiện đang yêu cầu xác minh CAPTCHA. Vui lòng nhập Facebook ID thủ công hoặc thử lại sau.');
+    }
     const facebookId = normalizeFacebookId(upstreamData?.id);
     if (!facebookId) {
       return sendError(
@@ -155,6 +161,14 @@ function normalizeFacebookId(value) {
   return /^\d+$/.test(id) ? id : '';
 }
 
+function facebookIdFromProfileUrl(value) {
+  const url = new URL(value);
+  const path = url.pathname.replace(/^\/+|\/+$/g, '');
+  // Profile identities only: a post/video/story ID is not a Kiosk identity.
+  if (path === 'profile.php') return normalizeFacebookId(url.searchParams.get('id'));
+  return /^\d+$/.test(path) ? path : '';
+}
+
 function normalizeFacebookName(value) {
   return String(value ?? '').trim();
 }
@@ -169,4 +183,5 @@ module.exports._test = {
   parseRequestBody,
   validateFacebookUrl,
   REQUEST_TIMEOUT_MS,
+  facebookIdFromProfileUrl,
 };

@@ -9,7 +9,7 @@ const dashboard = read('src/services/DashboardService.js');
 const dashboardPage = read('src/pages/DashboardPage.js');
 const reports = read('src/pages/ReportsPage.js');
 const notifications = read('src/services/AdminNotificationService.js');
-const notificationMigration = read('supabase/migrations/20260916120000_qa_round1_core_stabilization.sql');
+const notificationMigration = read('supabase/migrations/20261008172650_persist_crm_notifications.sql');
 const layout = read('src/layouts/AppLayout.js');
 const logs = read('src/pages/LogsPage.js');
 const register = read('src/pages/RegisterPage.js');
@@ -21,9 +21,9 @@ test('overview presents business KPIs while the notification RPC keeps request s
   const cards = overview.match(/renderSummaryCards\(\[([\s\S]*?)\]\)/)?.[1] || '';
   for (const label of ['Hồ sơ cần xử lý', 'Hồ sơ chờ thanh toán', 'Kiosk hoạt động', 'Kiosk sắp hết hạn', 'Kiosk hết hạn', 'Doanh thu trong kỳ']) assert.match(cards, new RegExp(label));
   assert.doesNotMatch(cards, /Giao dịch Pending|Kiosk chờ duyệt/);
-  assert.match(notifications, /get_registration_actionable_summary/);
-  assert.match(notificationMigration, /pendingReviewCount/);
-  assert.match(notificationMigration, /awaitingPaymentCount/);
+  assert.match(notifications, /get_crm_notifications/);
+  assert.match(notificationMigration, /'registration_review'/);
+  assert.match(notificationMigration, /'payment_reconciliation'/);
 });
 
 test('Recent Activity consumes shared business events instead of inferring payment lifecycle again', () => {
@@ -42,11 +42,10 @@ test('shared registration, renewal and legacy event types have semantic presenta
 test('notification badge counts only Admin-actionable review and reconciliation states', () => {
   assert.match(layout, /admin-notification-center/);
   assert.match(layout, /data-registration-nav-count/);
-  assert.match(notifications, /unreadCount = pendingCount \+ reconciliationCount/);
-  assert.match(notifications, /pendingReviewCount: pendingCount/);
-  assert.match(notifications, /awaitingPaymentCount: awaitingCount/);
-  assert.match(notifications, /registrationCount: Number\(data\?\.actionableRegistrationCount/);
-  assert.doesNotMatch(notifications, /request:awaiting_payment:/);
+  assert.match(notifications, /Number\(data\?\.unreadCount \|\| 0\)/);
+  assert.match(notificationMigration, /r\.status = 'pending'/);
+  assert.match(notificationMigration, /o\.reconciliation_required/);
+  assert.doesNotMatch(notifications, /registrationCount|awaitingPaymentCount|pendingReviewCount/);
 });
 
 test('business log view uses business events by default and raw audit only in technical mode', () => {

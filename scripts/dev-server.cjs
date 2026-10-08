@@ -14,7 +14,6 @@ const apiRoutes = new Map([
   ['/api/payos/create-registration-payment', 'api/payos/create-registration-payment.js'],
   ['/api/payos/status', 'api/payos/status.js'],
   ['/api/payos/webhook', 'api/payos/webhook.js'],
-  ['/api/ttc/verify-facebook-task', 'api/ttc/verify-facebook-task.js'],
 ]);
 
 const mimeTypes = {

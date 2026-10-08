@@ -43,10 +43,10 @@ test('expense mutations are transactional business events without generic update
   assert.match(audit, /Thêm chi phí[\s\S]*expenseCategoryLabel/);
 });
 
-test('Reports applies the same date filters and computes estimated profit from unchanged revenue', () => {
-  assert.match(reports, /rpc\('get_reports_data'[\s\S]*p_start_date: normalizeDate\(filters\.startDate\)[\s\S]*p_end_date: normalizeDate\(filters\.endDate\)/);
-  assert.match(reports, /rpc\('get_expense_report_summary'[\s\S]*p_start_date: normalizeDate\(filters\.startDate\)[\s\S]*p_end_date: normalizeDate\(filters\.endDate\)/);
-  assert.match(reports, /summary\.estimatedProfit = Number\(summary\.totalRevenue \|\| 0\) - summary\.totalExpense/);
-  for (const label of ['Doanh thu năm', 'Doanh thu tháng', 'Chi tiêu năm', 'Lợi nhuận ước tính năm']) assert.match(reportPage, new RegExp(label));
+test('Reports applies selected periods and computes net profit from unchanged revenue', () => {
+  assert.match(reports, /p_start_date: period\.selected\.startDate/);
+  assert.match(reports, /p_end_date: period\.selected\.endDate/);
+  assert.match(reports, /summary\.netProfit = Number\(summary\.totalRevenue \|\| 0\) - summary\.totalExpense/);
+  assert.match(reportPage, /report\.financial/);
   assert.doesNotMatch(migration, /update public\.payments|insert into public\.payments|delete from public\.payments/i);
 });

@@ -1,3 +1,4 @@
+import { createDateValue } from '../utils/date.js';
 import { EmployeeService } from '../services/EmployeeService.js';
 import { PageHeader } from '../components/PageHeader.js';
 import { FilterBar } from '../components/FilterBar.js';
@@ -87,7 +88,7 @@ function openEmployeeForm(item = null) {
       <label class="form-group employee-form-wide"><span>Họ tên *</span><input class="form-control" name="fullName" required maxlength="160" autocomplete="name" value="${escapeHtml(item?.full_name || '')}"></label>
       <label class="form-group"><span>Số điện thoại</span><input class="form-control" name="phone" type="tel" maxlength="40" autocomplete="tel" value="${escapeHtml(item?.phone || '')}"></label>
       <label class="form-group"><span>Vai trò / Công việc</span><input class="form-control" name="jobTitle" maxlength="120" value="${escapeHtml(item?.job_title || '')}"></label>
-      <label class="form-group"><span>Ngày bắt đầu</span><input class="form-control" name="startDate" type="date" value="${escapeHtml(item?.start_date || '')}"></label>
+      <label class="form-group"><span>Ngày bắt đầu</span><input class="form-control" name="startDate" type="date" value="${escapeHtml(createDateValue(item, item?.start_date))}"></label>
       <label class="form-group"><span>Trạng thái làm việc</span><select class="form-control" name="employmentStatus"><option value="active">Đang làm</option><option value="left" ${item?.employment_status === 'left' ? 'selected' : ''}>Đã nghỉ</option></select></label>
       <label class="form-group employee-form-wide"><span>Ghi chú</span><textarea class="form-control" name="notes" rows="3" maxlength="2000">${escapeHtml(item?.notes || '')}</textarea></label>
     </div><div class="form-error hidden" id="employee-form-error" role="alert"></div>

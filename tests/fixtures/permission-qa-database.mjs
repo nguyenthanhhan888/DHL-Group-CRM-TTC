@@ -11,7 +11,7 @@ export const qaUsers = Object.freeze({
   disabled: '00000000-0000-4000-8000-000000001004',
   legacy: '00000000-0000-4000-8000-000000001005',
 });
-export async function createPermissionQaDatabase({ applyFix = true, applyFinalFix = true } = {}) {
+export async function createPermissionQaDatabase({ applyFix = true, applyFinalFix = true, applyFollowup = true, applyStabilization = true } = {}) {
   const db = new PGlite();
   await db.exec(await read('./crm-payment-baseline.sql'));
   await db.exec("alter table auth.users add column if not exists email text; set time zone 'UTC'");
@@ -58,6 +58,9 @@ export async function createPermissionQaDatabase({ applyFix = true, applyFinalFi
   await db.exec("insert into public.categories(id,name) values(1,'Danh mục TEST'); insert into public.business_types(id,category_id,name,price_per_month) values(1,1,'Dịch vụ TEST',100000); insert into public.customers(id,facebook_name,phone,status) values(1,'Khách hàng TEST','0900000001','active'); insert into public.kiosks(id,customer_id,facebook_name,facebook_id,business_type_id,category_id,start_date,end_date,status) values(1,1,'Kiosk TEST','9999990001',1,1,'2020-01-01','2099-12-31','active')");
   if(applyFix) for(const name of files.filter(x=>x.endsWith('_finalize_user_permission_boundaries.sql'))) await db.exec(await read(`../../supabase/migrations/${name}`));
   if(applyFix && applyFinalFix) for(const name of files.filter(x=>x.endsWith('_finalize_crm_registration_checkout.sql'))) await db.exec(await read(`../../supabase/migrations/${name}`));
+  if(applyFix && applyFinalFix && applyFollowup) for(const name of files.filter(x=>x.endsWith('_production_followup_reports_notifications.sql'))) await db.exec(await read(`../../supabase/migrations/${name}`));
+  if (applyFix && applyFinalFix && applyFollowup && applyStabilization) for (const name of files.filter(x=>x.endsWith('_remove_ttc_crm_surface.sql'))) await db.exec(await read(`../../supabase/migrations/${name}`));
+  if (applyFix && applyFinalFix && applyFollowup && applyStabilization) for (const name of files.filter(x=>x.endsWith('_persist_crm_notifications.sql'))) await db.exec(await read(`../../supabase/migrations/${name}`));
   return db;
 }
 

@@ -1,82 +1,91 @@
 import { requireSupabaseClient, runQuery } from './BaseService.js';
 
-const STORAGE_KEY = 'dhl:admin-notification-state:v1';
+export const NOTIFICATION_RETENTION_DAYS = 90;
+export const NOTIFICATION_WINDOW_LIMIT = 100;
+
+let pendingMutation = Promise.resolve();
+let pendingMutationError = null;
 
 export const AdminNotificationService = {
   async getActionable() {
+    await flushPendingMutations();
     const supabase = requireSupabaseClient();
-    const { data } = await runQuery(supabase.rpc('get_registration_actionable_summary'));
-    const pending = data?.pendingItems || [];
-    const awaiting = data?.awaitingPaymentItems || [];
-    const pendingCount = Number(data?.pendingReviewCount ?? pending.length);
-    const reconciliationCount = Number(data?.reconciliationCount || 0);
-    const awaitingCount = Number(data?.awaitingPaymentCount ?? awaiting.length);
-    const items = [
-      ...pending.map((item) => notification({ id: `request:pending:${item.id}:${item.submitted_at || ''}`, createdAt: item.submitted_at, tone: 'pending', icon: 'check', title: isAdditional(item) ? 'Bổ sung Kiosk chờ xử lý' : 'Hồ sơ Kiosk chờ duyệt', description: `${item.facebook_name || 'Khách hàng'} đang chờ Ban quản trị`, href: '#/registration-requests?status=pending' })),
-      ...(reconciliationCount ? [notification({ id: `reconciliation:summary:${reconciliationCount}`, createdAt: new Date().toISOString(), tone: 'danger', icon: 'warning', title: 'Giao dịch cần đối soát', description: `${reconciliationCount} giao dịch cần Admin xử lý`, href: '#/payments' })] : []),
-    ];
-    const uniqueItems = [...new Map(items.map((item) => [item.id, item])).values()];
-    const state = readState();
-    const visibleItems = uniqueItems.map((item) => ({ ...item, read: Boolean(state[item.id]?.readAt) }));
-    pruneState(state, new Set(uniqueItems.map((item) => item.id)));
-    const unreadCount = pendingCount + reconciliationCount;
+    const { data: authData, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    const userId = authData?.session?.user?.id;
+    if (!userId) return { items: [], count: 0, unreadCount: 0 };
+
+    const { data } = await runQuery(supabase.rpc('get_crm_notifications'));
+    const unreadCount = Number(data?.unreadCount || 0);
     return {
-      items: visibleItems,
+      items: (data?.items || []).map(item => notification(item, userId)),
       count: unreadCount,
       unreadCount,
-      registrationCount: Number(data?.actionableRegistrationCount ?? (pendingCount + reconciliationCount)),
-      pendingReviewCount: pendingCount,
-      awaitingPaymentCount: awaitingCount,
-      reconciliationCount,
-      summaryText: `${pendingCount} hồ sơ chờ duyệt · ${reconciliationCount} giao dịch cần đối soát · ${awaitingCount} hồ sơ chờ thanh toán`,
+      summaryText: 'Đã đọc không có nghĩa là đã xử lý. Thông báo chưa đọc được giữ lại; lịch sử đã kết thúc và đã đọc được giữ 90 ngày.',
     };
   },
 
   markRead(id) {
-    const state = readState();
-    state[id] = { readAt: new Date().toISOString() };
-    writeState(state);
+    return enqueueMutation(() => runQuery(requireSupabaseClient().rpc(
+      'mark_crm_notification_read',
+      { p_notification_id: id },
+    )));
   },
 
-  markAllRead(items = []) {
-    const state = readState();
-    const readAt = new Date().toISOString();
-    items.forEach((item) => { state[item.id] = { readAt }; });
-    writeState(state);
+  markAllRead() {
+    return enqueueMutation(() => runQuery(requireSupabaseClient().rpc(
+      'mark_all_crm_notifications_read',
+    )));
   },
 };
 
-function isAdditional(item) {
-  const source = String(item.metadata?.source || item.metadata?.registration_type || item.metadata?.request_type || '').toLowerCase();
-  return source.includes('legacy') || source.includes('additional');
+function notification(item, userId) {
+  const resolved = Boolean(item.resolved_at);
+  const reconciliation = item.notification_type === 'payment_reconciliation';
+  return {
+    id: String(item.id),
+    userId,
+    type: item.notification_type,
+    entityType: item.entity_type,
+    entityId: item.entity_id,
+    occurrenceKey: item.occurrence_key,
+    createdAt: item.created_at,
+    resolvedAt: item.resolved_at,
+    readAt: item.read_at,
+    read: Boolean(item.read_at),
+    actionable: !resolved,
+    resolved,
+    tone: resolved ? 'resolved' : reconciliation ? 'danger' : 'pending',
+    icon: resolved ? 'check-circle' : reconciliation ? 'warning' : 'check',
+    title: item.title,
+    description: item.message,
+    targetUrl: item.target_url,
+    href: item.target_url,
+    timeLabel: relativeTime(item.created_at),
+  };
 }
 
-function notification(item) {
-  return { ...item, timeLabel: relativeTime(item.createdAt) };
+function enqueueMutation(action) {
+  pendingMutation = pendingMutation
+    .then(action)
+    .catch(error => { pendingMutationError ||= error; });
+  return pendingMutation;
+}
+
+async function flushPendingMutations() {
+  await pendingMutation;
+  if (!pendingMutationError) return;
+  const error = pendingMutationError;
+  pendingMutationError = null;
+  throw error;
 }
 
 function relativeTime(value) {
-  if (!value) return 'Vừa cập nhật';
-  const elapsed = Date.now() - new Date(value).getTime();
+  const elapsed = Date.now() - Date.parse(value);
   if (!Number.isFinite(elapsed)) return 'Vừa cập nhật';
-  const minutes = Math.max(0, Math.floor(elapsed / 60_000));
+  const minutes = Math.max(0, Math.floor(elapsed / 60000));
   if (minutes < 1) return 'Vừa xong';
   if (minutes < 60) return `${minutes} phút trước`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} giờ trước`;
-  return `${Math.floor(hours / 24)} ngày trước`;
-}
-
-function readState() {
-  try { return JSON.parse(globalThis.localStorage?.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
-}
-
-function writeState(state) {
-  try { globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* Storage can be unavailable. */ }
-}
-
-function pruneState(state, activeIds) {
-  let changed = false;
-  Object.keys(state).forEach((id) => { if (!activeIds.has(id)) { delete state[id]; changed = true; } });
-  if (changed) writeState(state);
+  return hours < 24 ? `${hours} giờ trước` : `${Math.floor(hours / 24)} ngày trước`;
 }

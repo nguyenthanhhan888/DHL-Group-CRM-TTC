@@ -13,7 +13,7 @@ import { BusinessTypeService } from '../services/BusinessTypeService.js';
 import { CategoryService } from '../services/CategoryService.js';
 import { ReportService } from '../services/ReportService.js';
 import { formatCurrency } from '../utils/currency.js';
-import { formatDate, startOfVietnamToday, toDateOnly } from '../utils/date.js';
+import { formatDate, vietnamDateRangeYearToDate } from '../utils/date.js';
 import { escapeHtml } from '../utils/html.js';
 import { renderIcon } from '../utils/icons.js';
 
@@ -40,8 +40,10 @@ const state = {
   sortDirection: 'desc',
   searchTerm: '',
 };
+let searchTimer;
 
 export function ReportsPage() {
+  state.activeTab = 'overview';
   return `
     <div class="reports-page">
     ${PageHeader({
@@ -198,7 +200,9 @@ function bindEvents() {
   document.getElementById('report-export-button')?.addEventListener('click', exportCurrentPage);
   document.getElementById('report-search')?.addEventListener('input', (event) => {
     state.searchTerm = event.target.value || '';
-    renderReportContent();
+    state.filters.search = state.searchTerm;
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(resetAndLoad, 250);
   });
 
   document.querySelectorAll('[data-report-tab]').forEach((button) => {
@@ -216,6 +220,7 @@ function bindEvents() {
 function bindFilter(id, key) {
   document.getElementById(id)?.addEventListener('change', (event) => {
     state.filters[key] = event.target.value;
+    if (key === 'startDate' || key === 'endDate') state.filters.customDateRange = true;
     resetAndLoad();
   });
 }
@@ -281,6 +286,10 @@ async function loadReportData() {
     const contexts = state.activeTab === 'reconciliation' ? await ReviewContextService.resolve(data.rows.map(reviewReference)) : [];
     if (requestId !== state.requestId) return;
     state.reviewContexts = contexts;
+    state.filters.startDate = data.financial.period.selected.startDate;
+    state.filters.endDate = data.financial.period.selected.endDate;
+    setControlValue('report-start-date', state.filters.startDate);
+    setControlValue('report-end-date', state.filters.endDate);
     state.report = data;
     renderReportContent();
   } catch (error) {
@@ -363,15 +372,16 @@ function renderOverview(report) {
 }
 
 function renderRevenue(report) {
-  const year = report.summary.currentYear;
-  const month = report.summary.currentMonth;
+  const { values, period } = report.financial;
+  const labels = period.labels;
   return `
     ${renderSummaryCards([
-      card('green', renderIcon('money'), formatCurrency(report.summary.currentYearRevenue), `Doanh thu năm ${year}`, true),
-      card('blue', renderIcon('money'), formatCurrency(report.summary.currentMonthRevenue), `Doanh thu tháng ${month}`, true),
-      card('red', renderIcon('receipt'), formatCurrency(report.summary.currentYearExpense), `Chi tiêu năm ${year}`, true),
-      card(report.summary.currentYearProfit >= 0 ? 'teal' : 'red', renderIcon('trending-up'), formatCurrency(report.summary.currentYearProfit), `Lợi nhuận ước tính năm ${year}`, true),
+      card('green', renderIcon('money'), formatCurrency(values[0]), labels[0], true),
+      card('blue', renderIcon('money'), formatCurrency(values[1]), labels[1], true),
+      card('red', renderIcon('receipt'), formatCurrency(values[2]), labels[2], true),
+      card(values[3] >= 0 ? 'teal' : 'red', renderIcon('trending-up'), formatCurrency(values[3]), labels[3], true),
     ], 'report-revenue-stats')}
+    <p class="report-definition">Doanh thu năm: ${escapeHtml(formatDate(period.yearRange.startDate))} → ${escapeHtml(formatDate(period.yearRange.endDate))}. ${period.custom ? 'Doanh thu, chi tiêu và lợi nhuận trong kỳ theo khoảng ngày đã chọn.' : 'Doanh thu tháng tính từ đầu tháng đến hôm nay.'} Chi tiêu là tổng chi phí hợp lệ theo kỳ; bộ lọc khách hàng/Kiosk/loại hình áp dụng cho doanh thu.</p>
     <div class="report-grid">
       ${renderReportCard('Doanh thu theo tháng', renderTable(monthColumns(), report.groups.monthly, 'Không có doanh thu theo tháng.'))}
       ${renderReportCard('Doanh thu theo loại hình', renderTable(businessRevenueColumns(), report.groups.businessTypes, 'Không có doanh thu theo loại hình.'))}
@@ -457,7 +467,7 @@ function renderReportCard(title, content) {
 
 function renderTable(columns, rows, emptyMessage) {
   const safeRows = Array.isArray(rows) ? rows : [];
-  const filteredRows = filterReportRows(safeRows, columns);
+  const filteredRows = safeRows;
   const noResultMessage = state.searchTerm
     ? 'Thử tìm bằng tên, trạng thái, số tiền, ngày hoặc nội dung khác.'
     : emptyMessage;
@@ -473,20 +483,6 @@ function renderTable(columns, rows, emptyMessage) {
       </table>
     </div>
   `;
-}
-
-function filterReportRows(rows, columns) {
-  const term = normalizeSearch(state.searchTerm);
-  if (!term) return rows;
-  return rows.filter((row) => columns.some((column) => normalizeSearch(stripHtml(column.render(row))).includes(term)));
-}
-
-function stripHtml(value) {
-  return String(value || '').replace(/<[^>]*>/g, ' ');
-}
-
-function normalizeSearch(value) {
-  return String(value || '').trim().toLocaleLowerCase('vi');
 }
 
 function money(value) {
@@ -737,10 +733,11 @@ function csvCell(value) {
 }
 
 function defaultFilters() {
-  const today = startOfVietnamToday();
+  const today = vietnamDateRangeYearToDate();
   return {
-    startDate: toDateOnly(new Date(today.getFullYear(), 0, 1)),
-    endDate: toDateOnly(today),
+    customDateRange: false,
+    startDate: today.from,
+    endDate: today.to,
     customerId: '',
     kioskId: '',
     categoryId: '',

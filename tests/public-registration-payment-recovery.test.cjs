@@ -9,6 +9,7 @@ const migration = read('supabase/migrations/20260825140000_fix_public_registrati
 const api = read('api/payos/create-registration-payment.js');
 const requestService = read('src/services/RegistrationRequestService.js');
 const notifications = read('src/services/AdminNotificationService.js');
+const notificationMigration = read('supabase/migrations/20261008172650_persist_crm_notifications.sql');
 const legacy = read('supabase/migrations/20260729224250_create_public_legacy_registration_requests.sql');
 
 test('Promotion Engine batch columns are populated before their NOT NULL constraints', () => {
@@ -50,10 +51,10 @@ test('public PayOS requests use a separate waiting-for-payment state', () => {
 
 test('Admin queue exposes awaiting-payment separately from Admin-review pending', () => {
   assert.match(requestService, /admin_list_registration_requests/);
-  assert.match(notifications, /get_registration_actionable_summary/);
-  assert.match(notifications, /registrationCount: Number\(data\?\.actionableRegistrationCount/);
-  assert.doesNotMatch(notifications, /request:awaiting_payment:/);
-  assert.match(notifications, /awaitingPaymentCount: awaitingCount/);
+  assert.match(notifications, /get_crm_notifications/);
+  assert.doesNotMatch(notifications, /registrationCount|awaitingPaymentCount/);
+  assert.match(notificationMigration, /r\.status = 'pending'/);
+  assert.match(notificationMigration, /coalesce\(r\.metadata ->> 'workflow', ''\) <> 'public_payos'/);
 });
 
 test('identical retry reuses request, batch, payment, and active provider order', () => {

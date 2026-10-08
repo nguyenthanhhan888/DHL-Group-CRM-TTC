@@ -42,7 +42,7 @@ test('financial KPI query and labels use runtime Vietnam year and month', () => 
   assert.match(core, /time zone 'Asia\/Ho_Chi_Minh'/);
   assert.match(core, /date_trunc\('year',business_now\)/);
   assert.match(core, /date_trunc\('month',business_now\)/);
-  assert.match(report, /get_current_financial_kpis/);
+  assert.match(report, /reportPeriod\(filters\)/);
   assert.doesNotMatch(report, /2026|September|tháng 9/);
 });
 

@@ -69,13 +69,9 @@ window.qaNavigate(render === ReportsPage ? 'reports' : render === LogsPage ? 'lo
 render.afterRender();
 const pause = () => new Promise(resolve => setTimeout(resolve, 80));
 await pause();
-if (['shell', 'account', 'ttc', 'system'].includes(page) && innerWidth <= 900) setSidebar(true);
+if (['shell', 'account', 'system'].includes(page) && innerWidth <= 900) setSidebar(true);
 if (page === 'account') document.querySelector('[data-sidebar-account] summary').click();
-if (page === 'ttc') {
-  document.querySelectorAll('[data-nav-group]')[0].querySelector('summary').click();
-  document.querySelectorAll('[data-nav-group]')[0].scrollIntoView({ block: 'nearest' });
-}
-if (page === 'system') document.querySelectorAll('[data-nav-group]')[1].scrollIntoView({ block: 'nearest' });
+if (page === 'system') document.querySelectorAll('[data-nav-group]')[0].scrollIntoView({ block: 'nearest' });
 if (page === 'promotion-create') {
   document.getElementById('add-promotion').click(); await pause();
   document.querySelector('[name="starts_at"]').closest('section').scrollIntoView({ block: 'center' });

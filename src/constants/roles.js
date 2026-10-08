@@ -26,7 +26,6 @@ export const PERMISSIONS = {
       const allowedRoutes = new Set([
         'user',
         'payments-mine',
-        'ttc',
       ]);
       return allowedRoutes.has(route);
     },

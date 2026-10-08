@@ -49,7 +49,7 @@ function facebookNameFromUrl(value) {
   try {
     const url = new URL(String(value || '').trim());
     const path = url.pathname.replace(/^\/+|\/+$/g, '');
-    if (!path || path === 'profile.php') return '';
+    if (!path || path === 'profile.php' || /^\d+$/.test(path)) return '';
     return decodeURIComponent(path.split('/')[0] || '').trim();
   } catch {
     return '';

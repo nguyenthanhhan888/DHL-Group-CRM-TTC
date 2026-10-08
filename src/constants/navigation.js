@@ -27,20 +27,6 @@ export const PAGE_TITLES = {
   'user-kiosks': 'Kiosk của tôi',
   'user-register-kiosk': 'Đăng ký Kiosk mới',
   'user-facebook': 'Tài khoản Facebook',
-  ttc: 'Tổng quan tương tác chéo',
-  'ttc-earn': 'Kiếm xu',
-  'ttc-campaign-create': 'Tăng Tương Tác',
-  'ttc-campaigns': 'Tăng tương tác của tôi',
-  'ttc-wallet': 'Ví xu',
-  'ttc-wallet-history': 'Lịch sử giao dịch',
-  admin: 'Quản trị tương tác chéo',
-  'admin-ttc-campaigns': 'Tăng tương tác',
-  'admin-ttc-announcements': 'Thông báo',
-  'admin-ttc-tasks': 'Duyệt nhiệm vụ',
-  'admin-ttc-users': 'Người dùng',
-  'admin-ttc-wallets': 'Ví xu',
-  'admin-ttc-settings': 'Cấu hình giá TTC',
-  'admin-ttc-logs': 'Kiểm tra & vi phạm',
 };
 
 export const NAV_SECTIONS = [
@@ -76,20 +62,6 @@ export const NAV_SECTIONS = [
       { route: 'promotions', label: 'Mã giảm giá', icon: 'coin' },
       { route: 'expenses', label: 'Chi phí', icon: 'receipt' },
       { route: 'reports', label: 'Báo cáo', icon: 'report' },
-    ],
-  },
-  {
-    label: 'TƯƠNG TÁC CHÉO (TTC)',
-    collapsible: true,
-    items: [
-      { route: 'ttc', label: 'TTC của tôi', icon: 'target' },
-      { route: 'admin/ttc', matchRoute: 'admin', permission: 'admin-ttc', label: 'Quản trị TTC', icon: 'target' },
-      { route: 'admin-ttc-announcements', label: 'Thông báo', icon: 'alert' },
-      { route: 'admin-ttc-campaigns', label: 'Tăng tương tác', icon: 'boost' },
-      { route: 'admin-ttc-tasks', label: 'Duyệt nhiệm vụ', icon: 'check' },
-      { route: 'admin-ttc-wallets', label: 'Ví xu', icon: 'coin' },
-      { route: 'admin-ttc-settings', label: 'Cấu hình giá', icon: 'sliders' },
-      { route: 'admin-ttc-logs', label: 'Kiểm tra & vi phạm', icon: 'alert' },
     ],
   },
   {

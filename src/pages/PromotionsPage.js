@@ -8,6 +8,7 @@ import { Modal } from '../components/Modal.js';
 import { Toast } from '../components/Toast.js';
 import { StatusBadge } from '../components/StatusBadge.js';
 import { PromotionService } from '../services/PromotionService.js';
+import { formatDate } from '../utils/date.js';
 import { formatCurrency } from '../utils/currency.js';
 import { escapeHtml } from '../utils/html.js';
 import { renderIcon } from '../utils/icons.js';
@@ -105,4 +106,4 @@ function openDetails(item) {
   });
 }
 function scopeNames(item) { return (item.scope_type === 'category' ? item.promotion_categories || [] : item.promotion_business_types || []).map(row => row.categories?.name || row.business_types?.name).filter(Boolean); }
-function typeLabel(v){return{percentage:'Giảm theo %',fixed_amount:'Giảm số tiền',bonus_months:'Tặng tháng'}[v]||v;}function valueLabel(i){return i.discount_type==='percentage'?`${i.discount_value}%`:i.discount_type==='fixed_amount'?formatCurrency(i.discount_value):`+${i.discount_value} tháng`;}function period(i){return`${i.starts_at?new Date(i.starts_at).toLocaleDateString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}):'Ngay'} – ${i.ends_at?new Date(i.ends_at).toLocaleDateString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}):'Không giới hạn'}`;}function status(i,now=Date.now()){if(!i.is_active)return'Tạm ngưng';if(i.starts_at&&Date.parse(i.starts_at)>now)return'Sắp diễn ra';if(i.ends_at&&Date.parse(i.ends_at)<now)return'Hết hạn';return'Hoạt động';}function statusTone(i){return status(i)==='Hoạt động'?'active':status(i)==='Sắp diễn ra'?'warning':'inactive';}
+function typeLabel(v){return{percentage:'Giảm theo %',fixed_amount:'Giảm số tiền',bonus_months:'Tặng tháng'}[v]||v;}function valueLabel(i){return i.discount_type==='percentage'?`${i.discount_value}%`:i.discount_type==='fixed_amount'?formatCurrency(i.discount_value):`+${i.discount_value} tháng`;}function period(i){return`${i.starts_at?formatDate(i.starts_at):'Ngay'} – ${i.ends_at?formatDate(i.ends_at):'Không giới hạn'}`;}function status(i,now=Date.now()){if(!i.is_active)return'Tạm ngưng';if(i.starts_at&&Date.parse(i.starts_at)>now)return'Sắp diễn ra';if(i.ends_at&&Date.parse(i.ends_at)<now)return'Hết hạn';return'Hoạt động';}function statusTone(i){return status(i)==='Hoạt động'?'active':status(i)==='Sắp diễn ra'?'warning':'inactive';}

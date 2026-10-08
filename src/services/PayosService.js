@@ -35,22 +35,6 @@ export const PayosService = {
     });
   },
 
-  async createWalletTopup({
-    walletUserId,
-    amount,
-    description,
-    returnUrl,
-    cancelUrl,
-  } = {}) {
-    return this.createPayment({
-      purpose: 'wallet_topup',
-      walletUserId,
-      amount,
-      description,
-      returnUrl,
-      cancelUrl,
-    });
-  },
 };
 
 async function safeJson(response) {

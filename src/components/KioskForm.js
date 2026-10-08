@@ -1,3 +1,4 @@
+import { formatDate } from '../utils/date.js';
 import { AuthService } from '../services/AuthService.js';
 import { canAddCustomerKiosk } from '../constants/permissions.js';
 import { Modal } from './Modal.js';
@@ -299,11 +300,11 @@ function updateKioskPreview() {
     previewElement.innerHTML = `
       <div class="setting-item">
         <span class="setting-name">Ngày bắt đầu</span>
-        <span class="setting-value">${escapeHtml(preview.startDate)}</span>
+        <span class="setting-value">${escapeHtml(formatDate(preview.startDate))}</span>
       </div>
       <div class="setting-item">
         <span class="setting-name">Ngày hết hạn</span>
-        <span class="setting-value">${escapeHtml(preview.endDate)}</span>
+        <span class="setting-value">${escapeHtml(formatDate(preview.endDate))}</span>
       </div>
       <div class="setting-item">
         <span class="setting-name">Giá/tháng</span>

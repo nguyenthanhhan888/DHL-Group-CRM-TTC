@@ -17,14 +17,6 @@ export const StaffService = {
     return invoke({ action: 'sync_permissions', userId, permissions, adminPassword, reason });
   },
 
-  async adjustWallet(userId, { amount, reason, description = '', adminPassword, idempotencyKey } = {}) {
-    return invoke({ action: 'adjust_wallet', userId, amount, reason, description, adminPassword, idempotencyKey });
-  },
-
-  async walletLedger(userId, { page = 1, pageSize = 20 } = {}) {
-    return invoke({ action: 'wallet_ledger', userId, page, pageSize });
-  },
-
   async setLocked(userId, locked, adminPassword, reason) {
     return invoke({ action: 'set_locked', userId, locked, adminPassword, reason });
   },

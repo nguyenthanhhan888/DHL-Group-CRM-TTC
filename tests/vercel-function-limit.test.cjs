@@ -10,7 +10,7 @@ test('Vercel Hobby deployment has at most 12 physical function entrypoints', () 
   const functions = javascriptFiles(API_ROOT)
     .filter((file) => !path.basename(file).startsWith('_'));
 
-  assert.equal(functions.length, 12);
+  assert.ok(functions.length <= 12, `expected at most 12 functions, found ${functions.length}`);
   assert.equal(existsSync(path.join(API_ROOT, 'staff.js')), false);
 });
 

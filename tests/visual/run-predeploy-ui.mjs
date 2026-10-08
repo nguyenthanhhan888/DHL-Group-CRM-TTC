@@ -73,7 +73,7 @@ try {
   const target = await cdp('Target.createTarget', { url: 'about:blank' }, null);
   sessionId = (await cdp('Target.attachToTarget', { targetId: target.targetId, flatten: true }, null)).sessionId;
   await cdp('Runtime.enable'); await cdp('Page.enable');
-  const pages = ['shell', 'account', 'ttc', 'system', 'promotion-create', 'promotion-detail', 'reports', 'reports-integrity', 'logs', 'log-detail'];
+  const pages = ['shell', 'account', 'system', 'promotion-create', 'promotion-detail', 'reports', 'reports-integrity', 'logs', 'log-detail'];
   for (const theme of ['light', 'dark']) {
     for (const width of theme === 'light' ? [1440, 1280, 768, 390] : [1280, 390]) {
       for (const page of pages) {
@@ -106,17 +106,15 @@ try {
           assert.equal(metrics.width, width); assert.ok(metrics.fontLoaded, 'Application font missing');
           assert.ok(metrics.scrollWidth <= width, `Horizontal overflow: ${metrics.scrollWidth}`);
           assert.equal(metrics.header.bottom, metrics.logo.bottom, 'Topbar and Sidebar borders do not align');
-          if (['shell','account','ttc','system'].includes(page)) assert.equal(metrics.sidebar.x,0,'Open Sidebar clipped or animation not settled');
+          if (['shell','account','system'].includes(page)) assert.equal(metrics.sidebar.x,0,'Open Sidebar clipped or animation not settled');
           for (const table of metrics.overviewTables) assert.ok(table.scrollWidth<=table.width,'Overview content clipped');
-          assert.ok(metrics.routes.includes('ttc') && metrics.routes.includes('admin/ttc'), 'Missing TTC destination');
           assert.equal(metrics.routes.length, 28, 'Route lost');
           for(const arrow of metrics.chevrons) assert.ok(arrow.width >= 16 && arrow.stroke !== 'none', 'Disclosure arrow invisible');
           if (width >= 1280 && metrics.filters.length) assert.ok(metrics.filters.every(r=>Math.abs(r.y-metrics.filters[0].y)<2), 'Basic filters wrap');
           for(const pair of metrics.pairs) assert.ok(pair.value.x >= pair.label.right+7 || pair.value.y >= pair.label.bottom, 'Label/value overlap');
           if (metrics.modal) assert.ok(metrics.modal.right<=width && metrics.modal.x>=0,'Modal outside viewport');
-          if (page==='shell') assert.deepEqual(metrics.groups.map(g=>g.open), [false,false]);
-          if (page==='ttc') assert.equal(metrics.groups[0].open,true);
-          if (page==='system') assert.equal(metrics.groups[1].open,true);
+          if (page==='shell') assert.deepEqual(metrics.groups.map(g=>g.open), [false]);
+          if (page==='system') assert.equal(metrics.groups[0].open,true);
           if (page==='account') { assert.match(metrics.accountText,/Hồ sơ[\s\S]*Đăng xuất/); for(const r of metrics.controls) assert.ok(r.height>=44); }
           if(page==='promotion-create') { assert.equal(metrics.dates.length,2); assert.ok(metrics.dates.every(r=>/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(r.value))); assert.equal(metrics.dates[0].value,metrics.dates[1].value); }
           if(page==='promotion-detail') { assert.equal(metrics.pairs.length,6); assert.match(metrics.detailText,/2\.400\.000 VNĐ/); }
@@ -132,9 +130,8 @@ try {
         console.log(`${label}: ${results.at(-1).pass?'PASS':'FAIL'}`);
         if(theme==='light') await check(`${label} interactions`, async () => {
           if(page==='shell') {
-            await evaluate(`qaNavigate('admin/ttc')`); assert.equal(await evaluate(`document.querySelectorAll('[data-nav-group]')[0].open`),true);
-            await evaluate(`qaNavigate('logs')`); assert.equal(await evaluate(`document.querySelectorAll('[data-nav-group]')[1].open`),true);
-            await evaluate(`qaNavigate('promotions')`); assert.deepEqual(await evaluate(`[...document.querySelectorAll('[data-nav-group]')].map(g=>g.open)`),[false,false]);
+            await evaluate(`qaNavigate('logs')`); assert.equal(await evaluate(`document.querySelectorAll('[data-nav-group]')[0].open`),true);
+            await evaluate(`qaNavigate('promotions')`); assert.deepEqual(await evaluate(`[...document.querySelectorAll('[data-nav-group]')].map(g=>g.open)`),[false]);
             if(width<=900){ await evaluate(`document.querySelector('[data-sidebar-overlay]').click()`);assert.equal(await evaluate(`document.querySelector('[data-sidebar]').classList.contains('open')`),false); }
           }
           if(page==='account') {

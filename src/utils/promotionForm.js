@@ -1,32 +1,8 @@
+import { toVietnamDateTimeInput as promotionLocalDate, fromVietnamDateTimeInput as promotionInstant } from './date.js';
 import { BUSINESS_TIME_ZONE, formatDateTime } from './date.js';
 import { formatCurrency } from './currency.js';
 
-export function promotionLocalDate(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return '';
-  const parts = Object.fromEntries(new Intl.DateTimeFormat('sv-SE', {
-    timeZone: BUSINESS_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
-  }).formatToParts(date).map(part => [part.type, part.value]));
-  const seconds = date.getUTCSeconds() || date.getUTCMilliseconds()
-    ? `:${parts.second}${date.getUTCMilliseconds() ? `.${String(date.getUTCMilliseconds()).padStart(3, '0')}` : ''}` : '';
-  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}${seconds}`;
-}
-
-export function promotionInstant(value) {
-  if (!value) return null;
-  // Unedited timestamps retain the original offset and sub-millisecond precision.
-  if (/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value)) {
-    if (!Number.isFinite(Date.parse(value))) throw Error('Thời gian không hợp lệ.');
-    return value;
-  }
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?$/.test(value)) throw Error('Thời gian không hợp lệ.');
-  const date = new Date(`${value}+07:00`);
-  const roundTrip = promotionLocalDate(date);
-  if (!roundTrip || roundTrip.slice(0,16) !== value.slice(0,16)) throw Error('Thời gian không hợp lệ.');
-  return date.toISOString();
-}
+export { toVietnamDateTimeInput as promotionLocalDate, fromVietnamDateTimeInput as promotionInstant } from './date.js';
 
 export function promotionDateDefaults(item = {}, now = new Date()) {
   if (item.id) return { starts_at: promotionLocalDate(item.starts_at), ends_at: promotionLocalDate(item.ends_at) };

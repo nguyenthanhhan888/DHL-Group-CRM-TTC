@@ -40,12 +40,13 @@ test('User API reads fail closed for anonymous/zero; grant and revoke take effec
 });
 test('all sensitive User Management actions require active System Admin and password reauthentication',async()=>{
   await sync(['user-management']);
-  for(const action of ['sync_permissions','set_locked','reset_password','adjust_wallet']){
+  for(const action of ['sync_permissions','set_locked','reset_password']){
     const request={action,userId:qaUsers.zero,permissions:[],locked:true,newPassword:'Another-Test-Password',amount:10,idempotencyKey:`qa-${action}`,reason:'QA authorization',adminPassword:QA_PASSWORD};
     for(const actor of [zero,selective,qa.sessionFor('disabled').access_token])assert.equal((await call(request,actor)).status,403,`${action} ordinary/disabled denied`);
     assert.equal((await call({...request,adminPassword:'wrong'})).status,403,`${action} wrong admin password`);
     assert.equal((await call({...request,userId:qaUsers.admin})).status,403,`${action} protects admin`);
   }
+  assert.equal((await call({action:'adjust_wallet',userId:qaUsers.zero,adminPassword:QA_PASSWORD})).status,400);
   assert.equal((await sync(['invented-key'])).status,400);
   assert.equal((await call({action:'list'})).status,200);
 });

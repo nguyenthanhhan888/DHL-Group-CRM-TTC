@@ -1,3 +1,4 @@
+import { dateDisplay } from '../components/DateInput.js';
 import { EmptyState } from '../components/EmptyState.js';
 import { Modal } from '../components/Modal.js';
 import { PageHeader } from '../components/PageHeader.js';
@@ -148,6 +149,10 @@ async function saveBusiness(event, id) {
   const button = form.querySelector('[type="submit"]'); const errorBox = form.querySelector('[data-business-form-error]');
   const values = Object.fromEntries(new FormData(form));
   const payload = { ...values, id: id || undefined, enabled: form.elements.enabled.checked, displayOrder: Number(values.displayOrder || 0) };
+  const original = state.businesses.find(item => String(item.id) === String(id));
+  for (const key of ['visibilityStart', 'visibilityEnd']) {
+    if (original && payload[key] === original[key]) payload[key] = original[`${key}Instant`] || null;
+  }
   delete payload.imageFile;
   setButtonBusy(button, true, { busyLabel: 'Đang lưu...' });
   try {
@@ -188,7 +193,7 @@ function confirmArchiveBusiness(item) {
 function communityRows(rows = []) { return COMMUNITY_DEFAULTS.map(([key, label], index) => rows.find((item) => item.key === key) || { key, name: label, url: '', enabled: true, display_order: (index + 1) * 10 }); }
 function renderCommunityAdminRow(item) { const key = item.key; const urlField = key === 'primary' ? '<input type="hidden" name="community_primary_url" value="">' : input(`community_${key}_url`, 'URL', item.url, { type: 'url', required: true }); return `<div class="homepage-admin-link-row"><input type="hidden" name="community_${key}_key" value="${escapeHtml(key)}">${input(`community_${key}_name`, 'Tên', item.name, { required: true })}${urlField}${input(`community_${key}_order`, 'Thứ tự', item.display_order ?? item.displayOrder ?? 0, { type: 'number', min: 0 })}<label class="form-check"><input type="checkbox" name="community_${key}_enabled" ${item.enabled !== false ? 'checked' : ''}><span>Hiển thị</span></label></div>`; }
 function renderSectionControl(key, label, content) { const order = Math.max(1, content.sectionOrder?.indexOf(key) + 1 || SECTION_OPTIONS.findIndex(([value]) => value === key) + 1); return `<div class="homepage-section-control"><label class="form-check"><input type="checkbox" name="section_${key}_visible" ${content.sectionVisibility?.[key] !== false ? 'checked' : ''}><span>${escapeHtml(label)}</span></label><label><span>Thứ tự</span><input class="form-control" type="number" min="1" max="5" name="section_${key}_order" value="${order}" required></label></div>`; }
-function visibilityText(item) { if (!item.visibilityStart && !item.visibilityEnd) return 'Không giới hạn'; return `${item.visibilityStart ? `Từ ${escapeHtml(item.visibilityStart.replace('T', ' '))}` : 'Từ ngay'}<br>${item.visibilityEnd ? `đến ${escapeHtml(item.visibilityEnd.replace('T', ' '))}` : 'không ngày kết thúc'}`; }
+function visibilityText(item) { if (!item.visibilityStart && !item.visibilityEnd) return 'Không giới hạn'; return `${item.visibilityStart ? `Từ ${escapeHtml(dateDisplay(item.visibilityStart))}` : 'Từ ngay'}<br>${item.visibilityEnd ? `đến ${escapeHtml(dateDisplay(item.visibilityEnd))}` : 'không ngày kết thúc'}`; }
 
 function input(name, label, value = '', options = {}) {
   const type = options.type === 'url-or-path' ? 'text' : options.type || 'text';

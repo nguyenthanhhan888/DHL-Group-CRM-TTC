@@ -11,38 +11,20 @@ const layout = read('src/layouts/AppLayout.js');
 const app = read('src/app.js');
 const css = read('src/styles/app.css');
 
-const ttcAdminItems = [
-  ['admin/ttc', 'Quản trị TTC'],
-  ['admin-ttc-announcements', 'Thông báo'],
-  ['admin-ttc-campaigns', 'Tăng tương tác'],
-  ['admin-ttc-tasks', 'Duyệt nhiệm vụ'],
-  ['admin-ttc-wallets', 'Ví xu'],
-  ['admin-ttc-settings', 'Cấu hình giá'],
-  ['admin-ttc-logs', 'Kiểm tra & vi phạm'],
-];
-
 test('Dashboard remains standalone and CRM is expanded while secondary groups use disclosures', () => {
   assert.match(navigation, /label: 'TỔNG QUAN',[\s\S]*?standalone: true,[\s\S]*?route: 'dashboard'/);
   assert.match(layout, /section\.standalone[\s\S]*nav-section-standalone/);
   assert.match(layout, /<div class="nav-section"[\s\S]*nav-section-label/);
   assert.match(layout, /section\.collapsible[\s\S]*nav-section-collapsible/);
-  assert.equal((navigation.match(/collapsible: true/g) || []).length, 2);
+  assert.equal((navigation.match(/collapsible: true/g) || []).length, 1);
 });
 
-test('TTC keeps its operational items while unified users moves to system settings', async () => {
-  const section = navigation.match(/label: 'TƯƠNG TÁC CHÉO \(TTC\)',[\s\S]*?\n  \},\n  \{\n    label: 'HỆ THỐNG'/)?.[0] || '';
+test('TTC navigation is absent and unified users remains in system settings', async () => {
   const { NAV_SECTIONS } = await import(pathToFileURL(path.join(root, 'src/constants/navigation.js')).href);
   const { AppLayout } = await import(pathToFileURL(path.join(root, 'src/layouts/AppLayout.js')).href);
   const markup = AppLayout({ navSections: NAV_SECTIONS, user: { is_system_admin: true, username: 'admin' } });
-  for (const [route, label] of ttcAdminItems) {
-    const escapedRoute = route.replace('/', '\\/');
-    const renderedLabel = label.replace('&', '&amp;');
-    assert.match(section, new RegExp(`route: '${escapedRoute}'[\\s\\S]*?label: '${label}'`));
-    assert.match(markup, new RegExp(`href="#/${escapedRoute}"[^>]*>[\\s\\S]*?${renderedLabel}`));
-  }
-  assert.doesNotMatch(section, /admin-ttc-users/);
-  assert.match(navigation, /label: 'HỆ THỐNG',[\s\S]*?route: 'user-management', label: 'Quản lý người dùng'/);
-  assert.doesNotMatch(navigation.match(/label: 'HỆ THỐNG',[\s\S]*/)?.[0] || '', /route: 'admin-ttc-settings'/);
+  assert.doesNotMatch(markup, /ttc|Ví xu|TƯƠNG TÁC CHÉO/i);
+  assert.match(markup, /#\/user-management/);
 });
 
 test('sidebar sections need no expand state while current route stays active', () => {
