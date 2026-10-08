@@ -6490,9 +6490,6 @@ body { color:var(--text-primary); background:var(--bg-page); }
 .page-content > :where(.notice,.stats-grid,.dashboard-grid,.admin-grid,.toolbar,.filter-panel,.table-card,.kiosk-grid,.report-tabs,.report-content) { margin-bottom:var(--space-card); }
 :where(.logs-page,.settings-page,.customer-detail-data-sections) { display:grid; gap:var(--space-card); }
 :where(.logs-page,.settings-page) > :where(.page-header,.toolbar,.table-card,.pagination-bar) { margin-block:0; }
-:where(.dashboard-grid,.admin-grid,.stats-grid{ gap:var(--space-card); }
-:where(.dash-card-header,.settings-section-head{ margin-bottom:var(--space-heading); }
-:where(.form-grid,.form-row{ gap:var(--space-form); }
 
 :where(.dashboard-grid,.admin-grid,.stats-grid,.kiosk-grid) { gap:var(--space-card); }
 :where(.dash-card-header,.settings-section-head,.payment-section-heading) { margin-bottom:var(--space-heading); }
