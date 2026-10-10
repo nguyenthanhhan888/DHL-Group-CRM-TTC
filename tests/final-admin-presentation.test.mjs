@@ -69,24 +69,28 @@ test('promotion search combines current statuses with code, title and descriptio
 });
 
 test('footer resolves canonical URLs before choosing brand icons and removes duplicate destinations', () => {
-  const node = { innerHTML: '' };
-  const root = { querySelectorAll: selector => selector === '[data-public-official-channels]' ? [node] : [] };
+  const official = { innerHTML: '' };
+  const support = { innerHTML: '' };
+  const root = { querySelectorAll: selector => selector === '[data-public-official-channels]' ? [official] : selector === '[data-public-support-channels]' ? [support] : [] };
   applyPublicHomepageContent({
     heroGroupCtaUrl: 'https://facebook.com/groups/main',
     communityLinks: [{ key: 'primary', name: 'Group chính', url: 'https://m.me/old' }, { name: 'Bản sao', url: 'https://facebook.com/groups/main/' }, { name: 'Ẩn', url: 'https://facebook.com/hidden', enabled: false }],
     fanpageLabel: 'Fanpage Admin', fanpageUrl: 'https://facebook.com/admin',
     zaloContacts: [{ label: 'Zalo', url: 'https://zalo.me/123' }], hotlineLabel: 'Hotline', hotlineNumber: '0123 456 789',
   }, root);
-  assert.equal((node.innerHTML.match(/icon-facebook.svg/g) || []).length, 2);
-  assert.doesNotMatch(node.innerHTML, /icon-messenger|Bản sao|Ẩn/);
-  assert.match(node.innerHTML, /icon-zalo.png/);
-  assert.match(node.innerHTML, /tel:0123456789/);
-  assert.match(node.innerHTML, /width="22" height="22"/);
+  assert.equal((official.innerHTML.match(/icon-facebook.svg/g) || []).length, 1);
+  assert.doesNotMatch(official.innerHTML, /icon-messenger|Bản sao|Ẩn|Fanpage|Zalo|Hotline/);
+  assert.match(support.innerHTML, /Fanpage Admin/);
+  assert.match(support.innerHTML, /icon-zalo.png/);
+  assert.match(support.innerHTML, /tel:0123456789/);
+  assert.match(`${official.innerHTML}${support.innerHTML}`, /width="22" height="22"/);
   assert.match(PublicFooter(), /portal-footer-action-icon is-register/);
-  applyPublicHomepageContent({ communityLinks: [{ name: 'Messenger', url: 'https://m.me/actual' }] }, root);
-  assert.match(node.innerHTML, /icon-messenger.svg/);
-  applyPublicHomepageContent({ communityLinks: [{ name: 'Invalid', url: 'javascript:alert(1)' }] }, root);
-  assert.doesNotMatch(node.innerHTML, /javascript:/);
+  assert.equal((PublicFooter().match(/portal-footer-grid/g) || []).length, 1);
+  for (const heading of ['Liên kết nhanh', 'Kênh chính thức', 'Thông tin hỗ trợ']) assert.match(PublicFooter(), new RegExp(heading));
+  applyPublicHomepageContent({ communityLinks: [{ key: 'secondary', name: 'Messenger', url: 'https://m.me/actual' }] }, root);
+  assert.match(official.innerHTML, /icon-messenger.svg/);
+  applyPublicHomepageContent({ communityLinks: [{ key: 'recruitment', name: 'Invalid', url: 'javascript:alert(1)' }] }, root);
+  assert.doesNotMatch(official.innerHTML, /javascript:/);
 });
 
 test('rendered filter markup uses one shared row, visible labels and collapsed advanced controls', () => {

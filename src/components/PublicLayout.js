@@ -81,6 +81,7 @@ export function PublicFooter() {
       <div><strong data-public-community-name>${PUBLIC_BRAND.name}</strong><p>Cổng Kiosk chính thức của cộng đồng.</p></div>
       <div class="portal-footer-quick-links"><strong>Liên kết nhanh</strong><a href="#/register"><span class="portal-footer-action-icon is-register">${renderIcon('user-plus')}</span><span>Đăng ký Kiosk</span></a><a href="#/legacy-registration"><span class="portal-footer-action-icon is-additional">${renderIcon('plus')}</span><span>Bổ sung Kiosk</span></a><a href="#/lookup"><span class="portal-footer-action-icon is-lookup">${renderIcon('search')}</span><span>Tra cứu Kiosk</span></a></div>
       <div><strong>Kênh chính thức</strong><div data-public-official-channels></div></div>
+      <div><strong>Thông tin hỗ trợ</strong><div data-public-support-channels></div></div>
     </div><div class="portal-footer-bottom">© ${new Date().getFullYear()} DHL Group · ${PUBLIC_BRAND.communityName}</div>
   </footer>`;
 }
@@ -88,19 +89,25 @@ export function PublicFooter() {
 export function applyPublicHomepageContent(content = {}, root = document) {
   const links = Array.isArray(content.communityLinks) ? content.communityLinks : [];
   const channelRows = deduplicateChannels([
-    ...links.filter((item) => item?.enabled !== false).map((item) => ({
+    ...links.filter((item) => item?.enabled !== false && ['primary', 'secondary', 'recruitment'].includes(item.key)).map((item) => ({
+      section: 'community',
       icon: socialIcon(item.key === 'primary' ? content.heroGroupCtaUrl || item.url : item.url), label: item.name,
       url: safeUrl(item.key === 'primary' ? content.heroGroupCtaUrl || item.url : item.url),
     })),
-    { icon: socialIcon(content.fanpageUrl), label: content.fanpageLabel, url: safeUrl(content.fanpageUrl) },
-    ...(Array.isArray(content.zaloContacts) ? content.zaloContacts.map((item) => ({ icon: 'zalo', label: item.label, url: safeUrl(item.url) })) : []),
-    { icon: 'phone', label: content.hotlineLabel, url: phoneUrl(content.hotlineNumber) },
+    { section: 'support', icon: socialIcon(content.fanpageUrl), label: content.fanpageLabel, url: safeUrl(content.fanpageUrl) },
+    ...(Array.isArray(content.zaloContacts) ? content.zaloContacts.map((item) => ({ section: 'support', icon: 'zalo', label: item.label, url: safeUrl(item.url) })) : []),
+    { section: 'support', icon: 'phone', label: content.hotlineLabel, url: phoneUrl(content.hotlineNumber) },
   ].filter((item) => item.label && item.url));
   root.querySelectorAll('[data-public-community-name]').forEach((node) => { node.textContent = content.heroTitle || PUBLIC_BRAND.name; });
-  root.querySelectorAll('[data-public-official-channels]').forEach((node) => {
-    node.innerHTML = channelRows.length
-      ? channelRows.map((item, index) => `<a class="portal-channel-row${index && channelGroup(item.icon) !== channelGroup(channelRows[index - 1].icon) ? ' portal-channel-row--group-start' : ''}" href="${escapeHtml(item.url)}" ${item.icon === 'phone' ? '' : 'target="_blank" rel="noopener noreferrer"'}>${officialChannelIcon(item.icon)}<span>${escapeHtml(item.label)}</span></a>`).join('')
-      : '<p class="portal-footer-empty">Kênh chính thức đang được cập nhật.</p>';
+  renderFooterChannels(root, '[data-public-official-channels]', channelRows.filter((item) => item.section === 'community'), 'Kênh chính thức đang được cập nhật.');
+  renderFooterChannels(root, '[data-public-support-channels]', channelRows.filter((item) => item.section === 'support'), 'Thông tin hỗ trợ đang được cập nhật.');
+}
+
+function renderFooterChannels(root, selector, rows, emptyMessage) {
+  root.querySelectorAll(selector).forEach((node) => {
+    node.innerHTML = rows.length
+      ? rows.map((item, index) => `<a class="portal-channel-row${index && channelGroup(item.icon) !== channelGroup(rows[index - 1].icon) ? ' portal-channel-row--group-start' : ''}" href="${escapeHtml(item.url)}" ${item.icon === 'phone' ? '' : 'target="_blank" rel="noopener noreferrer"'}>${officialChannelIcon(item.icon)}<span>${escapeHtml(item.label)}</span></a>`).join('')
+      : `<p class="portal-footer-empty">${emptyMessage}</p>`;
   });
 }
 

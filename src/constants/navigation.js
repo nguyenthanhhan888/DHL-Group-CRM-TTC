@@ -57,6 +57,7 @@ export const NAV_SECTIONS = [
       { route: 'kiosks', label: 'Kiosk', icon: 'store' },
       { route: 'register', label: 'Đăng ký Kiosk', icon: 'plus' },
       { route: 'registration-requests', label: 'Hồ sơ Kiosk', icon: 'check' },
+      { route: 'payments', label: 'Thanh toán', icon: 'wallet' },
       { route: 'categories', label: 'Danh mục', icon: 'list' },
       { route: 'business-types', label: 'Loại hình kinh doanh', icon: 'briefcase' },
       { route: 'promotions', label: 'Mã giảm giá', icon: 'coin' },

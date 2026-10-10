@@ -8,6 +8,7 @@ import { AuthService } from '../services/AuthService.js';
 import { PERMISSIONS, canAccessPermission } from '../constants/permissions.js';
 import { bindFacebookIdResolvers, FacebookIdResolverFields } from './FacebookIdResolver.js';
 import { debounce } from '../utils/dom.js';
+import { createDateValue } from '../utils/date.js';
 import { escapeHtml } from '../utils/html.js';
 
 const KIOSK_STATUSES = [
@@ -117,11 +118,11 @@ function renderForm() {
       <div class="form-row">
         <label class="form-group">
           <span>Ngày bắt đầu</span>
-          <input class="form-control" id="kiosk-edit-start-date" type="date" value="${escapeHtml(state.kiosk?.start_date || '')}" />
+          <input class="form-control" id="kiosk-edit-start-date" type="date" value="${escapeHtml(createDateValue(state.isEdit, state.kiosk?.start_date))}" />
         </label>
         <label class="form-group">
           <span>Ngày hết hạn</span>
-          <input class="form-control" id="kiosk-edit-end-date" type="date" value="${escapeHtml(state.kiosk?.end_date || '')}" />
+          <input class="form-control" id="kiosk-edit-end-date" type="date" value="${escapeHtml(createDateValue(state.isEdit, state.kiosk?.end_date))}" />
         </label>
       </div>
       </section>

@@ -12,7 +12,7 @@ test('authenticated chrome leaves the primary page title to PageHeader', async (
 
   assert.doesNotMatch(layout, /data-page-title|class="page-title"/);
   assert.match(layout, /class="top-bar-context">Diễn Châu - À Đây Rồi \(DHL\)</);
-  assert.match(layout, /data-current-date/);
+  assert.doesNotMatch(layout, /data-current-date|data-supabase-badge/);
   assert.match(app, /document\.title = `\$\{PAGE_TITLES\[route\]/);
 });
 

@@ -35,8 +35,10 @@ export function integrityPresentation(row, context = {}) {
   const kiosk = names(context.kiosks) || knownName(row.kioskName) || 'Không xác định';
   const id = row.recordId;
   const destination = { payment: 'payment-detail', customer: 'customer-detail', kiosk: 'kiosk-detail' }[row.entityType];
+  const actionLabel = { payment: 'Mở Thanh toán', customer: 'Mở Khách hàng', kiosk: 'Mở Kiosk', registration_request: 'Mở Hồ sơ' }[row.entityType] || 'Mở bản ghi';
   return { title: `${type}${id != null ? ` #${id}` : ''} cần kiểm tra`, issue, guidance, customer, kiosk,
     href: id != null && destination ? `#/${destination}?id=${encodeURIComponent(id)}` : row.entityType === 'registration_request' ? '#/registration-requests' : '',
+    actionLabel,
     amount: row.entityType === 'payment' || row.entityType === 'registration_request' || row.issueCode === 'customer_total_paid_mismatch' ? formatCurrency(row.totalAmount) : '',
   };
 }

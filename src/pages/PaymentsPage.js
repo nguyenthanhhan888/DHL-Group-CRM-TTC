@@ -183,9 +183,6 @@ function bindPaymentEvents() {
       case 'cancel':
         openPaymentCancellation(payment);
         break;
-      case 'reject':
-        openPaymentRejection(payment);
-        break;
       case 'edit':
         openPaymentEditForm({ payment, onSaved: loadPayments });
         break;
@@ -328,13 +325,12 @@ function renderApprovalAction(payment) {
 
   return `
     <div class="payment-approval-actions">
-      <button class="table-approve-button" type="button" data-payment-action="payos" data-payment-id="${escapeHtml(payment.id)}" ${isProcessing ? 'disabled' : ''}>Tạo link</button>
+      <button class="table-approve-button" type="button" data-payment-action="payos" data-payment-id="${escapeHtml(payment.id)}" ${isProcessing ? 'disabled' : ''}>Tạo/Mở PayOS</button>
       <details class="row-action-menu">
         <summary>Khác</summary>
         <div class="row-action-menu-panel">
           <button class="table-action-button" type="button" data-payment-action="approve" data-payment-id="${escapeHtml(payment.id)}" ${isProcessing ? 'disabled' : ''}>Xác nhận thủ công</button>
           <button class="table-action-button" type="button" data-payment-action="edit" data-payment-id="${escapeHtml(payment.id)}" ${isProcessing ? 'disabled' : ''}>Sửa</button>
-          <button class="table-reject-button" type="button" data-payment-action="reject" data-payment-id="${escapeHtml(payment.id)}" ${isProcessing ? 'disabled' : ''}>Từ chối</button>
           <button class="table-cancel-button" type="button" data-payment-action="cancel" data-payment-id="${escapeHtml(payment.id)}" ${isProcessing ? 'disabled' : ''}>Hủy</button>
         </div>
       </details>
@@ -344,7 +340,7 @@ function renderApprovalAction(payment) {
 
 function openPaymentPayos(payment) {
   Modal.open({
-    title: `Tạo link thanh toán #${escapeHtml(payment.id)}`,
+    title: `Tạo/Mở PayOS #${escapeHtml(payment.id)}`,
     body: `
       <div class="approval-message">
         <p>Tạo link thanh toán cho khoản đang chờ của Kiosk <strong>${escapeHtml(payment.kiosks?.facebook_name || '—')}</strong>.</p>
@@ -357,7 +353,7 @@ function openPaymentPayos(payment) {
       </div>
       <div class="modal-actions">
         <button class="btn-secondary" type="button" data-payos-close>Đóng</button>
-        <button class="btn-primary" type="button" data-payos-create>Tạo link thanh toán</button>
+        <button class="btn-primary" type="button" data-payos-create>Tạo/Mở PayOS</button>
       </div>
     `,
   });
@@ -397,7 +393,7 @@ async function createPaymentPayos(payment, button) {
   } catch (error) {
     setPayosResult(escapeHtml(error?.message || 'Không tạo được link thanh toán.'), false);
     button.disabled = false;
-    button.textContent = 'Tạo link thanh toán';
+    button.textContent = 'Tạo/Mở PayOS';
   } finally {
     state.processingPaymentId = null;
   }

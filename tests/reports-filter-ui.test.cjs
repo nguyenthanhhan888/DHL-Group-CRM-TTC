@@ -66,7 +66,7 @@ test('advanced filters open only on explicit disclosure without dropping stored 
 });
 
 test('all report tabs and full-filter CSV export remain present', () => {
-  for (const label of ['Tổng quan', 'Doanh thu', 'Kiosk', 'Khách hàng', 'Cần kiểm tra', 'Danh mục / Loại hình']) {
+  for (const label of ['Tổng quan', 'Doanh thu', 'Kiosk', 'Khách hàng', 'Đối soát dữ liệu', 'Danh mục / Loại hình']) {
     assert.match(reports, new RegExp(label.replace('/', '\\/')));
   }
   assert.match(reports, /Xuất CSV \(toàn bộ bộ lọc\)/);

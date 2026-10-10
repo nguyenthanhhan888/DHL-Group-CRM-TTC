@@ -23,7 +23,8 @@ test('Hồ sơ Kiosk copy keeps payment, review and Kiosk states distinct', () =
   assert.match(navigation, /'registration-requests': 'Hồ sơ Kiosk'/);
   assert.match(requests, /title: 'Hồ sơ Kiosk'/);
   assert.match(requests, /Chờ thanh toán[\s\S]*hồ sơ chưa tạo doanh thu/);
-  assert.match(requests, /Chờ duyệt[\s\S]*hồ sơ cần xử lý thủ công/);
+  assert.match(requests, /Số trên mục Hồ sơ Kiosk đếm các hồ sơ đang cần xử lý hoặc kiểm tra dữ liệu/);
+  assert.match(requests, /Mỗi hồ sơ chỉ tính một lần/);
   assert.match(overview, /Hồ sơ cần xử lý/);
   assert.match(overview, /Hồ sơ chờ thanh toán/);
   assert.match(overview, /Kiosk hoạt động/);

@@ -80,7 +80,7 @@ test('Admin cancellation preserves history and refuses paid or active records', 
 });
 
 test('Admin UI exposes request-centric filters, payment states and safe dialogs', () => {
-  for (const label of ['Tất cả', 'Chờ thanh toán', 'Chờ duyệt', 'Đã hoàn tất', 'Đã hủy']) assert.match(page, new RegExp(label));
+  for (const label of ['Cần xử lý', 'Chờ thanh toán', 'Hoàn tất', 'Đã đóng']) assert.match(page, new RegExp(label));
   for (const stateLabel of ['Chưa tạo liên kết thanh toán', 'Đang chờ khách thanh toán', 'Link thanh toán hết hạn', 'Tạo PayOS thất bại']) assert.match(page, new RegExp(stateLabel));
   assert.match(page, /Modal\.open/);
   assert.match(page, /Đang xử lý\.\.\./);

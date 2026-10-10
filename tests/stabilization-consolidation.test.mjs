@@ -60,7 +60,7 @@ test('create defaults and edit preservation across VN midnight in four device ti
 });
 test('create form bindings explicitly default start/expense dates; edit date fields remain stored',()=>{
  for(const path of ['src/pages/EmployeesPage.js','src/pages/ExpensesPage.js'])assert.match(read(path),/createDateValue\(item, item\?\./);
- assert.match(read('src/components/KioskEditForm.js'),/state\.kiosk\?\.start_date \|\| ''/);
+ assert.match(read('src/components/KioskEditForm.js'),/createDateValue\(state\.isEdit, state\.kiosk\?\.start_date\)/);
  assert.match(read('src/components/HistoricalPaymentEditForm.js'),/payment.start_date \|\| ''/);
  assert.match(read('src/utils/promotionForm.js'),/if \(item.id\) return/);
 });

@@ -3,7 +3,6 @@ import { CategoryService } from '../services/CategoryService.js';
 import { LegacyRegistrationService } from '../services/LegacyRegistrationService.js';
 import { settingsService } from '../services/SettingsService.js';
 import { PageHeader } from '../components/PageHeader.js';
-import { PublicSupport } from '../components/PublicSupport.js';
 import { bindFacebookIdResolvers, FacebookIdResolverFields, validateFacebookResolver } from '../components/FacebookIdResolver.js';
 import { Toast } from '../components/Toast.js';
 import { getOrganizationSetting } from '../config/organization.js';
@@ -83,7 +82,6 @@ export function LegacyRegistrationPage() {
       </form>
       <div id="legacy-registration-success" class="registration-success hidden" aria-live="polite"></div>
     </section>
-    ${PublicSupport()}
     </div>
   `;
 }

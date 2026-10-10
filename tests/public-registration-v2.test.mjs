@@ -1,8 +1,62 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
 import { findBusinessSuggestions, normalizeBusinessSearch } from '../src/components/BusinessDiscovery.js';
 import { RegistrationService } from '../src/services/RegistrationService.js';
+
+test('public stepper uses three responsive segments without connector lines', async () => {
+  const css = await readFile(new URL('../src/styles/app.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(css, /\.public-site \.registration-step[^{}]*::after/);
+  assert.match(css, /\.public-site \.registration-stepper \{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\); gap:12px/);
+  assert.match(css, /\.public-site \.registration-step \{[^}]*min-width:0;[^}]*background:var\(--bg-muted\);[^}]*border:1px solid var\(--border-default\)/);
+  assert.match(css, /\.public-site \.registration-step.active \{[^}]*background:var\(--primary-soft\); border-color:var\(--primary\)/);
+  assert.match(css, /\.public-site \.registration-step.completed \{[^}]*background:var\(--success-bg\); border-color:var\(--success-border\)/);
+  assert.match(css, /\.public-site \.registration-stepper \{[^}]*gap:6px; width:100%/);
+  assert.match(css, /\.public-site \.registration-step strong \{[^}]*white-space:normal/);
+});
+
+test('Register and Legacy share the same stepper styles while Legacy remains one form', async () => {
+  const [register, legacy] = await Promise.all([
+    readFile(new URL('../src/pages/RegisterPage.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/pages/LegacyRegistrationPage.js', import.meta.url), 'utf8'),
+  ]);
+  assert.match(register, /class="registration-stepper"/);
+  assert.match(legacy, /class="registration-stepper legacy-stepper"/);
+  assert.equal((legacy.match(/<form id="legacy-registration-form"/g) || []).length, 1);
+  assert.doesNotMatch(legacy, /data-registration-panel|data-next-step|data-previous-step/);
+  assert.doesNotMatch(register, /PublicSupport/);
+  assert.doesNotMatch(legacy, /PublicSupport/);
+});
+
+test('stepper keeps labels, accessible list, active state and completed checkmarks through navigation', async () => {
+  const source = await readFile(new URL('../src/pages/RegisterPage.js', import.meta.url), 'utf8');
+  assert.match(source, /<ol class="registration-stepper" aria-label="Tiến trình đăng ký">/);
+  const labels = [...source.matchAll(/data-step-indicator="(\d)"><span>\d<\/span><strong>([^<]+)<\/strong>/g)];
+  assert.deepEqual(labels.map(match => [match[1], match[2]]), [['1', 'Thông tin'], ['2', 'Chọn gói'], ['3', 'Thanh toán']]);
+  const indicators = [1, 2, 3].map(number => ({
+    dataset: { stepIndicator: String(number) }, classes: {}, marker: {},
+    classList: { toggle(name, value) { indicators[number - 1].classes[name] = value; } },
+    querySelector() { return this.marker; },
+  }));
+  const panels = [1, 2, 3].map(number => ({ dataset: { registrationPanel: String(number) },
+    classList: { toggle(name, hidden) { panels[number - 1].hidden = hidden; } },
+  }));
+  const box = vm.createContext({ state: {}, clearFormError() {}, renderReview() {}, document: {
+    querySelectorAll: selector => selector === '[data-step-indicator]' ? indicators : panels,
+    querySelector: () => ({ scrollIntoView() {} }),
+  } });
+  vm.runInContext(source.slice(source.indexOf('function goToStep('), source.indexOf('function renderReview(')), box);
+  for (const step of [1, 2, 3, 2, 1]) {
+    box.goToStep(step);
+    indicators.forEach((item, index) => {
+      assert.equal(item.classes.active, index + 1 === step);
+      assert.equal(item.classes.completed, index + 1 < step);
+      assert.equal(item.marker.textContent, index + 1 < step ? '✓' : String(index + 1));
+      assert.equal(panels[index].hidden, index + 1 !== step);
+    });
+  }
+});
 
 test('business discovery is accent and case insensitive', () => {
   assert.equal(normalizeBusinessSearch('BÁN Hoa'), 'ban hoa');

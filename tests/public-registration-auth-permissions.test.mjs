@@ -54,9 +54,10 @@ test('promotion and late-payment guidance remain present in the direct checkout 
 
 test('registration stepper stays aligned across desktop and mobile rules', async () => {
   const css = await source('src/styles/app.css');
-  assert.match(css, /\.registration-wizard \.registration-stepper \{ display:grid; grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
-  assert.match(css, /\.registration-step\.completed:not\(:last-child\)::after \{ background:var\(--success-border\)/);
-  assert.match(css, /@media\(max-width:620px\)[\s\S]*\.registration-wizard \.registration-stepper \{ grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(css, /\.public-site \.registration-stepper \{ display:grid; grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.doesNotMatch(css, /\.public-site \.registration-step[^{}]*::after/);
+  assert.match(css, /\.public-site \.registration-step.completed \{[^}]*background:var\(--success-bg\); border-color:var\(--success-border\)/);
+  assert.match(css, /@media\(max-width:620px\)[\s\S]*\.public-site \.registration-stepper \{ grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
 });
 
 test('self-registration form uses username/password and does not require email', () => {

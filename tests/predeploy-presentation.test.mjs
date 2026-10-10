@@ -13,7 +13,7 @@ import { DetailFields } from '../src/components/DetailFields.js';
 test('sidebar preserves every route and permission, with CRM expanded and only System collapsible', () => {
   assert.deepEqual(NAV_SECTIONS.flatMap(section => section.items.map(item => item.route)), [
     'user', 'user-profile', 'user-kiosks', 'user-register-kiosk', 'payments-mine', 'user-announcements', 'user-support', 'dashboard',
-    'customers', 'kiosks', 'register', 'registration-requests', 'categories', 'business-types', 'promotions', 'expenses', 'reports',
+    'customers', 'kiosks', 'register', 'registration-requests', 'payments', 'categories', 'business-types', 'promotions', 'expenses', 'reports',
     'user-management', 'logs', 'settings',
   ]);
   const crm = NAV_SECTIONS.find(section => section.label === 'QUẢN LÝ CRM');
@@ -31,7 +31,10 @@ test('sidebar preserves every route and permission, with CRM expanded and only S
 
 test('actual router navigation marks CRM destinations and opens active groups after navigation', () => {
   const app = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
-  const source = app.slice(app.indexOf('function getRouteSubPath()'), app.indexOf('function updateSupabaseBadge'));
+  const start = app.indexOf('function getRouteSubPath()');
+  const end = app.indexOf('function formatNumber(', start);
+  assert.ok(start >= 0 && end > start, 'navigation harness boundaries must exist');
+  const source = app.slice(start, end);
   const routes = ['customers', 'kiosks', 'logs', 'settings'];
   const links = routes.map(route => ({ dataset: { navRoute: route, ...(route === 'settings' ? { navMatchRoute: 'settings' } : {}) },
     active: false, attributes: {}, classList: { toggle(_, value) { links.find(link => link.classList === this).active = value; } },

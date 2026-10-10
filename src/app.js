@@ -6,12 +6,11 @@ import { NAV_SECTIONS, PAGE_TITLES } from './constants/navigation.js';
 import { PERMISSIONS, canAccessPermission, canAccessRoute, accessFingerprint } from './constants/permissions.js';
 import { AppLayout, bindSidebarPresentation, syncNavigationGroups } from './layouts/AppLayout.js';
 import { createRouter } from './router/index.js';
-import { getSupabaseStatus } from './supabase/client.js';
 import { AuthService } from './services/AuthService.js';
 import { settingsService } from './services/SettingsService.js';
 import { AdminNotificationService } from './services/AdminNotificationService.js';
 import { HomepageContentService } from './services/HomepageContentService.js';
-import { formatToday, formatDateTime } from './utils/date.js';
+import { formatDateTime } from './utils/date.js';
 import { escapeHtml } from './utils/html.js';
 import { renderIcon } from './utils/icons.js';
 import { syncThemeLogos } from './utils/themeLogo.js';
@@ -165,15 +164,11 @@ function renderAuthenticatedApp(root, profile) {
 
   const sidebar = document.querySelector('[data-sidebar]');
   const outlet = document.querySelector('[data-route-outlet]');
-  const currentDate = document.querySelector('[data-current-date]');
   const menuToggle = document.querySelector('[data-menu-toggle]');
   const sidebarOverlay = document.querySelector('[data-sidebar-overlay]');
   const notificationCenter = document.querySelector('.admin-notification-center');
-  const supabaseBadge = document.querySelector('[data-supabase-badge]');
 
-  if (currentDate) currentDate.textContent = formatToday();
   bindThemeToggle();
-  updateSupabaseBadge(supabaseBadge);
   if (canAccessPermission(profile, PERMISSIONS.NOTIFICATIONS) || canAccessPermission(profile, PERMISSIONS.REGISTRATION_REQUESTS)) refreshAdminNotifications();
   if (canAccessPermission(profile, PERMISSIONS.NOTIFICATIONS) || canAccessPermission(profile, PERMISSIONS.REGISTRATION_REQUESTS)) {
     window.addEventListener('dhl:actionable-registration-changed', refreshAdminNotifications);
@@ -765,17 +760,6 @@ function setActiveNavigation(route) {
   });
   syncNavigationGroups();
 }
-
-function updateSupabaseBadge(element) {
-  if (!element) return;
-  const status = getSupabaseStatus();
-  element.textContent = status.configured
-    ? '● Hệ thống hoạt động bình thường'
-    : '● Không thể kết nối dữ liệu';
-  element.classList.toggle('ready', status.configured);
-}
-
-
 
 function formatNumber(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value || 0));

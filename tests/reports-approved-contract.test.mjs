@@ -100,7 +100,7 @@ function pageHarness() {
     if (!controls.has(id)) controls.set(id, { value: '', handlers: {}, addEventListener(event, handler) { this.handlers[event] = handler; } });
     return controls.get(id);
   };
-  const tabs = ['overview', 'revenue'].map(reportTab => Object.assign(control(reportTab), { dataset: { reportTab } }));
+  const tabs = ['overview', 'revenue', 'reconciliation'].map(reportTab => Object.assign(control(reportTab), { dataset: { reportTab } }));
   const calls = [];
   const box = vm.createContext({ vietnamDateRangeYearToDate: () => ({ from: '2026-01-01', to: '2026-10-04' }),
     PageHeader: () => '', FilterBar: () => '', DateRangeFields: () => '', EmptyState: () => '', escapeHtml: String,
@@ -108,9 +108,54 @@ function pageHarness() {
     setTimeout: handler => { handler(); return 1; }, clearTimeout() {},
     capture: tab => calls.push(tab), document: { getElementById: control, querySelectorAll: () => tabs } });
   vm.runInContext(pageSource.replace(/^import .*;\n/gm, '').replace('export function ReportsPage', 'function ReportsPage'), box);
+  const loadReportData = box.loadReportData;
   vm.runInContext('loadReportData = () => capture(state.activeTab); syncControls = () => {}; renderTabs = () => {};', box);
-  return { box, control, tabs, calls };
+  return { box, control, tabs, calls, loadReportData };
 }
+
+test('Cần kiểm tra loads integrity rows and searches Vietnamese text without runtime errors', async () => {
+  const { box, control, tabs, calls, loadReportData } = pageHarness();
+  const rows = [
+    { title: 'Hồ sơ ĐẶNG THỊ ÁNH', customer: 'Đặng Thị Ánh', kiosk: 'Quán Ăn', issue: 'Thiếu liên kết', guidance: 'Kiểm tra thông tin', status: 'pending' },
+    { title: 'Hồ sơ Nguyễn Bình', customer: 'Nguyễn Bình', kiosk: 'Cửa hàng', issue: 'Trùng dữ liệu', guidance: 'Đối chiếu thông tin', status: 'pending' },
+  ];
+  const report = { rows, summary: { issueCount: 2 }, financial: { period: reportPeriod({}, now) } };
+  Object.assign(box, {
+    ReportService: { getReportData: async () => ({ data: report }) },
+    ReviewContextService: { resolve: async () => [] },
+    reviewReference: row => row,
+    integrityPresentation: row => row,
+    DetailFields: fields => fields.map(([label, value]) => `${label}: ${value}`).join(' '),
+    StatCard: ({ value, label }) => `${label}: ${value}`,
+    StatusBadge: () => '<span class="status-badge">Chờ xác nhận</span>',
+    EmptyState: ({ title, message }) => `${title}: ${message}`,
+    bindSharedPagination() {},
+  });
+  box.bindEvents();
+  tabs[2].handlers.click();
+  assert.equal(calls.at(-1), 'reconciliation');
+  const render = async () => {
+    await assert.doesNotReject(loadReportData());
+    const html = control('reports-content').innerHTML;
+    assert.doesNotMatch(html, /Không thể tải báo cáo|ReferenceError|is not defined/);
+    return html;
+  };
+  let html = await render();
+  for (const row of rows) assert.ok(html.includes(row.title));
+  assert.equal((html.match(/<article class="integrity-card">/g) || []).length, 2);
+  for (const term of ['  đẶnG tHị áNh  ', ' QUÁN ĂN ', ' THIẾU LIÊN KẾT ']) {
+    control('report-search').handlers.input({ target: { value: term } });
+    html = await render();
+    assert.ok(html.includes(rows[0].title));
+    assert.ok(!html.includes(rows[1].title));
+  }
+  for (const [term, count] of [[' CHỜ XÁC NHẬN ', 2], ['status-badge', 0], ['không khớp', 0], ['', 2]]) {
+    control('report-search').handlers.input({ target: { value: term } });
+    html = await render();
+    assert.equal((html.match(/<article class="integrity-card">/g) || []).length, count);
+    if (!count) assert.match(html, /Không tìm thấy dữ liệu/);
+  }
+});
 
 test('Reports opens, reloads and reopens on Tổng quan; data refresh and filters preserve Doanh thu', () => {
   const { box, control, tabs, calls } = pageHarness();

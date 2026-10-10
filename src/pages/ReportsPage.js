@@ -22,7 +22,7 @@ const REPORT_TABS = [
   { id: 'revenue', label: 'Doanh thu' },
   { id: 'kiosks', label: 'Kiosk' },
   { id: 'customers', label: 'Khách hàng' },
-  { id: 'reconciliation', label: 'Cần kiểm tra' },
+  { id: 'reconciliation', label: 'Đối soát dữ liệu' },
   { id: 'categories', label: 'Danh mục / Loại hình' },
 ];
 
@@ -422,19 +422,27 @@ function renderCustomers(report) {
   `;
 }
 
+function normalizeSearch(value) {
+  return String(value || '').trim().toLocaleLowerCase('vi');
+}
+
+function stripHtml(value) {
+  return String(value || '').replace(/<[^>]*>/g, '');
+}
+
 function renderReconciliation(report) {
   const rows = report.rows.map((row, index) => ({ row, view: integrityPresentation(row, state.reviewContexts[index]) }));
   const term = normalizeSearch(state.searchTerm);
   const visible = rows.filter(({ row, view }) => !term || normalizeSearch([view.title, view.issue, view.guidance, view.customer, view.kiosk, view.amount, stripHtml(statusBadge(row.status)), formatDateTime(row.eventAt)].join(' ')).includes(term));
   return `
-    ${renderSummaryCards([card('orange', renderIcon('alert'), report.summary.issueCount, 'Mục cần kiểm tra')])}
-    <p class="report-definition">Các liên kết hoặc thông tin dữ liệu còn thiếu, trùng hay chưa khớp. Mở bản ghi để kiểm tra; danh sách này không tự điều chỉnh dữ liệu.</p>
+    ${renderSummaryCards([card('orange', renderIcon('alert'), report.summary.issueCount, 'Vấn đề đối soát')])}
+    <p class="report-definition">Phát hiện các bản ghi có dữ liệu thiếu, không khớp hoặc trạng thái mâu thuẫn giữa Hồ sơ Kiosk, Kiosk, Thanh toán và PayOS.</p>
     <div class="integrity-list">${visible.length ? visible.map(({ row, view }) => `<article class="integrity-card">
       <header><h3>${escapeHtml(view.title)}</h3>${statusBadge(row.status)}</header>
       ${DetailFields([['Khách hàng', view.customer], ['Kiosk', view.kiosk], ...(view.amount ? [['Số tiền', view.amount]] : []), ['Thời điểm', formatDateTime(row.eventAt)]])}
       <div class="integrity-issue"><strong>Vấn đề: ${escapeHtml(view.issue)}</strong><p>${escapeHtml(view.guidance)}</p></div>
-      ${view.href ? `<a class="btn-secondary" href="${escapeHtml(view.href)}" aria-label="Kiểm tra ${escapeHtml(view.title)}">${renderIcon('search')}Kiểm tra</a>` : ''}
-    </article>`).join('') : EmptyState({ title: term ? 'Không tìm thấy dữ liệu' : 'Không có mục cần kiểm tra', message: term ? 'Thử từ khóa khác trong bộ lọc hiện tại.' : 'Không phát hiện vấn đề trong phạm vi báo cáo.' })}</div>
+      ${view.href ? `<a class="btn-secondary" href="${escapeHtml(view.href)}" aria-label="${escapeHtml(view.actionLabel)} ${escapeHtml(view.title)}">${renderIcon('search')}${escapeHtml(view.actionLabel)}</a>` : ''}
+    </article>`).join('') : EmptyState({ title: term ? 'Không tìm thấy dữ liệu' : 'Không có vấn đề đối soát', message: term ? 'Thử từ khóa khác trong bộ lọc hiện tại.' : 'Không phát hiện vấn đề trong phạm vi báo cáo.' })}</div>
     ${renderPagination(report.pagination)}
   `;
 }

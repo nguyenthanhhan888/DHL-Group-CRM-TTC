@@ -1,5 +1,4 @@
 import { PageHeader } from '../components/PageHeader.js';
-import { PublicSupport } from '../components/PublicSupport.js';
 import { PaymentActionButtons, PaymentKioskList, PaymentProgress, PaymentStatusHero, PaymentSummaryCard } from '../components/PaymentExperience.js';
 import { fetchPayosStatus } from '../components/PayosResultCard.js';
 import { Toast } from '../components/Toast.js';
@@ -60,7 +59,7 @@ export function RegisterPage() {
           <div class="registration-actions"><button class="btn-secondary" type="button" data-previous-step>${renderIcon('chevron-left')} Chỉnh sửa</button><button class="btn-primary registration-cta" id="register-submit-button" type="submit">${renderIcon('shield')} Xác nhận & Thanh toán</button></div><p class="registration-secure-note">${renderIcon('shield')} Thanh toán an toàn qua PayOS</p>
         </section>
       </form><div id="registration-success" class="registration-success hidden" aria-live="polite"></div>
-    </section>${PublicSupport()}</div>`;
+    </section></div>`;
 }
 
 RegisterPage.afterRender = async function afterRenderRegister() {
