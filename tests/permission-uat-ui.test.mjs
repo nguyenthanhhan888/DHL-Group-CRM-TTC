@@ -14,7 +14,7 @@ for(const permission of ALL_PERMISSIONS)test(`UI ${permission}: real nav filter 
   assert.equal(canAccessPermission(allowed,permission),true);
   for(const other of ALL_PERMISSIONS.filter(x=>x!==permission))assert.equal(canAccessPermission(allowed,other),false);
   for(const item of nav(allowed).filter(x=>!nav(zero).some(y=>y.route===x.route))){
-    assert.ok(item.permission===permission||expectedRoutes.includes(item.route)||(permission==='homepage-content'&&item.route==='settings'));
+    assert.ok(item.permission===permission||expectedRoutes.includes(item.route)||expectedRoutes.includes(item.route.split('?')[0])||(permission==='homepage-content'&&item.route==='settings'));
   }
   for(const route of expectedRoutes){
     let current=zero,rendered=0,handler;

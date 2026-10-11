@@ -10,3 +10,4 @@ export { RegistrationService } from './RegistrationService.js';
 export { ReportService } from './ReportService.js';
 export { SettingsService } from './SettingsService.js';
 export { UserProfileService } from './UserProfileService.js';
+export { WorkItemService } from './WorkItemService.js';

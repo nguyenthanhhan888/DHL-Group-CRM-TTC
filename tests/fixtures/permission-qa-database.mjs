@@ -61,6 +61,8 @@ export async function createPermissionQaDatabase({ applyFix = true, applyFinalFi
   if(applyFix && applyFinalFix && applyFollowup) for(const name of files.filter(x=>x.endsWith('_production_followup_reports_notifications.sql'))) await db.exec(await read(`../../supabase/migrations/${name}`));
   if (applyFix && applyFinalFix && applyFollowup && applyStabilization) for (const name of files.filter(x=>x.endsWith('_remove_ttc_crm_surface.sql'))) await db.exec(await read(`../../supabase/migrations/${name}`));
   if (applyFix && applyFinalFix && applyFollowup && applyStabilization) for (const name of files.filter(x=>x.endsWith('_persist_crm_notifications.sql'))) await db.exec(await read(`../../supabase/migrations/${name}`));
+  if (applyFix && applyFinalFix && applyFollowup && applyStabilization) for (const name of files.filter(x=>x.endsWith('_employee_website_user_link.sql'))) await db.exec(await read(`../../supabase/migrations/${name}`));
+  if (applyFix && applyFinalFix && applyFollowup && applyStabilization) for (const name of files.filter(x=>x.endsWith('_create_crm_work_items.sql'))) await db.exec(await read(`../../supabase/migrations/${name}`));
   return db;
 }
 

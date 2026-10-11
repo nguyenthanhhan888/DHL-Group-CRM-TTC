@@ -88,9 +88,9 @@ test.afterEach(() => {
   delete global.fetch;
 });
 
-test('canonical permission map contains 19 CRM permissions', () => {
-  assert.equal(ALL_PERMISSIONS.length, 19);
-  assert.equal(new Set(ALL_PERMISSIONS).size, 19);
+test('canonical permission map contains 21 CRM permissions', () => {
+  assert.equal(ALL_PERMISSIONS.length, 21);
+  assert.equal(new Set(ALL_PERMISSIONS).size, 21);
   assert.equal(ROUTE_PERMISSIONS['user-management'], PERMISSIONS.USER_MANAGEMENT);
   assert.equal(ROUTE_PERMISSIONS['admin-ttc-wallets'], undefined);
 });
@@ -123,6 +123,7 @@ test('System Admin can list users without individual user_permissions rows', asy
     if (parsed.pathname === '/auth/v1/user') return response(200, { id: ACTOR_ID });
     if (parsed.pathname === '/rest/v1/rpc/get_my_access_profile') return response(200, accessProfile());
     if (parsed.pathname === '/rest/v1/user_profiles') return response(200, [targetProfile()], { 'content-range': '0-0/1' });
+    if (parsed.pathname === '/rest/v1/employees') return response(200, []);
     if (parsed.pathname === '/rest/v1/user_permissions') return response(200, []);
     if (parsed.pathname === `/auth/v1/admin/users/${TARGET_ID}`) return response(200, { user: { id: TARGET_ID, last_sign_in_at: '2026-08-20T00:00:00Z' } });
     throw new Error(`Unexpected fetch: ${parsed.pathname}`);
@@ -271,6 +272,7 @@ test('lock and unlock synchronize Auth ban and database web access without grant
   assert.equal(locked.statusCode, 200);
   assert.equal(locked.payload.webAccessEnabled, false);
   assert.equal(lockWrites.find((item) => item.path === `/auth/v1/admin/users/${TARGET_ID}` && item.method === 'PUT').body.ban_duration, '876000h');
+  assert.equal(lockWrites.some((item) => item.path === '/rest/v1/employees' && item.method === 'DELETE'), false);
 
   const unlockWrites = [];
   global.fetch = createSensitiveFetch({ target: targetProfile({ status: 'locked', web_access_enabled: false }), existingPermissions: [], onWrite(entry) { unlockWrites.push(entry); } });

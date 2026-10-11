@@ -33,8 +33,8 @@ export function StaffPage() {
     <div class="table-card unified-users-table-card">
       <div class="report-table-wrap">
         <table class="data-table unified-users-table">
-          <thead><tr><th>Người dùng</th><th>Liên hệ</th><th>Quyền Web</th><th>Trạng thái</th><th>Đăng nhập gần nhất</th><th>Quản lý</th></tr></thead>
-          <tbody id="user-management-body"><tr><td colspan="6">Đang tải người dùng...</td></tr></tbody>
+          <thead><tr><th>Người dùng</th><th>Nhân viên</th><th>Liên hệ</th><th>Quyền Web</th><th>Trạng thái</th><th>Đăng nhập gần nhất</th><th>Quản lý</th></tr></thead>
+          <tbody id="user-management-body"><tr><td colspan="7">Đang tải người dùng...</td></tr></tbody>
         </table>
       </div>
       ${Pagination({ id: 'user-management', page: state.page, pageSize: state.pageSize, total: state.total, pageSizeOptions: [10, 25, 50], noun: 'người dùng' })}
@@ -68,13 +68,16 @@ StaffPage.afterRender = async function afterRenderStaff() {
   } catch {
     state.actor = null;
   }
-  loadUsers();
+  await loadUsers();
+  const deepLink = new URLSearchParams(String(window.location.hash || '').split('?')[1] || '');
+  const linkedUserId = deepLink.get('user');
+  if (linkedUserId) await openUserDetail(linkedUserId, deepLink.get('tab') === 'access' ? 'access' : 'account');
 };
 
 async function loadUsers() {
   const body = document.getElementById('user-management-body');
   if (!body) return;
-  body.innerHTML = '<tr><td colspan="6">Đang tải người dùng...</td></tr>';
+  body.innerHTML = '<tr><td colspan="7">Đang tải người dùng...</td></tr>';
   try {
     const result = await StaffService.list({ search: state.search, page: state.page, pageSize: state.pageSize });
     state.users = result.users || [];
@@ -82,7 +85,7 @@ async function loadUsers() {
     renderRows();
     updatePagination({ id: 'user-management', page: state.page, pageSize: state.pageSize, total: state.total, pageSizeOptions: [10, 25, 50], noun: 'người dùng' });
   } catch (error) {
-    body.innerHTML = `<tr><td colspan="6">${escapeHtml(error?.message || 'Không tải được người dùng.')}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7">${escapeHtml(error?.message || 'Không tải được người dùng.')}</td></tr>`;
   }
 }
 
@@ -90,13 +93,14 @@ function renderRows() {
   const body = document.getElementById('user-management-body');
   if (!body) return;
   if (!state.users.length) {
-    body.innerHTML = `<tr><td colspan="6">${EmptyState({ title: 'Không tìm thấy người dùng', message: 'Thử từ khóa khác hoặc tải lại dữ liệu.' })}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7">${EmptyState({ title: 'Không tìm thấy người dùng', message: 'Thử từ khóa khác hoặc tải lại dữ liệu.' })}</td></tr>`;
     return;
   }
   body.innerHTML = state.users.map((user) => {
     return `
       <tr>
         <td data-label="Người dùng"><div class="unified-user-identity"><strong>${escapeHtml(user.display_name || 'Chưa có tên')}</strong><span>@${escapeHtml(user.username || '—')}</span></div></td>
+        <td data-label="Nhân viên">${employeeIdentity(user.employee)}</td>
         <td data-label="Liên hệ"><div class="unified-user-contact"><span>${escapeHtml(user.email || '—')}</span><small>${escapeHtml(user.phone || '—')}</small></div></td>
         <td data-label="Quyền Web">${webAccessSummary(user)}</td>
         <td data-label="Trạng thái">${statusBadge(user.status)}</td>
@@ -125,19 +129,20 @@ async function openUserDetail(userId, tab = 'account') {
 
 function renderUserDetail(user) {
   const canManageSecurity = state.actor?.is_system_admin === true && !user.is_system_admin;
+  const canManageEmployeeLink = state.actor?.is_system_admin === true;
   Modal.open({
     title: `Người dùng · ${user.username || user.display_name || '—'}`,
     className: 'modal-wide unified-user-modal',
     body: `
       <div class="unified-user-summary">
-        <div><strong>${escapeHtml(user.display_name || 'Chưa có tên')}</strong><span>@${escapeHtml(user.username || '—')}</span></div>
+        <div><strong>${escapeHtml(user.display_name || 'Chưa có tên')}</strong><span>Employee: ${escapeHtml(user.employee?.full_name || '—')} · @${escapeHtml(user.username || '—')}</span></div>
         <div>${user.is_system_admin ? '<span class="status-pill success">System Admin · Toàn quyền hệ thống</span>' : webAccessBadge(user)} ${statusBadge(user.status)}</div>
       </div>
       <div class="unified-user-tabs" role="tablist">
         ${detailTab('account', 'Tài khoản')}${detailTab('access', 'Quyền truy cập')}${detailTab('security', 'Bảo mật')}
       </div>
       <div class="unified-user-detail-content">
-        ${state.activeTab === 'account' ? accountPanel(user) : ''}
+        ${state.activeTab === 'account' ? accountPanel(user, canManageEmployeeLink) : ''}
         ${state.activeTab === 'access' ? accessPanel(user, canManageSecurity) : ''}
         ${state.activeTab === 'security' ? securityPanel(user, canManageSecurity) : ''}
       </div>`,
@@ -149,8 +154,12 @@ function detailTab(value, label) {
   return `<button type="button" class="unified-user-tab ${state.activeTab === value ? 'active' : ''}" data-detail-tab="${value}" role="tab" aria-selected="${state.activeTab === value}">${label}</button>`;
 }
 
-function accountPanel(user) {
+function accountPanel(user, canManageEmployeeLink) {
   return `
+    <section class="user-detail-card">
+      <div class="user-detail-card-head"><div><span>Liên kết nhân sự</span><h3>Employee: ${escapeHtml(user.employee?.full_name || '—')}</h3></div>${user.employee ? '<span class="status-pill success">Đã liên kết</span>' : '<span class="status-pill">Không bắt buộc</span>'}</div>
+      ${user.employee ? `<p class="modal-note">Hồ sơ Employee #${escapeHtml(user.employee.id)} là nguồn dữ liệu nhân sự; Website User này chỉ quản lý đăng nhập và quyền.</p>${canManageEmployeeLink ? `<form id="user-employee-unlink-form" class="modal-form user-detail-form"><label class="form-group"><span>Lý do hủy liên kết</span><textarea class="form-control" name="reason" maxlength="500" rows="2" required></textarea></label>${adminPasswordField()}<div class="modal-actions"><button class="btn-secondary" type="submit">Hủy liên kết Nhân viên</button></div></form>` : ''}` : '<p class="modal-note">Website User có thể tồn tại mà không cần hồ sơ Employee.</p>'}
+    </section>
     <section class="user-detail-card">
       <div class="user-detail-card-head"><div><span>Tài khoản</span><h3>Thông tin liên hệ</h3></div><time>Đăng nhập gần nhất: ${escapeHtml(formatDateTime(user.last_sign_in_at) || 'Chưa có')}</time></div>
       <form id="user-account-form" class="modal-form user-detail-form">
@@ -260,7 +269,12 @@ function bindDetailEvents(user) {
     Toast.show('Đã đặt lại mật khẩu người dùng.');
     form.reset();
   });
-
+  bindSubmit('user-employee-unlink-form', async (form) => {
+    await StaffService.unlinkEmployeeUser(user.user_id, form.elements.adminPassword.value, form.elements.reason.value);
+    Toast.show('Đã hủy liên kết; hồ sơ Nhân viên và Website User đều được giữ lại.');
+    await refreshDetail('account');
+  });
+  bindPermissionEvents(user);
 }
 
 function bindPermissionEvents(user) {
@@ -328,6 +342,7 @@ async function refreshDetail(tab) {
 
 function facebookAccounts(user) { return Array.isArray(user?.user_facebook_accounts) ? user.user_facebook_accounts : []; }
 function primaryFacebookId(user) { const items = facebookAccounts(user); return (items.find((item) => item.is_primary) || items[0])?.facebook_id || ''; }
+function employeeIdentity(employee) { return employee ? `<div class="unified-user-identity"><strong>${escapeHtml(employee.full_name || '—')}</strong><span>Employee #${escapeHtml(employee.id)}</span></div>` : '<span class="text-muted">—</span>'; }
 function formatNumber(value) { return new Intl.NumberFormat('vi-VN').format(Number(value || 0)); }
 function statusBadge(status) { const active = status === 'active'; return `<span class="status-pill ${active ? 'success' : status === 'locked' ? 'danger' : ''}">${active ? 'Hoạt động' : status === 'locked' ? 'Đã khóa' : 'Chờ hồ sơ'}</span>`; }
 function webAccessBadge(user) { return `<span class="status-pill ${user.web_access_enabled ? 'success' : ''}">Quyền truy cập Web: ${user.web_access_enabled ? 'Đang bật' : 'Đang tắt'}</span>`; }

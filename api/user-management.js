@@ -10,6 +10,7 @@ const {
 } = require('./_auth.js');
 
 const USER_ID_PATTERN = /^[0-9a-f-]{36}$/i;
+const USERNAME_PATTERN = /^[a-z0-9._-]{3,40}$/;
 const PHONE_PATTERN = /^\+?[0-9 .()-]{9,20}$/;
 
 module.exports = async function userManagementHandler(req, res) {
@@ -31,6 +32,9 @@ module.exports = async function userManagementHandler(req, res) {
     if (action === 'sync_permissions') return send(res, await syncPermissions(req, body));
     if (action === 'set_locked') return send(res, await setLocked(req, body));
     if (action === 'reset_password') return send(res, await resetPassword(req, body));
+    if (action === 'grant_employee_access') return send(res, await grantEmployeeAccess(req, body));
+    if (action === 'link_employee_user') return send(res, await linkEmployeeUser(req, body));
+    if (action === 'unlink_employee_user') return send(res, await unlinkEmployeeUser(req, body));
     return res.status(400).json({ ok: false, message: 'Thao tác không hợp lệ.' });
   } catch (error) {
     return res.status(error.status || 500).json({
@@ -57,11 +61,20 @@ async function listUsers(req, body) {
     includeResponse: true,
   });
   const users = Array.isArray(result.data) ? result.data : [];
-  const permissionsByUser = await permissionsForUsers(users.map((user) => user.user_id));
-  const authByUser = await authDetailsForUsers(users.map((user) => user.user_id));
+  const userIds = users.map((user) => user.user_id);
+  const [permissionsByUser, authByUser, employeesByUser] = await Promise.all([
+    permissionsForUsers(userIds),
+    authDetailsForUsers(userIds),
+    employeesForUsers(userIds),
+  ]);
   return {
     ok: true,
-    users: users.map((user) => serializeUser(user, permissionsByUser.get(user.user_id), authByUser.get(user.user_id))),
+    users: users.map((user) => serializeUser(
+      user,
+      permissionsByUser.get(user.user_id),
+      authByUser.get(user.user_id),
+      employeesByUser.get(user.user_id),
+    )),
     page,
     pageSize,
     total: contentRangeTotal(result.response.headers.get('content-range'), users.length),
@@ -73,11 +86,12 @@ async function getUserDetail(req, body) {
   const userId = requiredUserId(body.userId);
   const target = await getProfile(userId, true);
   if (!target) throw httpError(404, 'Không tìm thấy người dùng.');
-  const [permissionRows, authUser] = await Promise.all([
+  const [permissionRows, authUser, employee] = await Promise.all([
     getDirectPermissions(userId),
     getAuthUser(userId),
+    getEmployeeForUser(userId),
   ]);
-  return { ok: true, user: serializeUser(target, permissionRows, authUser), permissionCatalog: await activePermissions() };
+  return { ok: true, user: serializeUser(target, permissionRows, authUser, employee), permissionCatalog: await activePermissions() };
 }
 
 async function updateProfile(req, body) {
@@ -206,6 +220,120 @@ async function resetPassword(req, body) {
   return { ok: true };
 }
 
+async function grantEmployeeAccess(req, body) {
+  const actor = await requireSystemAdmin(req);
+  await reauthenticateSystemAdmin(actor, body.adminPassword);
+  const employeeId = requiredEmployeeId(body.employeeId);
+  const reason = requiredText(body.reason, 500, 'Lý do');
+  const employee = await getEmployee(employeeId);
+  if (!employee) throw httpError(404, 'Không tìm thấy nhân viên.');
+  if (employee.user_id) throw httpError(409, 'Nhân viên đã được liên kết tài khoản CRM.');
+
+  const username = String(body.username || '').trim().toLowerCase();
+  const password = String(body.password || '');
+  if (!USERNAME_PATTERN.test(username)) throw httpError(400, 'Username không hợp lệ.');
+  if (password.length < 8) throw httpError(400, 'Mật khẩu cần ít nhất 8 ký tự.');
+  if (await getProfileByUsername(username)) throw httpError(409, 'Username đã được sử dụng.');
+
+  let authUser;
+  try {
+    const authData = await serviceFetch('/auth/v1/admin/users', {
+      method: 'POST',
+      body: {
+        email: `${username}@users.dhl.local`,
+        password,
+        email_confirm: true,
+        user_metadata: { username },
+        app_metadata: { account_type: 'staff' },
+      },
+    });
+    authUser = authData?.user || authData;
+  } catch (error) {
+    if (error?.code === 'email_exists' || /already (?:registered|exists)|duplicate/i.test(String(error?.message || ''))) {
+      throw httpError(409, 'Username đã được sử dụng.');
+    }
+    throw error;
+  }
+  if (!authUser?.id) throw httpError(400, 'Không tạo được tài khoản CRM.');
+
+  try {
+    await serviceFetch('/rest/v1/user_profiles', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: {
+        user_id: authUser.id,
+        username,
+        display_name: employee.full_name,
+        phone: employee.phone || null,
+        email: null,
+        status: 'active',
+        web_access_enabled: false,
+        is_system_admin: false,
+        metadata: { source: 'employee_crm_access', employee_id: employee.id },
+      },
+    });
+    await attachUserToEmployee(employee, authUser.id);
+  } catch (error) {
+    await serviceFetch(`/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(authUser.id)}`, {
+      method: 'DELETE', headers: { Prefer: 'return=minimal' },
+    }).catch(() => null);
+    await serviceFetch(`/auth/v1/admin/users/${encodeURIComponent(authUser.id)}`, { method: 'DELETE' }).catch(() => null);
+    throw error;
+  }
+
+  await writeEmployeeLinkAudit(
+    actor,
+    'grant_employee_access',
+    employee,
+    { ...employee, user_id: authUser.id },
+    reason,
+  );
+  return { ok: true, userId: authUser.id, employeeId: employee.id, webAccessEnabled: false };
+}
+
+async function linkEmployeeUser(req, body) {
+  const actor = await requireSystemAdmin(req);
+  await reauthenticateSystemAdmin(actor, body.adminPassword);
+  const employeeId = requiredEmployeeId(body.employeeId);
+  const userId = requiredUserId(body.userId);
+  const reason = requiredText(body.reason, 500, 'Lý do');
+  const [employee, user, existingEmployee] = await Promise.all([
+    getEmployee(employeeId),
+    getProfile(userId, false),
+    getEmployeeForUser(userId),
+  ]);
+  if (!employee) throw httpError(404, 'Không tìm thấy nhân viên.');
+  if (!user) throw httpError(404, 'Không tìm thấy Website User.');
+  if (employee.user_id) throw httpError(409, 'Nhân viên đã được liên kết tài khoản CRM.');
+  if (existingEmployee) throw httpError(409, 'Website User đã liên kết với một nhân viên khác.');
+
+  await attachUserToEmployee(employee, userId);
+  await writeEmployeeLinkAudit(
+    actor,
+    'link_employee_user',
+    employee,
+    { ...employee, user_id: userId },
+    reason,
+  );
+  return { ok: true, userId, employeeId: employee.id };
+}
+
+async function unlinkEmployeeUser(req, body) {
+  const actor = await requireSystemAdmin(req);
+  await reauthenticateSystemAdmin(actor, body.adminPassword);
+  const userId = requiredUserId(body.userId);
+  const employee = await getEmployeeForUser(userId);
+  if (!employee) throw httpError(404, 'Website User chưa liên kết Nhân viên.');
+  const reason = requiredText(body.reason, 500, 'Lý do');
+  const params = new URLSearchParams({ id: `eq.${employee.id}`, user_id: `eq.${userId}` });
+  const rows = await serviceFetch(`/rest/v1/employees?${params.toString()}`, {
+    method: 'PATCH', headers: { Prefer: 'return=representation' }, body: { user_id: null },
+  });
+  if (!Array.isArray(rows) || !rows.length) throw httpError(409, 'Liên kết nhân viên đã thay đổi. Vui lòng tải lại.');
+  await writeEmployeeLinkAudit(actor, 'unlink_employee_user', employee, { ...employee, user_id: null }, reason);
+  return { ok: true, userId, employeeId: employee.id };
+}
+
 async function getProfile(userId, includeRelations) {
   const select = includeRelations
     ? '*,user_facebook_accounts(id,facebook_id,facebook_id_status,is_primary,facebook_url_original)'
@@ -213,6 +341,51 @@ async function getProfile(userId, includeRelations) {
   const params = new URLSearchParams({ select, user_id: `eq.${userId}`, limit: '1' });
   const rows = await serviceFetch(`/rest/v1/user_profiles?${params.toString()}`);
   return Array.isArray(rows) ? rows[0] || null : null;
+}
+
+async function getProfileByUsername(username) {
+  const params = new URLSearchParams({
+    select: 'user_id,username',
+    username: `eq.${username}`,
+    limit: '1',
+  });
+  const rows = await serviceFetch(`/rest/v1/user_profiles?${params.toString()}`);
+  return Array.isArray(rows) ? rows[0] || null : null;
+}
+
+async function getEmployee(employeeId) {
+  const params = new URLSearchParams({
+    select: 'id,full_name,phone,job_title,employment_status,archived_at,user_id',
+    id: `eq.${employeeId}`,
+    limit: '1',
+  });
+  const rows = await serviceFetch(`/rest/v1/employees?${params.toString()}`);
+  return Array.isArray(rows) ? rows[0] || null : null;
+}
+
+async function getEmployeeForUser(userId) {
+  return (await employeesForUsers([userId])).get(userId) || null;
+}
+
+async function employeesForUsers(userIds) {
+  const result = new Map(userIds.map((id) => [id, null]));
+  if (!userIds.length) return result;
+  const params = new URLSearchParams({
+    select: 'id,full_name,phone,job_title,employment_status,archived_at,user_id',
+    user_id: `in.(${userIds.join(',')})`,
+  });
+  const rows = await serviceFetch(`/rest/v1/employees?${params.toString()}`);
+  for (const row of rows || []) result.set(row.user_id, row);
+  return result;
+}
+
+async function attachUserToEmployee(employee, userId) {
+  const params = new URLSearchParams({ id: `eq.${employee.id}`, user_id: 'is.null' });
+  const rows = await serviceFetch(`/rest/v1/employees?${params.toString()}`, {
+    method: 'PATCH', headers: { Prefer: 'return=representation' }, body: { user_id: userId },
+  });
+  if (!Array.isArray(rows) || !rows.length) throw httpError(409, 'Nhân viên đã được liên kết bởi thao tác khác.');
+  return rows[0];
 }
 
 async function getDirectPermissions(userId) {
@@ -323,11 +496,31 @@ async function writeAudit(actor, action, userId, before, after, reason) {
   });
 }
 
-function serializeUser(user, permissions = [], authUser = null) {
+async function writeEmployeeLinkAudit(actor, action, employeeBefore, employeeAfter, reason) {
+  await serviceFetch('/rest/v1/audit_logs', {
+    method: 'POST', headers: { Prefer: 'return=minimal' },
+    body: {
+      actor_id: actor.user.id,
+      actor_name: actor.profile.display_name || actor.profile.username || 'System Admin',
+      actor_type: 'staff',
+      actor_role: 'system_admin',
+      module: 'UserManagement',
+      entity: 'employees',
+      record_id: String(employeeBefore.id),
+      action,
+      before: { id: employeeBefore.id, user_id: employeeBefore.user_id || null },
+      after: { id: employeeAfter.id, user_id: employeeAfter.user_id || null },
+      reason,
+    },
+  });
+}
+
+function serializeUser(user, permissions = [], authUser = null, employee = null) {
   return {
     ...user,
     permissions: Array.isArray(permissions) ? permissions : [],
     last_sign_in_at: authUser?.last_sign_in_at || null,
+    employee: employee || null,
   };
 }
 
@@ -355,6 +548,12 @@ function contentRangeTotal(value, fallback) {
 function requiredUserId(value) {
   const id = String(value || '');
   if (!USER_ID_PATTERN.test(id)) throw httpError(400, 'User không hợp lệ.');
+  return id;
+}
+
+function requiredEmployeeId(value) {
+  const id = Number(value);
+  if (!Number.isSafeInteger(id) || id <= 0) throw httpError(400, 'Nhân viên không hợp lệ.');
   return id;
 }
 

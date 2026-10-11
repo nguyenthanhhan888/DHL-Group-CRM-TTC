@@ -10,11 +10,12 @@ import { integrityPresentation, reviewReference, eventReviewReference } from '..
 import { businessEventPresentation } from '../src/utils/businessEventPresentation.js';
 import { DetailFields } from '../src/components/DetailFields.js';
 
-test('sidebar preserves every route and permission, with CRM expanded and only System collapsible', () => {
+test('sidebar is the shared internal CRM workspace with no personal/customer portal links', () => {
   assert.deepEqual(NAV_SECTIONS.flatMap(section => section.items.map(item => item.route)), [
-    'user', 'user-profile', 'user-kiosks', 'user-register-kiosk', 'payments-mine', 'user-announcements', 'user-support', 'dashboard',
-    'customers', 'kiosks', 'register', 'registration-requests', 'payments', 'categories', 'business-types', 'promotions', 'expenses', 'reports',
-    'user-management', 'logs', 'settings',
+    'dashboard',
+    'customers', 'kiosks', 'registration-requests', 'work-items', 'payments', 'categories', 'business-types', 'promotions', 'expenses', 'reports',
+    'employees',
+    'user-management', 'logs', 'homepage-content', 'settings',
   ]);
   const crm = NAV_SECTIONS.find(section => section.label === 'QUẢN LÝ CRM');
   assert.ok(!crm.collapsible);
@@ -22,11 +23,11 @@ test('sidebar preserves every route and permission, with CRM expanded and only S
   const markup = AppLayout({ navSections: NAV_SECTIONS, user: { display_name: 'Tên thật <QA>', is_system_admin: true } });
   assert.doesNotMatch(markup, /<details[^>]*data-nav-group[^>]*\sopen/);
   assert.match(markup, /Tên thật &lt;QA&gt;/);
-  assert.match(markup, /sidebar-account-dropdown[\s\S]*href="#\/user-profile"[\s\S]*<hr>[\s\S]*data-logout[\s\S]*Đăng xuất/);
-  const personal = AppLayout({ navSections: [NAV_SECTIONS[0]], user: { username: 'member', web_access_enabled: true } });
-  assert.doesNotMatch(personal, /data-nav-route="(?:dashboard|admin\/ttc)"/);
-  assert.match(personal, /Người dùng Web/);
-  assert.doesNotMatch(personal, /Quản trị hệ thống/);
+  assert.doesNotMatch(markup, /href="#\/(?:user|user-profile|user-kiosks|user-register-kiosk|payments-mine|user-announcements|user-support)"/);
+  assert.match(markup, /sidebar-account-dropdown[\s\S]*data-logout[\s\S]*Đăng xuất/);
+  const staff = AppLayout({ navSections: NAV_SECTIONS, user: { username: 'member', web_access_enabled: true } });
+  assert.match(staff, /Nhân sự CRM/);
+  assert.doesNotMatch(staff, /Quản trị hệ thống/);
 });
 
 test('actual router navigation marks CRM destinations and opens active groups after navigation', () => {
@@ -35,7 +36,7 @@ test('actual router navigation marks CRM destinations and opens active groups af
   const end = app.indexOf('function formatNumber(', start);
   assert.ok(start >= 0 && end > start, 'navigation harness boundaries must exist');
   const source = app.slice(start, end);
-  const routes = ['customers', 'kiosks', 'logs', 'settings'];
+  const routes = ['customers', 'kiosks', 'logs', 'homepage-content', 'settings'];
   const links = routes.map(route => ({ dataset: { navRoute: route, ...(route === 'settings' ? { navMatchRoute: 'settings' } : {}) },
     active: false, attributes: {}, classList: { toggle(_, value) { links.find(link => link.classList === this).active = value; } },
     setAttribute(key, value) { this.attributes[key] = value; }, removeAttribute(key) { delete this.attributes[key]; } }));
@@ -46,12 +47,12 @@ test('actual router navigation marks CRM destinations and opens active groups af
   const document = { querySelectorAll: selector => selector === '[data-nav-route]' ? links : groups };
   const box = { document, window: { location: { hash: '' } }, syncNavigationGroups: () => syncNavigationGroups(document) };
   vm.createContext(box); vm.runInContext(source, box);
-  for (const [hash, route, active] of [['#/customers', 'customers', 'customers'], ['#/kiosks', 'kiosks', 'kiosks'], ['#/logs', 'logs', 'logs'], ['#/homepage-content', 'homepage-content', 'settings']]) {
+  for (const [hash, route, active] of [['#/customers', 'customers', 'customers'], ['#/kiosks', 'kiosks', 'kiosks'], ['#/logs', 'logs', 'logs'], ['#/homepage-content', 'homepage-content', 'homepage-content']]) {
     box.window.location.hash = hash;
     box.setActiveNavigation(route);
     assert.deepEqual(links.filter(link => link.active).map(link => link.dataset.navRoute), [active]);
     assert.equal(groups[0].open, ['customers', 'kiosks'].includes(active));
-    assert.equal(groups[1].open, ['logs', 'settings'].includes(active));
+    assert.equal(groups[1].open, ['logs', 'homepage-content', 'settings'].includes(active));
     assert.equal(links.find(link => link.active).attributes['aria-current'], 'page');
   }
 });

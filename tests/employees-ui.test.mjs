@@ -36,19 +36,23 @@ test('historical snapshot is authoritative after rename/archive and honest when 
   assert.match(expenseAttribution({employee_name:'Tên lịch sử',attribution_state:'legacy'}).note,/Chưa liên kết/);
   assert.equal(expenseAttribution({}).name,'Không gắn nhân viên');
 });
-test('Employee secondary tab uses existing expenses route and direct navigation respects grant/revoke',()=>{
-  const allowed={status:'active',web_access_enabled:true,permissions:['expenses']},denied={status:'active',web_access_enabled:true,permissions:[]};
-  assert.equal(canAccessRoute(allowed,'expenses'),true);assert.equal(canAccessRoute(denied,'expenses'),false);
-  const page=ExpensesPage({params:new URLSearchParams('tab=employees')});assert.match(page,/employee-add/);assert.doesNotMatch(page,/expense-add-button/);
-  const expensePage=ExpensesPage();assert.match(expensePage,/#\/expenses\?tab=employees/);
+test('Employee module has its own permission and direct route, independent from Expenses',()=>{
+  const allowed={status:'active',web_access_enabled:true,permissions:['employees']};
+  const expensesOnly={status:'active',web_access_enabled:true,permissions:['expenses']};
+  const denied={status:'active',web_access_enabled:true,permissions:[]};
+  assert.equal(canAccessRoute(allowed,'employees'),true);assert.equal(canAccessRoute(allowed,'expenses'),false);
+  assert.equal(canAccessRoute(expensesOnly,'employees'),false);assert.equal(canAccessRoute(expensesOnly,'expenses'),true);
+  assert.equal(canAccessRoute(denied,'employees'),false);
+  assert.match(EmployeesPage(),/employee-add/);
+  const expensePage=ExpensesPage();assert.match(expensePage,/#\/employees/);assert.doesNotMatch(expensePage,/employee-add/);
   let callback,rendered=0,active=allowed;
   const prior={...window};
-  window.location={hash:'#/expenses?tab=employees'};window.addEventListener=(_,fn)=>{callback=fn;};
-  const outlet={innerHTML:''};const render=({params})=>{rendered++;assert.equal(params.get('tab'),'employees');return EmployeesPage();};
-  createRouter({outlet,routes:{expenses:render},defaultRoute:'home',canAccess:route=>canAccessRoute(active,route)}).start();assert.equal(rendered,1);
+  window.location={hash:'#/employees'};window.addEventListener=(_,fn)=>{callback=fn;};
+  const outlet={innerHTML:''};const render=()=>{rendered++;return EmployeesPage();};
+  createRouter({outlet,routes:{employees:render},defaultRoute:'home',canAccess:route=>canAccessRoute(active,route)}).start();assert.equal(rendered,1);
   active=denied;callback();assert.equal(rendered,1);assert.equal(window.location.hash,'#/home');
   Object.assign(window,prior);
-  const nav=readFileSync(new URL('../src/constants/navigation.js',import.meta.url),'utf8');assert.doesNotMatch(nav,/route: 'employees'/);
+  const nav=readFileSync(new URL('../src/constants/navigation.js',import.meta.url),'utf8');assert.match(nav,/route: 'employees'/);
 });
 test('Employee event copy stays business-readable without changing existing Expense presentation',()=>{
   assert.equal(businessEventPresentation({event_type:'employee',title:'Nguyễn A đã nghỉ việc',actor_name:'Admin'}).title,'Nguyễn A đã nghỉ việc');

@@ -68,13 +68,13 @@ test('default Business Logs exclude mirrored audit rows while technical history 
   assert.match(dashboard, /DASHBOARD_ACTIVITY_TYPES = \['registration', 'legacy', 'renewal'\]/);
 });
 
-test('Settings is the single sidebar workspace and reuses the canonical Homepage editor', () => {
+test('Settings reuses the canonical Homepage editor while Website công khai keeps its permission-scoped workspace', () => {
   assert.match(settings, /HomepageContentAdmin/);
   assert.match(settings, /mountHomepageContentAdmin/);
   assert.match(homepageAdmin, /Nguồn nội dung duy nhất/);
   const systemSection = navigation.match(/label: 'HỆ THỐNG'[\s\S]*?\n  },/)?.[0] || '';
   assert.equal((systemSection.match(/route: 'settings'/g) || []).length, 1);
-  assert.doesNotMatch(systemSection, /route: 'homepage-content'/);
+  assert.equal((systemSection.match(/route: 'homepage-content'/g) || []).length, 1);
 });
 
 test('public footer uses local branded assets, removes duplicate destinations and has compact empty UI', () => {

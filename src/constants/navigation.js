@@ -8,6 +8,7 @@ export const PAGE_TITLES = {
   payments: 'Thanh toán',
   'payments-mine': 'Thanh toán của tôi',
   expenses: 'Chi phí',
+  employees: 'Nhân viên',
   categories: 'Danh mục',
   'business-types': 'Loại hình KD',
   promotions: 'Mã giảm giá',
@@ -16,6 +17,7 @@ export const PAGE_TITLES = {
   'homepage-content': 'Website công khai',
   register: 'Đăng ký trực tuyến',
   'registration-requests': 'Hồ sơ Kiosk',
+  'work-items': 'Công việc & Ghi chú',
   staff: 'Quản lý nhân viên',
   'user-management': 'Quản lý người dùng',
   reports: 'Báo cáo',
@@ -31,19 +33,6 @@ export const PAGE_TITLES = {
 
 export const NAV_SECTIONS = [
   {
-    label: 'KHU VỰC CÁ NHÂN',
-    standalone: true,
-    items: [
-      { route: 'user', label: 'Trang của tôi', icon: 'user' },
-      { route: 'user-profile', label: 'Hồ sơ', icon: 'user-circle' },
-      { route: 'user-kiosks', label: 'Kiosk của tôi', icon: 'store' },
-      { route: 'user-register-kiosk', label: 'Đăng ký Kiosk', icon: 'plus' },
-      { route: 'payments-mine', label: 'Thanh toán của tôi', icon: 'wallet' },
-      { route: 'user-announcements', label: 'Thông báo', icon: 'alert' },
-      { route: 'user-support', label: 'Hỗ trợ', icon: 'support' },
-    ],
-  },
-  {
     label: 'TỔNG QUAN',
     standalone: true,
     items: [
@@ -55,8 +44,8 @@ export const NAV_SECTIONS = [
     items: [
       { route: 'customers', label: 'Khách hàng', icon: 'users' },
       { route: 'kiosks', label: 'Kiosk', icon: 'store' },
-      { route: 'register', label: 'Đăng ký Kiosk', icon: 'plus' },
       { route: 'registration-requests', label: 'Hồ sơ Kiosk', icon: 'check' },
+      { route: 'work-items', label: 'Công việc & Ghi chú', icon: 'message' },
       { route: 'payments', label: 'Thanh toán', icon: 'wallet' },
       { route: 'categories', label: 'Danh mục', icon: 'list' },
       { route: 'business-types', label: 'Loại hình kinh doanh', icon: 'briefcase' },
@@ -66,11 +55,18 @@ export const NAV_SECTIONS = [
     ],
   },
   {
+    label: 'NHÂN SỰ',
+    items: [
+      { route: 'employees', label: 'Nhân viên', icon: 'users' },
+    ],
+  },
+  {
     label: 'HỆ THỐNG',
     collapsible: true,
     items: [
       { route: 'user-management', label: 'Quản lý người dùng', icon: 'users' },
       { route: 'logs', label: 'Nhật ký hoạt động', icon: 'history' },
+      { route: 'homepage-content', label: 'Website công khai', icon: 'home' },
       { route: 'settings', label: 'Cài đặt', icon: 'settings' },
     ],
   },

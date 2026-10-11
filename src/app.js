@@ -35,6 +35,8 @@ import { HomepageContentPage } from './pages/HomepageContentPage.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { AccountRegisterPage } from './pages/AccountRegisterPage.js';
 import { RegistrationRequestsPage } from './pages/RegistrationRequestsPage.js';
+import { WorkItemsPage } from './pages/WorkItemsPage.js';
+import { EmployeesPage } from './pages/EmployeesPage.js';
 import { StaffPage } from './pages/StaffPage.js';
 import { UserHomePage } from './pages/UserHomePage.js';
 import { HomePage } from './pages/HomePage.js';
@@ -57,7 +59,9 @@ const routes = {
   'homepage-content': HomepageContentPage,
   reports: ReportsPage,
   expenses: ExpensesPage,
+  employees: EmployeesPage,
   'registration-requests': RegistrationRequestsPage,
+  'work-items': WorkItemsPage,
   'user-management': StaffPage,
   staff: StaffPage,
   permissions: StaffPage,
@@ -682,10 +686,10 @@ function isProfileAllowed(profile) {
 function firstAllowedRoute(profile) {
   const preferred = [
     'dashboard', 'reports', 'customers', 'customer-detail', 'kiosks', 'kiosk-detail',
-    'registration-requests', 'payments', 'payment-detail', 'expenses', 'categories', 'business-types',
-    'user-management', 'logs', 'settings', 'homepage-content', 'user',
+    'registration-requests', 'work-items', 'payments', 'payment-detail', 'expenses', 'employees', 'categories', 'business-types',
+    'user-management', 'logs', 'homepage-content', 'settings',
   ];
-  return preferred.find((route) => canAccessRoute(profile, route)) || 'user';
+  return preferred.find((route) => canAccessRoute(profile, route)) || 'not-found';
 }
 
 function normalizePublicPathRoute() {
@@ -737,7 +741,6 @@ function setActiveNavigation(route) {
   const currentFullRoute = window.location.hash.replace(/^#\/?/, '').split('&_ts=')[0] || route;
   const activeRoute = {
     'customer-detail': 'customers',
-    'homepage-content': 'settings',
     'kiosk-detail': 'kiosks',
     'payment-detail': 'payments',
     'payments-mine': 'payments-mine',

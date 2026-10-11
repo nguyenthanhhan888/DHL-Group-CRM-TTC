@@ -96,7 +96,7 @@ try {
   await until("document.querySelector('[data-registration-nav-count]').classList.contains('hidden')");await shot('manual-approved-badge-refreshed-'+suffix,width,height);
   assert.equal((await sql('select payment_status from payments where id=$1',[r.payment_id])).rows[0].payment_status,'pending');
   await go('user-management');await until("document.querySelectorAll('[data-user-action]').length===5");await click(`[data-user-id="${qaUsers.selective}"]`);await until("!!document.querySelector('[data-detail-tab=access]')");await click('[data-detail-tab=access]');await until("!!document.getElementById('user-permission-form')");await shot('permissions-editor-'+suffix,width,height);
-  await go('expenses?tab=employees');await until("document.getElementById('employee-table-body')?.innerText.includes('Nhân viên TEST')");await shot('employees-'+suffix,width,height);
+  await go('employees');await until("document.getElementById('employee-table-body')?.innerText.includes('Nhân viên TEST')");await shot('employees-'+suffix,width,height);
   await go('promotions');await until("!!document.getElementById('add-promotion')");await click('#add-promotion');await until("!!document.querySelector('#promotion-form')");await shot('promotion-create-'+suffix,width,height);
   // Public registration UI with mocked provider rejection followed by a real retry.
   await go('register');await until("document.querySelector('[data-kiosk-category] option[value=\"1\"]')");

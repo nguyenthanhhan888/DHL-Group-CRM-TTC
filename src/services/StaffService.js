@@ -24,6 +24,18 @@ export const StaffService = {
   async resetPassword(userId, newPassword, adminPassword, reason) {
     return invoke({ action: 'reset_password', userId, newPassword, adminPassword, reason });
   },
+
+  async grantEmployeeAccess(employeeId, username, password, adminPassword, reason) {
+    return invoke({ action: 'grant_employee_access', employeeId, username, password, adminPassword, reason });
+  },
+
+  async linkEmployeeUser(employeeId, userId, adminPassword, reason) {
+    return invoke({ action: 'link_employee_user', employeeId, userId, adminPassword, reason });
+  },
+
+  async unlinkEmployeeUser(userId, adminPassword, reason) {
+    return invoke({ action: 'unlink_employee_user', userId, adminPassword, reason });
+  },
 };
 
 async function invoke(body) {

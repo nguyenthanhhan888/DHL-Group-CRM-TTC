@@ -33,7 +33,7 @@ const reads=[
   ['kiosk-detail','select public.get_kiosk_status_data()'],
   ['registration-requests','select public.admin_list_registration_requests(null)'],
   ['payments','select public.get_payment_summary(null,null,null,null,null,null)'],
-  ['expenses','select public.get_employees_data()'],
+  ['employees','select public.get_employees_data()'],
   ['expenses','select public.get_employee_expenses_data()'],
   ['logs',"select public.get_business_events('logs')"],
   ['settings','select public.get_organization_settings()'],
@@ -83,11 +83,15 @@ for(const [table,permission,insert,update] of [
   await grant(permission); assert.equal((await call('selective',`delete from public.${table} where id=$1 returning id`,[id])).length,1);
 });
 
-test('Employees and Expenses lifecycle use expenses only, revoke preserves attribution/history and does not create users',async()=>{
+test('Employees and Expenses use independent permissions; revoke preserves attribution/history and does not create users',async()=>{
   const before=await scalar('select count(*)::int from auth.users');
   const save="select public.save_employee(null,'TEST Employee',null,'TEST','2026-09-01','active',null) item";
-  await denied(()=>call('zero',save)); await grant('expenses');
+  await denied(()=>call('zero',save));
+  await grant('expenses');await denied(()=>call('selective',save));
+  await revoke();await grant('employees');
   const employee=(await call('selective',save))[0].item;
+  await denied(()=>call('selective',"select public.save_employee_expense(null,'bonus',100000,'2026-09-20',$1,null,'cash','TEST') item",[employee.id]));
+  await grant('expenses');
   const expense=(await call('selective',"select public.save_employee_expense(null,'bonus',100000,'2026-09-20',$1,null,'cash','TEST') item",[employee.id]))[0].item;
   await call('selective',"select public.save_employee($1,'TEST edited',null,'TEST','2026-09-01','active',null)",[employee.id]);
   for(const action of ['left','reactivate','archive','restore']) await call('selective','select public.set_employee_lifecycle($1,$2)',[employee.id,action]);
@@ -100,6 +104,13 @@ test('Employees and Expenses lifecycle use expenses only, revoke preserves attri
   assert.equal(await scalar('select count(*)::int from public.employees where id=$1',[employee.id]),1);
   assert.equal(await scalar('select count(*)::int from auth.users'),before);
   await grant('expenses'); await call('selective','select public.archive_expense($1,\'TEST\')',[expense.expense.id]);
+});
+
+test('System Admin accesses Employees without a direct employees grant',async()=>{
+  assert.equal(await scalar('select count(*)::int from public.user_permissions where user_id=$1',[qaUsers.admin]),0);
+  const saved=(await call('admin',"select public.save_employee(null,'TEST Admin Employee',null,null,null,'active',null) item"))[0].item;
+  assert.equal(saved.full_name,'TEST Admin Employee');
+  assert.ok((await call('admin','select public.get_employees_data()')).length);
 });
 
 test('Promotions remains canonical admin-only: create/edit/pause/delete; all permissions do not make a user admin',async()=>{

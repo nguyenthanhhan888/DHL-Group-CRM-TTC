@@ -182,7 +182,7 @@ try {
       if(page==='employee-list'){
         await evaluate(`fetch('/qa/revoke')`);
         const denied=await evaluate(`(async()=>{const {EmployeeService}=await import('/src/services/EmployeeService.js');try{await EmployeeService.list();return false;}catch(e){return e.code==='42501';}})()`);assert.ok(denied);
-        await evaluate(`qaAccess.permissions=[];location.hash='#/expenses?tab=employees&access=revoked'`);
+        await evaluate(`qaAccess.permissions=[];location.hash='#/employees?access=revoked'`);
         await waitFor(`document.querySelector('[data-route-outlet]').innerText.includes('Không có quyền truy cập')`);
       }
     });

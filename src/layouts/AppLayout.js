@@ -35,8 +35,6 @@ export function AppLayout({ navSections, user }) {
           <details class="sidebar-account-menu" data-sidebar-account>
             <summary class="sidebar-account-trigger" aria-label="Mở menu tài khoản" aria-expanded="false"><span aria-hidden="true">⋮</span></summary>
             <div class="sidebar-account-dropdown">
-              <a href="#/user-profile"><span class="nav-icon" aria-hidden="true">${renderIcon('user-circle')}</span>Hồ sơ</a>
-              <hr>
               <button type="button" data-logout><span class="nav-icon" aria-hidden="true">${renderIcon('logout')}</span>Đăng xuất</button>
             </div>
           </details>
@@ -77,7 +75,7 @@ export function AppLayout({ navSections, user }) {
 
 function getRoleLabel(user) {
   if (user?.is_system_admin) return 'Quản trị hệ thống';
-  return user?.web_access_enabled ? 'Người dùng Web' : 'Thành viên';
+  return user?.web_access_enabled ? 'Nhân sự CRM' : 'Tài khoản nội bộ';
 }
 
 function getAccountUsername(user) {

@@ -1,5 +1,4 @@
 import { createDateValue } from '../utils/date.js';
-import { EmployeesPage } from './EmployeesPage.js';
 import { ExpenseNavigation } from '../components/ExpenseNavigation.js';
 import { DetailFields } from '../components/DetailFields.js';
 import { expenseEmployeeOptions, expenseAttribution } from '../utils/employeePresentation.js';
@@ -35,8 +34,7 @@ const PAYMENT_METHODS = [
   { value: 'other', label: 'Khác' },
 ];
 
-export function ExpensesPage({ params } = {}) {
-  if (params?.get('tab') === 'employees') return EmployeesPage();
+export function ExpensesPage() {
   return `
     <div class="expenses-page">
       ${PageHeader({
@@ -64,8 +62,7 @@ export function ExpensesPage({ params } = {}) {
   `;
 }
 
-ExpensesPage.afterRender = function afterRenderExpenses({ params } = {}) {
-  if (params?.get('tab') === 'employees') return EmployeesPage.afterRender();
+ExpensesPage.afterRender = function afterRenderExpenses() {
   document.getElementById('expense-add-button')?.addEventListener('click', () => openExpenseForm());
   document.getElementById('expense-category-button')?.addEventListener('click', openCategoryManager);
   document.getElementById('expense-filter-reset')?.addEventListener('click', resetFilters);

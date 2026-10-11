@@ -67,14 +67,14 @@ try{
     await until("!!document.querySelector('[data-sidebar]')");
     assert.equal(await evaluate(`!!document.querySelector('[data-sidebar] a[href="#/expenses"]')`),false);
     await shot(`zero-${suffix}`,width,height);
-    for(const route of ['customers','expenses?tab=employees','promotions','user-management']){await go(route);await until("location.hash==='#/user'&&!!document.querySelector('[data-route-outlet]')");}
+    for(const route of ['customers','employees','promotions','user-management']){await go(route);await until("location.hash==='#/user'&&!!document.querySelector('[data-route-outlet]')");}
     await shot(`zero-direct-route-denied-${suffix}`,width,height);
-    await sync(['expenses']);await login('selective');await evaluate(`localStorage.setItem('dhlThemePreference',${JSON.stringify(theme)})`);
+    await sync(['expenses','employees']);await login('selective');await evaluate(`localStorage.setItem('dhlThemePreference',${JSON.stringify(theme)})`);
     await go('expenses');await until("!!document.getElementById('expense-table-body')&&!document.getElementById('expense-table-body').innerText.includes('Đang tải')");
     assert.ok(await evaluate(`!!document.querySelector('[data-sidebar] a[href="#/expenses"]')`));
     assert.equal(await evaluate(`!!document.querySelector('[data-sidebar] a[href="#/user-management"]')`),false);
     await shot(`selective-expenses-${suffix}`,width,height);
-    await go('expenses?tab=employees');await until("!!document.getElementById('employee-add')&&!!document.getElementById('employee-table-body').children.length");
+    await go('employees');await until("!!document.getElementById('employee-add')&&!!document.getElementById('employee-table-body').children.length");
     await shot(`selective-employees-${suffix}`,width,height);
     // Same browser session; focus refresh must rebuild navigation and remove a revoked route.
     await sync([]);await evaluate("window.dispatchEvent(new Event('focus'))");
@@ -123,7 +123,7 @@ try{
   }
   phase='admin-module-tour';
   await login('admin');
-  for(const route of ['dashboard','customers','customer-detail?id=1','kiosks','kiosk-detail?id=1','registration-requests','payments','expenses','expenses?tab=employees','promotions','reports','logs','settings','homepage-content','user-management']){
+  for(const route of ['dashboard','customers','customer-detail?id=1','kiosks','kiosk-detail?id=1','registration-requests','payments','expenses','employees','promotions','reports','logs','settings','homepage-content','user-management']){
     await go(route);await until("!!document.querySelector('[data-route-outlet]')");await pause(400);
     const text=await evaluate("document.querySelector('[data-route-outlet]').innerText");
     assert.doesNotMatch(text,/Không thể tải|Không tải được|permission denied|Unexpected|Không có quyền/i,route);

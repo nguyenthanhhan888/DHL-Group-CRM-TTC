@@ -86,7 +86,7 @@ try {
   await until("document.querySelector('[data-notification-mark-all]')?.disabled");await shot('notifications-read-actionable-'+suffix,width);
   await rpc('approve_registration_request',[manual.request.id]);await evaluate("window.dispatchEvent(new Event('dhl:actionable-registration-changed'))");await until("document.querySelector('[data-registration-nav-count]')?.classList.contains('hidden')&&document.querySelector('[data-notification-list]')?.innerText.includes('Đã duyệt')");
   await shot('notifications-resolved-history-'+suffix,width);
-  await go('expenses?tab=employees');await until("!!document.querySelector('#employee-add')");await click('#employee-add');await until("!!document.querySelector('[data-date-display=startDate]')");
+  await go('employees');await until("!!document.querySelector('#employee-add')");await click('#employee-add');await until("!!document.querySelector('[data-date-display=startDate]')");
   await fill({'#employee-form [name=fullName]':'TEST ngày '+n});await evaluate("document.querySelector('[data-date-display=startDate]').focus()");await cdp('Input.insertText',{text:'03102026'});await evaluate("document.querySelector('[data-date-display=startDate]').blur()");
   assert.equal(await evaluate("new FormData(document.querySelector('#employee-form')).get('startDate')"),'2026-10-03');
   await shot('employee-date-create-'+suffix,width);await click('#employee-form [type=submit]');await until("document.querySelector('[data-modal-overlay]').classList.contains('hidden')");
