@@ -35,7 +35,7 @@ module.exports = async function facebookIdHandler(req, res) {
         facebook_url: facebookUrl,
         source: 'url_pattern',
       };
-      if (meta?.name) payload.facebook_name = meta.name;
+      if (meta?.name && (!meta.id || meta.id === directId)) payload.facebook_name = meta.name;
       return res.status(200).json(payload);
     }
 
@@ -50,19 +50,37 @@ module.exports = async function facebookIdHandler(req, res) {
     const resolved = results
       .filter((result) => result.status === 'fulfilled' && result.value)
       .map((result) => result.value);
-    const facebookId = directId || resolved.map((item) => item.id).find(Boolean) || '';
-    const facebookName = resolved.find((item) => item.source === 'facebook_meta')?.name
-      || resolved.find((item) => item.id === facebookId)?.name
-      || '';
+    const idResult = resolved.find((item) => item.id);
+    const facebookId = idResult?.id || '';
     if (facebookId) {
-      const idResult = resolved.find((item) => item.id === facebookId);
+      const identity = {
+        facebookId,
+        facebookIdSource: idResult.source || 'provider',
+        facebookName: '',
+        facebookNameSource: '',
+      };
+      const matchingNameResult = resolved.find((item) => item.id === facebookId && item.name);
+      if (matchingNameResult) {
+        identity.facebookName = matchingNameResult.name;
+        identity.facebookNameSource = matchingNameResult.nameSource || matchingNameResult.source;
+      }
+      if (!identity.facebookName) {
+        const metadataById = await resolveWithin(
+          fetchFacebookMeta(`https://www.facebook.com/${facebookId}`, controller.signal),
+          2_500,
+        );
+        if (metadataById?.name && (!metadataById.id || metadataById.id === facebookId)) {
+          identity.facebookName = metadataById.name;
+          identity.facebookNameSource = `facebook_meta_by_id:${metadataById.nameSource || 'metadata'}`;
+        }
+      }
       const payload = {
         success: true,
-        facebook_id: facebookId,
+        facebook_id: identity.facebookId,
         facebook_url: facebookUrl,
-        source: directId ? 'url_pattern' : (idResult?.source || 'provider'),
+        source: identity.facebookIdSource,
       };
-      if (facebookName) payload.facebook_name = facebookName;
+      if (identity.facebookName) payload.facebook_name = identity.facebookName;
       return res.status(200).json(payload);
     }
 
@@ -107,14 +125,22 @@ async function fetchFacebookMeta(url, signal) {
   }
   if (!response.ok) throw providerError('UPSTREAM_HTTP_ERROR');
   const source = await response.text();
-  if (isCaptchaResponse(source)) throw providerError('FACEBOOK_ID_PROVIDER_BLOCKED');
   if (isFacebookLoginPage(source)) return null;
   if (isFacebookProfileUnavailablePage(source)) throw providerError('FACEBOOK_PROFILE_NOT_FOUND');
   const deepLink = source.match(/fb:\/\/(?:profile\/|page\/?\?id=)(\d+)/i);
   const ogTitle = extractMetaContent(source, 'og:title');
   const title = source.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '';
-  const result = { id: normalizeFacebookId(deepLink?.[1]), name: cleanFacebookName(ogTitle || title), source: 'facebook_meta' };
-  return result.id || result.name ? result : null;
+  const canonicalUrl = extractMetaContent(source, 'og:url');
+  const result = {
+    id: normalizeFacebookId(deepLink?.[1])
+      || facebookIdFromProfileUrl(canonicalUrl || response.url || url),
+    name: cleanFacebookName(ogTitle || title),
+    nameSource: ogTitle ? 'facebook_og_title' : (title ? 'facebook_html_title' : ''),
+    source: 'facebook_meta',
+  };
+  if (result.id || result.name) return result;
+  if (isFacebookCaptchaPage(source)) throw providerError('FACEBOOK_ID_PROVIDER_BLOCKED');
+  return null;
 }
 
 async function fetchTraodoisub(url, signal) {
@@ -216,12 +242,21 @@ function cleanFacebookName(value) {
     .replace(/\s*\|\s*Facebook$/i, '')
     .replace(/\s*-\s*(?:Trang chủ|Home|Facebook)$/i, '')
     .trim();
-  if (!name || /^(facebook|error|log in to facebook|đăng nhập facebook)$/i.test(name)) return '';
+  if (!name || /^(facebook|error|log in to facebook|đăng nhập facebook|page not found|content not found|something went wrong|security check required)$/i.test(name)) return '';
   return name.slice(0, 300);
 }
 
-function isCaptchaResponse(value) {
-  return /(?:captcha|recaptcha|checkpoint\/challenge)/i.test(String(value || ''));
+function isFacebookCaptchaPage(value) {
+  const source = String(value || '');
+  const title = decodeHtmlEntities(source.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '');
+  const visibleText = decodeHtmlEntities(source)
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ');
+  return /(?:captcha|recaptcha|security check|required checkpoint|xác minh bảo mật)/i.test(title)
+    || /(?:captcha|recaptcha).{0,120}(?:challenge|verify|verification|xác minh)/i.test(visibleText)
+    || /(?:verify|prove|xác minh).{0,80}(?:human|not a robot|con người)/i.test(visibleText);
 }
 
 function isFacebookLoginUrl(value) {
@@ -305,7 +340,7 @@ function isUnsupportedFacebookContentUrl(url) {
   if (segments[0] === 'profile.php') return !normalizeFacebookId(url.searchParams.get('id'));
   const unsupportedRoots = new Set([
     'dialog', 'events', 'gaming', 'groups', 'help', 'login', 'marketplace', 'permalink.php',
-    'photo.php', 'reel', 'reels', 'share', 'sharer', 'story.php', 'video.php', 'watch',
+    'photo.php', 'reel', 'reels', 'story.php', 'video.php', 'watch',
   ]);
   const unsupportedNested = new Set(['posts', 'photos', 'reel', 'reels', 'stories', 'videos']);
   return unsupportedRoots.has(segments[0]) || segments.slice(1).some((segment) => unsupportedNested.has(segment));
@@ -316,9 +351,12 @@ function normalizeFacebookUrl(value) {
   if (/(^|\.)facebook\.com$/i.test(url.hostname)) url.hostname = 'www.facebook.com';
   url.protocol = 'https:';
   url.hash = '';
-  if (url.pathname.replace(/\/+$/, '') === '/profile.php') {
+  const normalizedPath = url.pathname.replace(/\/+$/, '');
+  if (normalizedPath === '/profile.php') {
     const id = normalizeFacebookId(url.searchParams.get('id'));
     url.search = id ? `?id=${id}` : '';
+  } else if (/^\/share(?:\/|$)/i.test(normalizedPath)) {
+    url.search = '';
   } else {
     ['mibextid', 'ref', 'refid', '__tn__', '__cft__'].forEach((key) => url.searchParams.delete(key));
   }
@@ -331,7 +369,8 @@ function normalizeFacebookId(value) {
 }
 
 function facebookIdFromProfileUrl(value) {
-  const url = new URL(value);
+  let url;
+  try { url = new URL(value); } catch { return ''; }
   const path = url.pathname.replace(/^\/+|\/+$/g, '');
   if (path === 'profile.php') return normalizeFacebookId(url.searchParams.get('id'));
   return /^\d{5,30}$/.test(path) ? path : '';
@@ -343,7 +382,7 @@ function sendError(res, status, code, message) { return res.status(status).json(
 
 module.exports._test = {
   cleanFacebookName, facebookIdFromProfileUrl, normalizeFacebookId, normalizeFacebookUrl,
-  isFacebookLoginPage, isFacebookLoginUrl, isFacebookProfileUnavailablePage,
+  isFacebookCaptchaPage, isFacebookLoginPage, isFacebookLoginUrl, isFacebookProfileUnavailablePage,
   isProfileSpecificFacebookResponse, isUnsupportedFacebookContentUrl,
   parseRequestBody, validateFacebookUrl, REQUEST_TIMEOUT_MS,
 };

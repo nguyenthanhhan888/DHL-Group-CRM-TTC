@@ -49,7 +49,7 @@ test('rejects malformed JSON', async () => {
 test('returns Facebook ID for a valid URL using form-urlencoded upstream body', async () => {
   global.fetch = async (url, options) => {
     if (url === 'https://www.facebook.com/example') {
-      return { ok: true, text: async () => '<meta property="og:title" content="Nguyễn Văn A | Facebook">' };
+      return { ok: true, text: async () => '<meta property="al:android:url" content="fb://profile/123456789"><meta property="og:title" content="Nguyễn Văn A | Facebook">' };
     }
     if (url !== 'https://id.traodoisub.com/api.php') {
       return url === 'https://2uid.net'
@@ -75,7 +75,7 @@ test('returns Facebook ID for a valid URL using form-urlencoded upstream body', 
     facebook_id: '123456789',
     facebook_url: 'https://www.facebook.com/example',
     facebook_name: 'Nguyễn Văn A',
-    source: 'traodoisub',
+    source: 'facebook_meta',
   });
 });
 

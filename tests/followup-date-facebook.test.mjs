@@ -31,7 +31,7 @@ test('period context handles default/current month/historical month/year/day/cro
  assert.throws(()=>reportPeriod({startDate:'2026-02-30',endDate:'2026-03-01'},now));
 });
 test('Facebook provider success stays supported and receives only validated URL',async()=>{
- globalThis.fetch=async(url,options)=>{if(url==='https://www.facebook.com/NTH204.vn/')return{ok:true,text:async()=>'<meta property="og:title" content="TEST | Facebook">'};if(url==='https://id.traodoisub.com/api.php'){assert.equal(new URLSearchParams(options.body).get('link'),'https://www.facebook.com/NTH204.vn/');return {ok:true,json:async()=>({id:'100001234567890'})};}if(url==='https://2uid.net')return{ok:true,headers:{},text:async()=>''};if(url==='https://lookup-id.com/')return{ok:true,text:async()=>''};return{ok:true,json:async()=>({success:false})};};
+ globalThis.fetch=async(url,options)=>{if(url==='https://www.facebook.com/NTH204.vn/')return{ok:true,text:async()=>'<meta property="al:android:url" content="fb://profile/100001234567890"><meta property="og:title" content="TEST | Facebook">'};if(url==='https://id.traodoisub.com/api.php'){assert.equal(new URLSearchParams(options.body).get('link'),'https://www.facebook.com/NTH204.vn/');return {ok:true,json:async()=>({id:'100001234567890'})};}if(url==='https://2uid.net')return{ok:true,headers:{},text:async()=>''};if(url==='https://lookup-id.com/')return{ok:true,text:async()=>''};return{ok:true,json:async()=>({success:false})};};
  const r=await call();assert.equal(r.statusCode,200);assert.equal(r.payload.facebook_id,'100001234567890');assert.equal(r.payload.facebook_name,'TEST');
 });
 test('one HTTP-200 provider CAPTCHA mixed with ambiguous responses is INCONCLUSIVE',async()=>{
