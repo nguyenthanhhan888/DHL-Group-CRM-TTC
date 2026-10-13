@@ -6507,11 +6507,17 @@ body { color:var(--text-primary); background:var(--bg-page); }
   .pagination-controls .pagination-button { width:38px; min-width:38px; height:38px; }
   .pagination-controls .filter-select { width:auto; }
 }
-.facebook-id-resolver[data-auto-resolve="true"] .resolver-secondary-fields { display:none; }
+.facebook-id-resolver[data-auto-resolve="true"]:not([data-manual-fallback="always"]) .resolver-secondary-fields { display:none; }
 .facebook-id-resolver[data-auto-resolve="true"][data-resolver-state="invalid-url"] .resolver-secondary-fields,
 .facebook-id-resolver[data-auto-resolve="true"][data-resolver-state="not-found"] .resolver-secondary-fields,
 .facebook-id-resolver[data-auto-resolve="true"][data-resolver-state="timeout"] .resolver-secondary-fields,
-.facebook-id-resolver[data-auto-resolve="true"][data-resolver-state="upstream-error"] .resolver-secondary-fields { display:grid; }
+.facebook-id-resolver[data-auto-resolve="true"][data-resolver-state="upstream-error"] .resolver-secondary-fields,
+.facebook-id-resolver[data-auto-resolve="true"][data-resolver-state="inconclusive"] .resolver-secondary-fields,
+.facebook-id-resolver[data-auto-resolve="true"][data-resolver-state="provider-blocked"] .resolver-secondary-fields,
+.facebook-id-resolver[data-auto-resolve="true"][data-resolver-state="manual"] .resolver-secondary-fields { display:grid; }
+.facebook-id-resolver[data-auto-resolve="true"][data-manual-fallback="never"] .resolver-secondary-fields .form-group { display:none; }
+.facebook-id-resolver[data-auto-resolve="true"][data-manual-fallback="never"] .resolver-secondary-fields { grid-template-columns:minmax(0,1fr); }
+.facebook-id-resolver[data-auto-resolve="true"][data-manual-fallback="never"] .facebook-id-resolve-button { justify-self:end; }
 .facebook-id-resolver[data-auto-resolve="true"] .field-helper { margin-top:4px; }
 
 /* Public registration V2 */

@@ -33,7 +33,7 @@ export function RegisterPage() {
         <div id="registration-form-error" class="form-error hidden" role="alert"></div>
         <section class="registration-panel" data-registration-panel="1">
           ${panelHeader(1, 'Thông tin Facebook & liên hệ', 'Facebook ID sẽ được nhận diện tự động từ link của bạn.')}
-          ${FacebookIdResolverFields({ urlId: 'register-customer-link', idId: 'register-customer-id', requiredUrl: true, requiredId: false, manualFallback: 'on-error', autoResolve: true, nameTarget: '#register-facebook-name', buttonLabel: 'Xác thực Facebook', helperText: 'Dán link trang cá nhân hoặc Fanpage bạn dùng để đăng bài trong Group. Ưu tiên dùng link chính thức.' })}
+          ${FacebookIdResolverFields({ urlId: 'register-customer-link', idId: 'register-customer-id', requiredUrl: true, requiredId: false, manualFallback: 'on-error', autoResolve: true, nameTarget: '#register-facebook-name', buttonLabel: 'Nhận diện Facebook', helperText: 'Dán link trang cá nhân hoặc Fanpage bạn dùng để đăng bài trong Group. Ưu tiên dùng link chính thức.' })}
           ${field('Tên Facebook', 'register-facebook-name', { required: true, autocomplete: 'name' })}
           <div class="form-row">${field('Số điện thoại', 'register-phone', { required: true, type: 'tel', inputmode: 'tel', autocomplete: 'tel' })}${field('Địa chỉ', 'register-address')}</div>
           <div class="registration-actions"><button class="btn-primary registration-cta" type="button" data-next-step>Tiếp tục ${renderIcon('chevron-right')}</button></div>
@@ -127,7 +127,7 @@ function kioskCard(id, isFirst = false) {
 }
 
 function independentFacebookFields(id) {
-  return `${FacebookIdResolverFields({ urlAttributes: 'data-kiosk-link', idAttributes: 'data-kiosk-id', requiredUrl: true, requiredId: false, manualFallback: 'on-error', autoResolve: true, nameTarget: '[data-kiosk-name]', prefix: `register-kiosk-${id}`, buttonLabel: 'Xác thực Facebook', helperText: 'Dán link Facebook của Kiosk này. Mỗi Kiosk cần đúng link riêng.' })}${field('Tên Facebook', '', { required: true, data: 'data-kiosk-name' })}`;
+  return `${FacebookIdResolverFields({ urlAttributes: 'data-kiosk-link', idAttributes: 'data-kiosk-id', requiredUrl: true, requiredId: false, manualFallback: 'on-error', autoResolve: true, nameTarget: '[data-kiosk-name]', prefix: `register-kiosk-${id}`, buttonLabel: 'Nhận diện Facebook', helperText: 'Dán link Facebook của Kiosk này. Mỗi Kiosk cần đúng link riêng.' })}${field('Tên Facebook', '', { required: true, data: 'data-kiosk-name' })}`;
 }
 
 function bindKiosk(card) {
@@ -341,7 +341,7 @@ function validateStep(step) {
     return false;
   }
   if (step === 1) {
-    valid = validateFacebookResolver(document.querySelector('[data-registration-panel="1"] [data-facebook-id-resolver]'), { requireId: false }) && valid;
+    valid = validateFacebookResolver(document.querySelector('[data-registration-panel="1"] [data-facebook-id-resolver]')) && valid;
     const name = document.getElementById('register-facebook-name');
     const phone = document.getElementById('register-phone');
     valid = setInlineError(name, name.value.trim() ? '' : 'Không nhận diện được tên Facebook. Vui lòng xác thực lại link.') && valid;
@@ -362,12 +362,12 @@ function validateKiosks() {
   cards.forEach((card, index) => {
     const identity = kioskFacebookIdentity(card);
     if (!usesCustomerFacebook(card)) {
-      valid = validateFacebookResolver(card.querySelector('[data-facebook-id-resolver]'), { requireId: false }) && valid;
+      valid = validateFacebookResolver(card.querySelector('[data-facebook-id-resolver]')) && valid;
       const name = card.querySelector('[data-kiosk-name]');
       const id = card.querySelector('[data-kiosk-id]');
       valid = setInlineError(name, name.value.trim() ? '' : `Kiosk ${index + 1}: chưa nhận diện được tên Facebook.`) && valid;
       if (id.value.trim() && duplicates.has(id.value.trim())) valid = setInlineError(id, 'Facebook ID bị trùng trong biểu mẫu.') && valid;
-    } else if (!identity.facebook_name || !identity.facebook_link) {
+    } else if (!identity.facebook_name || !identity.facebook_link || !identity.facebook_id) {
       showFormError('Facebook người đăng ký chưa đầy đủ. Vui lòng quay lại Bước 1.');
       valid = false;
     }

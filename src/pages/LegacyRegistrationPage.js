@@ -422,6 +422,12 @@ function validateForm(form) {
     return failValidation(phoneInput, 'Số điện thoại không hợp lệ. Vui lòng nhập từ 9 đến 15 chữ số.');
   }
 
+  const customerResolver = document.querySelector('#legacy-customer-section [data-facebook-id-resolver]');
+  if (!validateFacebookResolver(customerResolver)) {
+    showError('Vui lòng kiểm tra Facebook URL và ID của khách hàng.');
+    return false;
+  }
+
   const kiosks = readKiosks();
   if (!kiosks.length) {
     showError('Cần ít nhất một kiosk.');

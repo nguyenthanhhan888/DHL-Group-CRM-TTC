@@ -6,7 +6,7 @@ import { CustomerService } from '../services/CustomerService.js';
 import { KioskService } from '../services/KioskService.js';
 import { AuthService } from '../services/AuthService.js';
 import { PERMISSIONS, canAccessPermission } from '../constants/permissions.js';
-import { bindFacebookIdResolvers, FacebookIdResolverFields } from './FacebookIdResolver.js';
+import { bindFacebookIdResolvers, FacebookIdResolverFields, validateFacebookResolver } from './FacebookIdResolver.js';
 import { debounce } from '../utils/dom.js';
 import { createDateValue } from '../utils/date.js';
 import { escapeHtml } from '../utils/html.js';
@@ -77,6 +77,8 @@ function renderForm() {
         idId: 'kiosk-edit-fb-id',
         urlAttributes: `value="${escapeHtml(state.kiosk?.facebook_link || '')}"`,
         idAttributes: `value="${escapeHtml(state.kiosk?.facebook_id || '')}" required`,
+        autoResolve: true,
+        nameTarget: '#kiosk-edit-name',
       })}
       <label class="form-group">
         <span>Link nhóm Facebook</span>
@@ -331,6 +333,9 @@ function readPayload() {
 
 async function validateForm(payload) {
   if (!payload.facebook_name) return { valid: false, message: 'Tên Facebook là bắt buộc.' };
+  if (!validateFacebookResolver(document.querySelector('#kiosk-edit-form [data-facebook-id-resolver]'))) {
+    return { valid: false, message: 'Vui lòng kiểm tra Link Facebook và Facebook ID.' };
+  }
   if (!payload.facebook_id) return { valid: false, message: 'Facebook ID là bắt buộc.' };
   if (!/^\d+$/.test(payload.facebook_id)) return { valid: false, message: 'Facebook ID phải là dạng số.' };
   if (!payload.customer_id) return { valid: false, message: 'Khách hàng là bắt buộc.' };

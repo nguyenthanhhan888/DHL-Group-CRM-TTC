@@ -38,20 +38,10 @@ export const FacebookIdService = {
     return {
       facebookId: String(data.facebook_id),
       facebookUrl: String(data.facebook_url || facebookUrl),
-      facebookName: String(data.facebook_name || data.name || facebookNameFromUrl(data.facebook_url || facebookUrl) || '').trim(),
+      facebookName: String(data.facebook_name || '').trim(),
+      source: String(data.source || '').trim(),
     };
   },
 };
 
 export const resolveFacebookId = (facebookUrl) => FacebookIdService.resolve(facebookUrl);
-
-function facebookNameFromUrl(value) {
-  try {
-    const url = new URL(String(value || '').trim());
-    const path = url.pathname.replace(/^\/+|\/+$/g, '');
-    if (!path || path === 'profile.php' || /^\d+$/.test(path)) return '';
-    return decodeURIComponent(path.split('/')[0] || '').trim();
-  } catch {
-    return '';
-  }
-}

@@ -126,11 +126,23 @@ export function bindFacebookIdResolvers(container = document) {
     if (!urlInput || !idInput || !button || !status) return;
     if (!idInput.dataset) idInput.dataset = {};
 
+    const nameInput = findNameInput(root);
+    const initialUrl = urlInput.value.trim();
+    const initialId = idInput.value.trim();
+    root.dataset.initialUrl = initialUrl;
+    root.dataset.initialId = initialId;
+    root.dataset.initialName = nameInput?.value?.trim?.() || '';
+    root.dataset.associatedUrl = initialUrl && initialId ? initialUrl : '';
+    root.dataset.associatedId = initialUrl && initialId ? initialId : '';
+    root.dataset.nameEdited = 'false';
+    root.dataset.staleIdentity = 'false';
+
     const originalLabel = button.textContent.trim() || 'Lấy Facebook ID';
     const autoResolve = root.dataset.autoResolve === 'true';
     let debounceTimer = null;
     let requestId = 0;
     let queuedAutoResolve = false;
+    let applyingResolvedName = false;
     const manualFallback = root.dataset.manualFallback || 'always';
     const hasManualFallback = manualFallback !== 'never';
     const allowManual = () => {
@@ -141,19 +153,20 @@ export function bindFacebookIdResolvers(container = document) {
         ? 'URL đã thay đổi. Vui lòng lấy lại ID hoặc xác nhận bằng cách nhập ID thủ công.'
         : 'URL đã thay đổi. Vui lòng lấy lại ID từ link mới.',
     ) => {
-      const previousResolvedName = root.dataset.resolvedName;
+      const associatedUrl = root.dataset.associatedUrl || root.dataset.resolvedUrl || '';
+      const associatedId = root.dataset.associatedId || root.dataset.resolvedId || '';
+      root.dataset.lastResolvedName = root.dataset.resolvedName || root.dataset.lastResolvedName || '';
       root.dataset.resolverState = 'idle';
       root.dataset.resolvedUrl = '';
       root.dataset.resolvedName = '';
       idInput.dataset.verifiedUrl = '';
       identitySummary?.classList.add('hidden');
       if (identitySummary) identitySummary.innerHTML = '';
-      if (idInput.value === root.dataset.resolvedId) idInput.value = '';
-      const nameInput = root.dataset.nameTarget
-        ? (root.closest('[data-register-kiosk], [data-legacy-kiosk], form') || document).querySelector(root.dataset.nameTarget)
-        : null;
+      if (associatedUrl && urlInput.value.trim() !== associatedUrl && idInput.value.trim() === associatedId) {
+        idInput.value = '';
+        root.dataset.staleIdentity = 'true';
+      }
       if (nameInput) {
-        if (previousResolvedName && nameInput.value === previousResolvedName) nameInput.value = '';
         nameInput.readOnly = false;
         nameInput.setCustomValidity?.('');
         nameInput.removeAttribute?.('aria-invalid');
@@ -166,7 +179,15 @@ export function bindFacebookIdResolvers(container = document) {
     urlInput.addEventListener?.('input', () => {
       const normalized = urlInput.value.trim();
       if (button.dataset.loading === 'true') requestId += 1;
-      if (root.dataset.resolvedUrl && normalized !== root.dataset.resolvedUrl) markUnverified();
+      if (root.dataset.staleIdentity === 'true' && normalized === root.dataset.initialUrl
+        && !idInput.value.trim() && root.dataset.initialId) {
+        idInput.value = root.dataset.initialId;
+        root.dataset.staleIdentity = 'false';
+        root.dataset.associatedUrl = root.dataset.initialUrl;
+        root.dataset.associatedId = root.dataset.initialId;
+      }
+      const associatedUrl = root.dataset.associatedUrl || root.dataset.resolvedUrl;
+      if (associatedUrl && normalized !== associatedUrl) markUnverified();
       if (!autoResolve) return;
       clearTimeout(debounceTimer);
       if (!normalized) {
@@ -178,19 +199,35 @@ export function bindFacebookIdResolvers(container = document) {
     });
 
     idInput.addEventListener?.('input', () => {
+      if (button.dataset.loading === 'true') requestId += 1;
       idInput.value = idInput.value.trim();
-      const valid = !idInput.value || /^\d+$/.test(idInput.value);
+      const valid = !idInput.value || /^\d{5,30}$/.test(idInput.value);
       errorElement?.classList.toggle('hidden', valid);
-      if (errorElement) errorElement.textContent = valid ? '' : 'Facebook ID chỉ được chứa chữ số.';
+      if (errorElement) errorElement.textContent = valid ? '' : 'Facebook ID phải gồm 5-30 chữ số.';
       if (idInput.value !== root.dataset.resolvedId) {
         root.dataset.resolverState = 'manual';
         idInput.dataset.verifiedUrl = '';
+        if (valid && idInput.value) {
+          root.dataset.staleIdentity = 'false';
+          root.dataset.associatedUrl = urlInput.value.trim();
+          root.dataset.associatedId = idInput.value;
+        }
       }
     });
 
-    button.addEventListener('click', () => resolveUrl({ focusInvalid: true }));
+    idInput.addEventListener?.('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault?.();
+      event.stopPropagation?.();
+    });
 
-    async function resolveUrl({ focusInvalid = false, queueIfBusy = false } = {}) {
+    nameInput?.addEventListener?.('input', () => {
+      if (!applyingResolvedName) root.dataset.nameEdited = 'true';
+    });
+
+    button.addEventListener('click', () => resolveUrl({ focusInvalid: true, overwriteName: true }));
+
+    async function resolveUrl({ focusInvalid = false, queueIfBusy = false, overwriteName = false } = {}) {
       if (button.dataset.loading === 'true') {
         if (queueIfBusy) queuedAutoResolve = true;
         return;
@@ -222,19 +259,25 @@ export function bindFacebookIdResolvers(container = document) {
       try {
         const result = await FacebookIdService.resolve(facebookUrl);
         if (currentRequest !== requestId || facebookUrl !== urlInput.value.trim()) return;
+        const previousResolvedName = root.dataset.resolvedName || root.dataset.lastResolvedName || '';
         idInput.value = result.facebookId;
         idInput.readOnly = manualFallback === 'never';
         root.dataset.resolverState = 'success';
         root.dataset.resolvedId = result.facebookId;
         root.dataset.resolvedUrl = result.facebookUrl || facebookUrl;
         root.dataset.resolvedName = result.facebookName || '';
+        root.dataset.associatedId = result.facebookId;
+        root.dataset.associatedUrl = result.facebookUrl || facebookUrl;
+        root.dataset.staleIdentity = 'false';
         if (result.facebookUrl) urlInput.value = result.facebookUrl;
-        const nameInput = root.dataset.nameTarget
-          ? (root.closest('[data-register-kiosk], [data-legacy-kiosk], form') || document).querySelector(root.dataset.nameTarget)
-          : null;
-        if (nameInput && result.facebookName) {
+        const canPopulateName = overwriteName
+          || !nameInput?.value?.trim?.()
+          || nameInput?.value === root.dataset.initialName
+          || nameInput?.value === previousResolvedName;
+        if (nameInput && result.facebookName && canPopulateName && (overwriteName || root.dataset.nameEdited !== 'true')) {
+          applyingResolvedName = true;
           nameInput.value = result.facebookName;
-          nameInput.readOnly = true;
+          nameInput.readOnly = false;
           nameInput.setCustomValidity?.('');
           nameInput.removeAttribute?.('aria-invalid');
           const nameError = nameInput.closest?.('.form-group')?.querySelector?.('.field-error');
@@ -243,6 +286,9 @@ export function bindFacebookIdResolvers(container = document) {
             nameError.classList.add('hidden');
           }
           nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+          applyingResolvedName = false;
+          root.dataset.nameEdited = 'false';
+          root.dataset.lastResolvedName = result.facebookName;
         }
         if (typeof CustomEvent === 'function') {
           root.dispatchEvent?.(new CustomEvent('facebook-id-resolved', { bubbles: true, detail: result }));
@@ -252,7 +298,7 @@ export function bindFacebookIdResolvers(container = document) {
         idInput.dispatchEvent(new Event('input', { bubbles: true }));
         if (identitySummary) {
           identitySummary.classList.remove('hidden');
-          identitySummary.innerHTML = `<span class="facebook-identity-icon">${renderIcon('check-circle')}</span><div><strong>Đã xác thực Facebook</strong>${result.facebookName ? `<b>${escapeIdentity(result.facebookName)}</b>` : ''}<small>Facebook ID: ${escapeIdentity(result.facebookId)}</small><small>${escapeIdentity(result.facebookUrl || facebookUrl)}</small></div>`;
+          identitySummary.innerHTML = `<span class="facebook-identity-icon">${renderIcon('check-circle')}</span><div><strong>Đã nhận diện Facebook</strong>${result.facebookName ? `<b>${escapeIdentity(result.facebookName)}</b>` : ''}<small>Facebook ID: ${escapeIdentity(result.facebookId)}</small><small>${escapeIdentity(result.facebookUrl || facebookUrl)}</small></div>`;
         }
         setStatus(status, 'success', result.facebookName
           ? `Đã nhận diện Facebook: ${result.facebookName} · ID ${result.facebookId}`
@@ -263,9 +309,6 @@ export function bindFacebookIdResolvers(container = document) {
         const state = resolverErrorState(error?.code);
         root.dataset.resolverState = state;
         allowManual();
-        const nameInput = root.dataset.nameTarget
-          ? (root.closest('[data-register-kiosk], [data-legacy-kiosk], form') || document).querySelector(root.dataset.nameTarget)
-          : null;
         if (nameInput) nameInput.readOnly = false;
         identitySummary?.classList.add('hidden');
         setStatus(status, 'error', friendlyResolverMessage(error));
@@ -288,10 +331,18 @@ function escapeIdentity(value) {
   })[character]);
 }
 
+function findNameInput(root) {
+  if (!root?.dataset?.nameTarget) return null;
+  const scope = root.closest?.('[data-register-kiosk], [data-legacy-kiosk], form')
+    || (typeof document !== 'undefined' ? document : null);
+  return scope?.querySelector?.(root.dataset.nameTarget) || null;
+}
+
 function friendlyResolverMessage(error) {
-  if (error?.code === 'FACEBOOK_ID_PROVIDER_BLOCKED') return 'Dịch vụ lấy Facebook ID hiện đang yêu cầu xác minh CAPTCHA. Vui lòng nhập Facebook ID thủ công hoặc thử lại sau.';
-  if (['INVALID_URL', 'INVALID_FACEBOOK_DOMAIN'].includes(error?.code)) return 'Link này chưa được hỗ trợ. Hãy sao chép link trang cá nhân hoặc Fanpage.';
-  if (error?.code === 'FACEBOOK_ID_NOT_FOUND') return 'Không thể nhận diện link này. Hãy thử link trang cá nhân hoặc Fanpage chính thức, hoặc nhập ID thủ công.';
+  if (error?.code === 'FACEBOOK_ID_PROVIDER_BLOCKED') return 'Facebook đang hạn chế tra cứu tự động. Chưa thể xác định trạng thái tài khoản. Bạn có thể nhập Facebook ID thủ công hoặc thử lại.';
+  if (['INVALID_FACEBOOK_URL', 'INVALID_URL', 'INVALID_FACEBOOK_DOMAIN'].includes(error?.code)) return 'Link Facebook không hợp lệ. Vui lòng kiểm tra lại.';
+  if (['FACEBOOK_PROFILE_NOT_FOUND', 'FACEBOOK_ID_NOT_FOUND'].includes(error?.code)) return 'Không tìm thấy tài khoản Facebook. Liên kết có thể đã bị xóa hoặc không còn tồn tại.';
+  if (error?.code === 'FACEBOOK_LOOKUP_INCONCLUSIVE') return 'Không thể nhận diện tài khoản từ liên kết này. Vui lòng kiểm tra URL hoặc nhập Facebook ID thủ công.';
   if (error?.code === 'UPSTREAM_TIMEOUT') return 'Quá trình xác thực mất quá nhiều thời gian. Vui lòng thử lại.';
   return 'Không thể xác thực Link Facebook. Vui lòng thử lại.';
 }
@@ -303,8 +354,9 @@ function setStatus(element, state, message) {
 
 function resolverErrorState(code) {
   if (code === 'FACEBOOK_ID_PROVIDER_BLOCKED') return 'provider-blocked';
-  if (['FACEBOOK_URL_REQUIRED', 'INVALID_URL', 'INVALID_FACEBOOK_DOMAIN'].includes(code)) return 'invalid-url';
-  if (code === 'FACEBOOK_ID_NOT_FOUND') return 'not-found';
+  if (['FACEBOOK_URL_REQUIRED', 'INVALID_FACEBOOK_URL', 'INVALID_URL', 'INVALID_FACEBOOK_DOMAIN'].includes(code)) return 'invalid-url';
+  if (['FACEBOOK_PROFILE_NOT_FOUND', 'FACEBOOK_ID_NOT_FOUND'].includes(code)) return 'not-found';
+  if (code === 'FACEBOOK_LOOKUP_INCONCLUSIVE') return 'inconclusive';
   if (code === 'UPSTREAM_TIMEOUT') return 'timeout';
   return 'upstream-error';
 }
@@ -331,8 +383,12 @@ export function validateFacebookResolver(root, { requireVerifiedOrManual = true,
       message = 'Facebook URL không hợp lệ.';
     }
   }
+  if (!message && root?.dataset?.staleIdentity === 'true'
+    && (!id || id === root.dataset.initialId || id === root.dataset.resolvedId)) {
+    message = 'Link Facebook đã thay đổi. Vui lòng lấy lại ID hoặc nhập ID mới thủ công.';
+  }
   if (!message && requireId && !id) message = 'Facebook ID là bắt buộc.';
-  if (!message && id && !/^\d+$/.test(id)) message = 'Facebook ID chỉ được chứa chữ số.';
+  if (!message && id && !/^\d{5,30}$/.test(id)) message = 'Facebook ID phải gồm 5-30 chữ số.';
   if (!message && requireVerifiedOrManual && root.dataset.resolvedUrl
     && root.dataset.resolvedUrl !== url && id === root.dataset.resolvedId) {
     message = hasManualFallback

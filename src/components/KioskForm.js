@@ -8,7 +8,7 @@ import { CategoryService } from '../services/CategoryService.js';
 import { CustomerService } from '../services/CustomerService.js';
 import { KioskService } from '../services/KioskService.js';
 import { RegistrationService } from '../services/RegistrationService.js';
-import { bindFacebookIdResolvers, FacebookIdResolverFields } from './FacebookIdResolver.js';
+import { bindFacebookIdResolvers, FacebookIdResolverFields, validateFacebookResolver } from './FacebookIdResolver.js';
 import { bindCurrencyInput, formatCurrency, parseCurrencyInput } from '../utils/currency.js';
 import { debounce } from '../utils/dom.js';
 import { escapeHtml } from '../utils/html.js';
@@ -116,6 +116,8 @@ function renderKioskForm() {
         urlId: 'add-kiosk-facebook-link',
         idId: 'add-kiosk-facebook-id',
         requiredUrl: true,
+        autoResolve: true,
+        nameTarget: '#add-kiosk-facebook-name',
       })}
 
       <label class="form-group">
@@ -356,6 +358,9 @@ function validateKioskForm() {
 
   if (!readValue('add-kiosk-facebook-name')) {
     return { valid: false, message: 'Tên Facebook là bắt buộc.' };
+  }
+  if (!validateFacebookResolver(document.querySelector('#add-kiosk-form [data-facebook-id-resolver]'))) {
+    return { valid: false, message: 'Vui lòng kiểm tra Link Facebook và Facebook ID.' };
   }
   if (!readValue('add-kiosk-facebook-link')) {
     return { valid: false, message: 'Link Facebook là bắt buộc.' };

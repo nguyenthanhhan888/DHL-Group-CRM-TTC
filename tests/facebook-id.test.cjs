@@ -33,11 +33,11 @@ test('rejects non-POST requests', async () => {
 test('rejects invalid URL and non-Facebook domain', async () => {
   let res = await call({ facebook_url: 'not-a-url' });
   assert.equal(res.statusCode, 400);
-  assert.equal(res.payload.code, 'INVALID_URL');
+  assert.equal(res.payload.code, 'INVALID_FACEBOOK_URL');
 
   res = await call({ facebook_url: 'https://facebook.com.evil.example/user' });
   assert.equal(res.statusCode, 400);
-  assert.equal(res.payload.code, 'INVALID_FACEBOOK_DOMAIN');
+  assert.equal(res.payload.code, 'INVALID_FACEBOOK_URL');
 });
 
 test('rejects malformed JSON', async () => {
@@ -48,6 +48,16 @@ test('rejects malformed JSON', async () => {
 
 test('returns Facebook ID for a valid URL using form-urlencoded upstream body', async () => {
   global.fetch = async (url, options) => {
+    if (url === 'https://www.facebook.com/example') {
+      return { ok: true, text: async () => '<meta property="og:title" content="Nguyễn Văn A | Facebook">' };
+    }
+    if (url !== 'https://id.traodoisub.com/api.php') {
+      return url === 'https://2uid.net'
+        ? { ok: true, headers: {}, text: async () => '' }
+        : url === 'https://lookup-id.com/'
+          ? { ok: true, text: async () => '' }
+          : { ok: true, json: async () => ({ success: false }) };
+    }
     assert.equal(url, 'https://id.traodoisub.com/api.php');
     assert.equal(options.method, 'POST');
     assert.match(options.headers['Content-Type'], /^application\/x-www-form-urlencoded/);
@@ -64,26 +74,28 @@ test('returns Facebook ID for a valid URL using form-urlencoded upstream body', 
     success: true,
     facebook_id: '123456789',
     facebook_url: 'https://www.facebook.com/example',
+    facebook_name: 'Nguyễn Văn A',
+    source: 'traodoisub',
   });
 });
 
-test('handles an unresolved Facebook ID', async () => {
+test('handles an inconclusive Facebook ID lookup', async () => {
   global.fetch = async () => ({ ok: true, json: async () => ({ error: 'not found' }) });
   const res = await call({ facebook_url: 'https://m.facebook.com/example' });
   assert.equal(res.statusCode, 422);
-  assert.equal(res.payload.code, 'FACEBOOK_ID_NOT_FOUND');
+  assert.equal(res.payload.code, 'FACEBOOK_LOOKUP_INCONCLUSIVE');
 });
 
-test('handles upstream HTTP and invalid JSON errors', async () => {
+test('handles uniform upstream HTTP and mixed invalid response errors', async () => {
   global.fetch = async () => ({ ok: false, status: 503 });
   let res = await call({ facebook_url: 'https://facebook.com/example' });
   assert.equal(res.statusCode, 502);
   assert.equal(res.payload.code, 'UPSTREAM_HTTP_ERROR');
 
-  global.fetch = async () => ({ ok: true, json: async () => { throw new SyntaxError('bad'); } });
+  global.fetch = async () => ({ ok: true, text: async () => { throw new SyntaxError('bad'); }, json: async () => { throw new SyntaxError('bad'); } });
   res = await call({ facebook_url: 'https://facebook.com/example' });
-  assert.equal(res.statusCode, 502);
-  assert.equal(res.payload.code, 'UPSTREAM_INVALID_JSON');
+  assert.equal(res.statusCode, 422);
+  assert.equal(res.payload.code, 'FACEBOOK_LOOKUP_INCONCLUSIVE');
 });
 
 test('handles timeout without retrying', async () => {
@@ -105,7 +117,7 @@ test('handles timeout without retrying', async () => {
     const res = await call({ facebook_url: 'https://facebook.com/example' });
     assert.equal(res.statusCode, 504);
     assert.equal(res.payload.code, 'UPSTREAM_TIMEOUT');
-    assert.equal(calls, 1);
+    assert.equal(calls, 5);
   } finally {
     global.setTimeout = originalSetTimeout;
   }

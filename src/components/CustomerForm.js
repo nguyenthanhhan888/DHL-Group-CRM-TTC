@@ -1,7 +1,7 @@
 import { Modal } from './Modal.js';
 import { Toast } from './Toast.js';
 import { CustomerService } from '../services/CustomerService.js';
-import { bindFacebookIdResolvers, FacebookIdResolverFields } from './FacebookIdResolver.js';
+import { bindFacebookIdResolvers, FacebookIdResolverFields, validateFacebookResolver } from './FacebookIdResolver.js';
 import { escapeHtml } from '../utils/html.js';
 
 const CUSTOMER_STATUSES = [
@@ -22,6 +22,12 @@ export function openCustomerForm({ customer = null, onSaved } = {}) {
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
     clearFormError();
+
+    const resolver = form.querySelector('[data-facebook-id-resolver]');
+    if (!validateFacebookResolver(resolver, { requireId: false })) {
+      showFormError('Vui lòng kiểm tra Link Facebook và Facebook ID.');
+      return;
+    }
 
     const payload = readCustomerPayload();
     const reason = isEdit ? readValue('customer-reason') : 'Tạo khách hàng mới';
@@ -70,6 +76,9 @@ function renderCustomerForm(customer, isEdit) {
         idId: 'customer-facebook-id',
         urlAttributes: `value="${escapeHtml(customerFacebookLink(customer))}"`,
         idAttributes: `value="${escapeHtml(customer?.facebook_id || '')}"`,
+        requiredId: false,
+        autoResolve: true,
+        nameTarget: '#customer-facebook-name',
       })}
       <label class="form-group">
         <span>Link nhóm Facebook</span>

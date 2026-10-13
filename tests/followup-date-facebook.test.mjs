@@ -31,17 +31,17 @@ test('period context handles default/current month/historical month/year/day/cro
  assert.throws(()=>reportPeriod({startDate:'2026-02-30',endDate:'2026-03-01'},now));
 });
 test('Facebook provider success stays supported and receives only validated URL',async()=>{
- globalThis.fetch=async(_,options)=>{assert.equal(new URLSearchParams(options.body).get('link'),'https://facebook.com/NTH204.vn/');return {ok:true,json:async()=>({id:'100001234567890',name:'TEST'})};};
- const r=await call();assert.equal(r.statusCode,200);assert.equal(r.payload.facebook_id,'100001234567890');
+ globalThis.fetch=async(url,options)=>{if(url==='https://www.facebook.com/NTH204.vn/')return{ok:true,text:async()=>'<meta property="og:title" content="TEST | Facebook">'};if(url==='https://id.traodoisub.com/api.php'){assert.equal(new URLSearchParams(options.body).get('link'),'https://www.facebook.com/NTH204.vn/');return {ok:true,json:async()=>({id:'100001234567890'})};}if(url==='https://2uid.net')return{ok:true,headers:{},text:async()=>''};if(url==='https://lookup-id.com/')return{ok:true,text:async()=>''};return{ok:true,json:async()=>({success:false})};};
+ const r=await call();assert.equal(r.statusCode,200);assert.equal(r.payload.facebook_id,'100001234567890');assert.equal(r.payload.facebook_name,'TEST');
 });
-test('HTTP-200 provider CAPTCHA code 403 is BLOCKED, friendly and never NOT_FOUND',async()=>{
+test('one HTTP-200 provider CAPTCHA mixed with ambiguous responses is INCONCLUSIVE',async()=>{
  globalThis.fetch=async()=>({ok:true,json:async()=>({error:'Xác minh reCAPTCHA thất bại — raw-private-provider-detail',code:403})});
- const r=await call();assert.equal(r.statusCode,503);assert.equal(r.payload.code,'FACEBOOK_ID_PROVIDER_BLOCKED');assert.match(r.payload.message,/nhập Facebook ID thủ công/);assert.doesNotMatch(r.payload.message,/raw-private/);
+ const r=await call();assert.equal(r.statusCode,422);assert.equal(r.payload.code,'FACEBOOK_LOOKUP_INCONCLUSIVE');assert.match(r.payload.message,/nhập Facebook ID thủ công/);assert.doesNotMatch(r.payload.message,/raw-private/);
 });
-test('provider HTTP failure, invalid JSON and real not-found remain different diagnostics',async()=>{
+test('uniform provider HTTP failure and mixed invalid responses remain different diagnostics',async()=>{
  globalThis.fetch=async()=>({ok:false,status:500});assert.equal((await call()).payload.code,'UPSTREAM_HTTP_ERROR');
- globalThis.fetch=async()=>({ok:true,json:async()=>{throw Error('JSON');}});assert.equal((await call()).payload.code,'UPSTREAM_INVALID_JSON');
- globalThis.fetch=async()=>({ok:true,json:async()=>({error:'not found'})});assert.equal((await call()).payload.code,'FACEBOOK_ID_NOT_FOUND');
+ globalThis.fetch=async()=>({ok:true,text:async()=>{throw Error('TEXT')},json:async()=>{throw Error('JSON');}});assert.equal((await call()).payload.code,'FACEBOOK_LOOKUP_INCONCLUSIVE');
+ globalThis.fetch=async()=>({ok:true,headers:{},text:async()=>'',json:async()=>({error:'not found'})});assert.equal((await call()).payload.code,'FACEBOOK_LOOKUP_INCONCLUSIVE');
 });
 test('timeout remains timeout without retry',async()=>{
  globalThis.fetch=async()=>{const e=Error('timeout');e.name='AbortError';throw e;};const r=await call();assert.equal(r.statusCode,504);assert.equal(r.payload.code,'UPSTREAM_TIMEOUT');
