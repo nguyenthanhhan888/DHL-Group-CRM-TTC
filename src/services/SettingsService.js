@@ -1,5 +1,5 @@
 import { replaceOrganizationSettings } from '../config/organization.js';
-import { requireSupabaseClient } from './BaseService.js';
+import { requirePublicSupabaseClient, requireSupabaseClient } from './BaseService.js';
 
 export class SettingsService {
   async getSettings() {
@@ -12,7 +12,7 @@ export class SettingsService {
   }
 
   async getPublicSettings() {
-    const client = requireSupabaseClient();
+    const client = requirePublicSupabaseClient();
     const { data, error } = await client.rpc('get_public_organization_settings');
     if (error) throw error;
     const settings = data || {};

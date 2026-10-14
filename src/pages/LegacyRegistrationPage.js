@@ -17,9 +17,14 @@ const state = {
   mode: 'single',
   categories: [],
   businessTypes: [],
+  catalogStatus: 'loading',
+  catalogError: '',
+  catalogRequestId: 0,
   kioskSequence: 0,
   isSubmitting: false,
 };
+
+const CATALOG_TIMEOUT_MS = 15_000;
 
 export function LegacyRegistrationPage() {
   resetState();
@@ -86,22 +91,38 @@ export function LegacyRegistrationPage() {
   `;
 }
 
-LegacyRegistrationPage.afterRender = async function afterRenderLegacy() {
+LegacyRegistrationPage.afterRender = function afterRenderLegacy() {
   renderFlow();
   bindStaticEvents();
-  try {
-    await settingsService.getPublicSettings();
-  } catch {
-    // The contact area below shows a safe fallback when public settings are unavailable.
-  }
-  bindZaloActions();
-  await loadBusinessTypes();
+  startLegacyBackgroundInitialization();
 };
+
+export function startLegacyBackgroundInitialization({
+  catalogTask = loadCatalog,
+  settingsTask = () => settingsService.getPublicSettings(),
+  zaloTask = bindZaloActions,
+} = {}) {
+  const catalogPromise = runBackgroundTask(catalogTask);
+  const settingsPromise = runBackgroundTask(settingsTask)
+    .then(() => zaloTask(), () => zaloTask());
+  return { catalogPromise, settingsPromise };
+}
+
+function runBackgroundTask(task) {
+  try {
+    return Promise.resolve(task());
+  } catch (error) {
+    return Promise.reject(error);
+  }
+}
 
 function resetState() {
   state.mode = 'single';
   state.categories = [];
   state.businessTypes = [];
+  state.catalogStatus = 'loading';
+  state.catalogError = '';
+  state.catalogRequestId += 1;
   state.kioskSequence = 0;
   state.isSubmitting = false;
 }
@@ -117,6 +138,10 @@ function bindStaticEvents() {
   });
 
   document.getElementById('legacy-registration-form')?.addEventListener('submit', handleSubmit);
+  document.getElementById('legacy-registration-form')?.addEventListener('click', (event) => {
+    if (!event.target.closest('[data-legacy-catalog-retry]')) return;
+    loadCatalog();
+  });
 }
 
 function renderFlow() {
@@ -126,11 +151,12 @@ function renderFlow() {
 
   customerSection.innerHTML = state.mode === 'single' ? renderSingleCustomer() : renderMultipleCustomer();
   kioskSection.innerHTML = state.mode === 'single'
-    ? `<div class="form-section-title">Thông tin kiosk</div>${renderKioskCard({ copyCustomer: true })}`
+    ? `<div class="form-section-title">Thông tin kiosk</div>${catalogStateMarkup()}${renderKioskCard({ copyCustomer: true })}`
     : `
       <div class="legacy-kiosk-heading">
         <div class="form-section-title">Danh sách kiosk</div>
       </div>
+      ${catalogStateMarkup()}
       <div id="legacy-kiosk-list">${renderKioskCard()}</div>
       <div class="registration-add-row legacy-add-row">
         <button class="btn-secondary register-add-kiosk-bottom" id="legacy-add-kiosk" type="button">+ Thêm kiosk</button>
@@ -203,7 +229,7 @@ function renderKioskCard({ copyCustomer = false } = {}) {
         })}
         ${nestedField('Tên Facebook', 'name', { required: !copyCustomer })}
       </div>
-      <div class="form-row">
+      <div class="form-row legacy-kiosk-grid legacy-kiosk-taxonomy">
         <label class="form-group">
           <span>Danh mục *</span>
           <select class="form-control" data-kiosk-category required>${categoryOptions()}</select>
@@ -215,11 +241,11 @@ function renderKioskCard({ copyCustomer = false } = {}) {
           </select>
         </label>
       </div>
-      <div class="form-row">
+      <div class="form-row legacy-kiosk-grid legacy-kiosk-history">
         ${nestedField('Số tiền đã thanh toán', 'amount', { type: 'text', inputmode: 'numeric', placeholder: '0 VNĐ', required: true })}
         ${nestedField('Ngày đăng ký', 'start', { type: 'date', value: today, required: true })}
       </div>
-      <div class="form-row">
+      <div class="form-row legacy-kiosk-grid legacy-kiosk-history">
         ${nestedField('Ngày hết hạn', 'end', { type: 'date', value: today, required: true })}
         <label class="form-group">
           <span>Ghi chú / Bằng chứng <small class="field-optional">Không bắt buộc</small></span>
@@ -300,41 +326,132 @@ function renumberKiosks() {
   });
 }
 
-async function loadBusinessTypes() {
+async function loadCatalog() {
+  const requestId = ++state.catalogRequestId;
+  state.catalogStatus = 'loading';
+  state.catalogError = '';
+  updateCatalogUi();
+
   try {
-    const [categoriesResult, businessTypesResult] = await Promise.all([
-      CategoryService.listActive(),
-      BusinessTypeService.listActive(),
-    ]);
-    state.categories = sortVietnamese(categoriesResult.data || []);
-    state.businessTypes = sortVietnamese(businessTypesResult.data || []);
-    document.querySelectorAll('[data-legacy-kiosk]').forEach((card) => {
-      const categorySelect = card.querySelector('[data-kiosk-category]');
-      if (categorySelect) categorySelect.innerHTML = categoryOptions();
-      renderBusinessTypeSelect(card, categorySelect?.value || '');
-    });
+    const result = await fetchLegacyPublicCatalog();
+    if (requestId !== state.catalogRequestId) return;
+    state.categories = result.categories;
+    state.businessTypes = result.businessTypes;
+    state.catalogStatus = result.status;
   } catch (error) {
-    showError(error?.message || 'Không thể tải danh mục và dịch vụ.');
+    if (requestId !== state.catalogRequestId) return;
+    state.categories = [];
+    state.businessTypes = [];
+    state.catalogStatus = 'error';
+    state.catalogError = error?.message === 'Quá thời gian tải danh mục và dịch vụ.'
+      ? error.message
+      : 'Không thể tải danh mục và dịch vụ. Vui lòng thử lại.';
+  }
+  updateCatalogUi();
+}
+
+export async function fetchLegacyPublicCatalog({
+  categoryService = CategoryService,
+  businessTypeService = BusinessTypeService,
+  timeoutMs = CATALOG_TIMEOUT_MS,
+} = {}) {
+  const [categoriesResult, businessTypesResult] = await withTimeout(Promise.all([
+    categoryService.listPublicActive(),
+    businessTypeService.listPublicActive(),
+  ]), timeoutMs);
+  const categories = sortVietnamese(categoriesResult.data || []);
+  const businessTypes = sortVietnamese(businessTypesResult.data || []);
+  return {
+    categories,
+    businessTypes,
+    status: categories.length && businessTypes.length ? 'success' : 'empty',
+  };
+}
+
+function withTimeout(promise, timeoutMs) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = globalThis.setTimeout(
+      () => reject(new Error('Quá thời gian tải danh mục và dịch vụ.')),
+      timeoutMs,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => globalThis.clearTimeout(timeoutId));
+}
+
+function updateCatalogUi() {
+  const status = document.getElementById('legacy-catalog-status');
+  if (status) status.outerHTML = catalogStateMarkup();
+  document.querySelectorAll('[data-legacy-kiosk]').forEach(applyCatalogToCard);
+}
+
+function applyCatalogToCard(card) {
+  const categorySelect = card.querySelector('[data-kiosk-category]');
+  if (!categorySelect) return;
+  const businessTypeSelect = card.querySelector('[data-kiosk-business-type]');
+  if (categorySelect.value) card.dataset.catalogCategory = categorySelect.value;
+  if (businessTypeSelect?.value) card.dataset.catalogBusinessType = businessTypeSelect.value;
+  const selectedCategory = categorySelect.value || card.dataset.catalogCategory || '';
+  const selectedBusinessType = businessTypeSelect?.value || card.dataset.catalogBusinessType || '';
+  categorySelect.innerHTML = categoryOptions();
+  categorySelect.disabled = state.catalogStatus !== 'success';
+  if (state.categories.some((item) => String(item.id) === String(selectedCategory))) {
+    categorySelect.value = selectedCategory;
+  } else if (state.catalogStatus === 'success') {
+    delete card.dataset.catalogCategory;
+    delete card.dataset.catalogBusinessType;
+  }
+  renderBusinessTypeSelect(card, categorySelect.value, selectedBusinessType);
+  if (state.catalogStatus === 'success' && businessTypeSelect?.value) {
+    card.dataset.catalogCategory = categorySelect.value;
+    card.dataset.catalogBusinessType = businessTypeSelect.value;
   }
 }
 
 function categoryOptions() {
-  if (!state.categories.length) return '<option value="">Đang tải...</option>';
+  if (state.catalogStatus === 'loading') return '<option value="">Đang tải...</option>';
+  if (state.catalogStatus === 'error') return '<option value="">Không thể tải danh mục</option>';
+  if (state.catalogStatus === 'empty') return '<option value="">Chưa có danh mục hoạt động</option>';
   return `<option value="">Chọn danh mục</option>${state.categories
     .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`)
     .join('')}`;
 }
 
-function renderBusinessTypeSelect(card, categoryId) {
+function renderBusinessTypeSelect(card, categoryId, selectedBusinessType = '') {
   const select = card?.querySelector('[data-kiosk-business-type]');
   if (!select) return;
-  const items = state.businessTypes.filter((item) => String(item.category_id) === String(categoryId));
-  select.disabled = !categoryId;
+  const items = filterLegacyBusinessTypes(state.businessTypes, categoryId);
+  if (state.catalogStatus !== 'success') {
+    select.disabled = true;
+    select.innerHTML = `<option value="">${state.catalogStatus === 'loading' ? 'Đang tải...' : 'Dịch vụ chưa sẵn sàng'}</option>`;
+    return;
+  }
+  select.disabled = !categoryId || !items.length;
   select.innerHTML = categoryId
-    ? `<option value="">Chọn dịch vụ</option>${items
+    ? `<option value="">${items.length ? 'Chọn dịch vụ' : 'Danh mục này chưa có dịch vụ'}</option>${items
       .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`)
       .join('')}`
     : '<option value="">Chọn danh mục trước</option>';
+  if (items.some((item) => String(item.id) === String(selectedBusinessType))) {
+    select.value = selectedBusinessType;
+  }
+}
+
+export function filterLegacyBusinessTypes(businessTypes, categoryId) {
+  return businessTypes.filter((item) => String(item.category_id) === String(categoryId));
+}
+
+function catalogStateMarkup() {
+  const content = {
+    loading: ['Đang tải danh mục và dịch vụ…', 'Vui lòng chờ trong giây lát.'],
+    success: ['Đã tải danh mục', 'Chọn danh mục để xem các dịch vụ tương ứng.'],
+    empty: ['Chưa có danh mục hoạt động', 'Vui lòng thử tải lại hoặc liên hệ Ban quản trị.'],
+    error: ['Không thể tải danh mục', state.catalogError || 'Vui lòng kiểm tra kết nối và thử lại.'],
+  }[state.catalogStatus];
+  const retry = ['empty', 'error'].includes(state.catalogStatus)
+    ? '<button class="btn-secondary" type="button" data-legacy-catalog-retry>Thử lại</button>'
+    : '';
+  return `<div id="legacy-catalog-status" class="legacy-catalog-state is-${state.catalogStatus}" data-catalog-state="${state.catalogStatus}" role="${state.catalogStatus === 'error' ? 'alert' : 'status'}" aria-live="polite"><div><strong>${escapeHtml(content[0])}</strong><span>${escapeHtml(content[1])}</span></div>${retry}</div>`;
 }
 
 function normalizeFacebookUrl(value) {

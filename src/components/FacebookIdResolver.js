@@ -30,7 +30,7 @@ export function FacebookIdResolverFields({
     : 'Nên lấy ID tự động. Chỉ nhập thủ công khi không thể lấy tự động.');
   return `
     <div class="facebook-id-resolver" data-facebook-id-resolver="${scope}"
-      data-manual-fallback="${manualFallback}" data-auto-resolve="${autoResolve}" data-name-target="${nameTarget}" data-resolver-state="idle">
+      data-manual-fallback="${manualFallback}" data-auto-resolve="${autoResolve}" data-name-target="${escapeIdentity(nameTarget)}" data-resolver-state="idle">
       <div class="form-group">
         <div class="field-label-row">
           <span>${urlLabel}${requiredUrl ? ' *' : ''}</span>
