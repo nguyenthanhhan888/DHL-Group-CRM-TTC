@@ -7,7 +7,7 @@ import { bindPayosCopyButtons, PayosResultCard, watchPayosPaymentStatus } from '
 import { StatCard } from '../components/StatCard.js';
 import { DateRangeFields } from '../components/DateRangeFields.js';
 import { Toast } from '../components/Toast.js';
-import { Toolbar } from '../components/Toolbar.js';
+import { FilterBar } from '../components/FilterBar.js';
 import { openPaymentEditForm } from '../components/PaymentEditForm.js';
 import { BusinessTypeService } from '../services/BusinessTypeService.js';
 import { PayosService } from '../services/PayosService.js';
@@ -20,18 +20,14 @@ import { vietnamDateRangeYearToDate } from '../utils/date.js';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
 const PAYMENT_COLUMNS = [
-  { label: '#', key: null },
-  { label: 'Khách hàng', key: null },
-  { label: 'Kiosk', key: null },
-  { label: 'Loại hình KD', key: null },
-  { label: 'Số tháng', key: 'months' },
-  { label: 'Giảm giá', key: 'discount' },
-  { label: 'Giá/tháng', key: 'price_per_month' },
-  { label: 'Tổng tiền', key: 'total_amount' },
-  { label: 'Trạng thái thanh toán', key: 'payment_status' },
+  { label: 'STT', key: null },
+  { label: 'Kiosk / Khách hàng', key: null },
+  { label: 'Dịch vụ / Kỳ hạn', key: 'months' },
+  { label: 'Thanh toán', key: 'total_amount' },
+  { label: 'Trạng thái', key: 'payment_status' },
   { label: 'Người xác nhận', key: null },
-  { label: 'Ngày ghi nhận (giờ VN)', key: 'business_at' },
-  { label: 'Hành động', key: null },
+  { label: 'Thời gian', key: 'business_at' },
+  { label: 'Thao tác', key: null },
 ];
 
 const PAYMENT_STATUSES = [
@@ -56,6 +52,7 @@ const state = {
   items: [],
   processingPaymentId: null,
 };
+let paymentMenuInteractionsBound = false;
 
 export function PaymentsPage() {
   return `
@@ -63,24 +60,28 @@ export function PaymentsPage() {
       title: 'Thanh toán',
       description: 'Theo dõi thanh toán Kiosk. Hệ thống tự hoàn tất khi ngân hàng xác nhận; xác nhận thủ công chỉ dùng cho ngoại lệ.',
     })}
-    ${Toolbar({
+    ${FilterBar({
+      label: 'Bộ lọc thanh toán',
+      className: 'payments-filter-bar',
       children: `
-        <input
-          type="search"
-          id="payment-search"
-          class="form-control"
-          placeholder="Tìm theo khách hàng, kiosk, loại hình KD, trạng thái"
-          aria-label="Tìm thanh toán"
-          autocomplete="off"
-        />
-        <select id="payment-status-filter" class="filter-select" aria-label="Lọc trạng thái thanh toán">
-          <option value="">Tất cả trạng thái</option>
-          ${PAYMENT_STATUSES.map((status) => `<option value="${status.value}">${status.label}</option>`).join('')}
-        </select>
-        <select id="payment-business-type-filter" class="filter-select" aria-label="Lọc loại hình kinh doanh">
-          <option value="">Tất cả loại hình KD</option>
-        </select>
-        ${DateRangeFields({ fromId: 'payment-from-date', toId: 'payment-to-date', fromLabel: 'Từ ngày (giờ VN)', toLabel: 'Đến ngày (giờ VN)', fieldClass: 'form-group compact', inputClass: 'form-control compact-date' })}
+        <label class="filter-field filter-field-search">
+          <span>Tìm kiếm</span>
+          <input type="search" id="payment-search" class="form-control" placeholder="Khách hàng, Kiosk, loại hình, trạng thái…" aria-label="Tìm thanh toán" autocomplete="off" />
+        </label>
+        <label class="filter-field">
+          <span>Trạng thái</span>
+          <select id="payment-status-filter" class="filter-select" aria-label="Lọc trạng thái thanh toán">
+            <option value="">Tất cả trạng thái</option>
+            ${PAYMENT_STATUSES.map((status) => `<option value="${status.value}">${status.label}</option>`).join('')}
+          </select>
+        </label>
+        <label class="filter-field">
+          <span>Loại hình KD</span>
+          <select id="payment-business-type-filter" class="filter-select" aria-label="Lọc loại hình kinh doanh">
+            <option value="">Tất cả loại hình KD</option>
+          </select>
+        </label>
+        ${DateRangeFields({ fromId: 'payment-from-date', toId: 'payment-to-date', fromLabel: 'Từ ngày', toLabel: 'Đến ngày' })}
       `,
     })}
     <div class="payments-summary">
@@ -106,6 +107,7 @@ export function PaymentsPage() {
 PaymentsPage.afterRender = function afterRenderPayments() {
   syncPaymentControls();
   bindPaymentEvents();
+  bindPaymentMenuInteractions();
   bindPagination('payments', {
     onPage: (page) => { state.page = page; loadPayments(); },
     onPageSize: (pageSize) => { state.pageSize = pageSize; state.page = 1; loadPayments(); },
@@ -168,6 +170,11 @@ function bindPaymentEvents() {
   });
 
   tableBody?.addEventListener('click', (event) => {
+    const menuTrigger = event.target.closest('[data-payment-menu-trigger]');
+    if (menuTrigger) {
+      togglePaymentMenu(menuTrigger);
+      return;
+    }
     const button = event.target.closest('[data-payment-action]');
     if (!button || state.processingPaymentId) return;
 
@@ -175,6 +182,7 @@ function bindPaymentEvents() {
     const paymentId = button.dataset.paymentId;
     const payment = state.items.find((item) => String(item.id) === paymentId);
     if (!payment) return;
+    closePaymentMenus();
 
     switch (action) {
       case 'approve':
@@ -271,21 +279,18 @@ function renderPayments(payments) {
     return;
   }
 
+  closePaymentMenus();
   const startIndex = (state.page - 1) * state.pageSize;
   body.innerHTML = payments.map((payment, index) => `
     <tr>
-      <td><a class="table-link" href="#/payment-detail?id=${payment.id}">${startIndex + index + 1}</a></td>
-      <td>${renderCustomer(payment)}</td>
-      <td>${renderKiosk(payment)}</td>
-      <td>${escapeHtml(payment.kiosks?.business_types?.name || '—')}</td>
-      <td>${Number(payment.months || 0)}</td>
-      <td>${formatCurrency(payment.discount || 0)}</td>
-      <td>${formatCurrency(payment.price_per_month || 0)}</td>
-      <td class="strong-cell">${formatCurrency(payment.total_amount || 0)}</td>
-      <td>${renderPaymentStatusBadge(payment.payment_status)}</td>
-      <td>${escapeHtml(confirmedBy(payment))}</td>
-      <td>${formatDateTime(payment.payment_status === 'completed' ? payment.confirmed_at : payment.created_at)}</td>
-      <td>${renderApprovalAction(payment)}</td>
+      <td data-label="STT"><a class="payment-row-number" href="#/payment-detail?id=${encodeURIComponent(payment.id)}">${startIndex + index + 1}</a></td>
+      <td data-label="Kiosk / Khách hàng">${renderPaymentParty(payment)}</td>
+      <td data-label="Dịch vụ / Kỳ hạn">${renderPaymentService(payment)}</td>
+      <td data-label="Thanh toán">${renderPaymentAmount(payment)}</td>
+      <td data-label="Trạng thái">${renderPaymentStatusBadge(payment.payment_status)}</td>
+      <td data-label="Người xác nhận">${renderConfirmer(payment)}</td>
+      <td data-label="Thời gian">${renderPaymentTime(payment.payment_status === 'completed' ? payment.confirmed_at : payment.created_at)}</td>
+      <td data-label="Thao tác">${renderApprovalAction(payment)}</td>
     </tr>
   `).join('');
 }
@@ -300,42 +305,82 @@ function renderSummary(summary = {}) {
 function renderApprovalAction(payment) {
   const status = String(payment.payment_status || '').toLowerCase();
   const isProcessing = String(state.processingPaymentId) === String(payment.id);
+  const actions = status === 'pending' ? `
+      ${paymentActionButton('payos', payment.id, 'Tạo/Mở PayOS', 'money', { disabled: isProcessing })}
+      ${paymentActionButton('approve', payment.id, 'Xác nhận thủ công', 'check-circle', { disabled: isProcessing })}
+      ${paymentActionButton('edit', payment.id, 'Sửa thanh toán', 'edit', { disabled: isProcessing })}
+      ${paymentActionButton('cancel', payment.id, 'Hủy thanh toán', 'x-circle', { danger: true, disabled: isProcessing })}
+    ` : status === 'completed' ? `
+      ${paymentActionButton('edit', payment.id, 'Sửa ghi chú', 'edit')}
+      ${payment.transaction_type === 'adjustment' ? '' : paymentActionButton('adjust', payment.id, 'Tạo điều chỉnh', 'money')}
+    ` : '<span class="payment-action-empty" role="menuitem" aria-disabled="true">Không có thao tác</span>';
 
-  if (status === 'completed') {
-    return `
-      <div class="payment-approval-actions">
-        <span class="approval-state approved">Đã hoàn tất</span>
-        <details class="row-action-menu">
-          <summary>Khác</summary>
-          <div class="row-action-menu-panel">
-            <button class="table-action-button" type="button" data-payment-action="edit" data-payment-id="${escapeHtml(payment.id)}">Sửa ghi chú</button>
-            ${payment.transaction_type === 'adjustment' ? '' : `<button class="table-action-button" type="button" data-payment-action="adjust" data-payment-id="${escapeHtml(payment.id)}">Điều chỉnh</button>`}
-          </div>
-        </details>
-      </div>
-    `;
-  }
-  if (status === 'rejected') {
-    return '<span class="approval-state rejected">Đã từ chối</span>';
-  }
-  if (status === 'cancelled') {
-    return '<span class="approval-state cancelled">Đã hủy</span>';
-  }
-  if (status !== 'pending') return '—';
+  return `<div class="payment-action-menu" data-payment-menu>
+    <button class="payment-action-trigger" type="button" data-payment-menu-trigger aria-haspopup="menu" aria-expanded="false" aria-label="Mở thao tác thanh toán ${escapeHtml(payment.id)}" title="Thao tác"><span aria-hidden="true">…</span></button>
+    <div class="payment-action-dropdown hidden" role="menu" aria-label="Thao tác thanh toán ${escapeHtml(payment.id)}">${actions}</div>
+  </div>`;
+}
 
-  return `
-    <div class="payment-approval-actions">
-      <button class="table-approve-button" type="button" data-payment-action="payos" data-payment-id="${escapeHtml(payment.id)}" ${isProcessing ? 'disabled' : ''}>Tạo/Mở PayOS</button>
-      <details class="row-action-menu">
-        <summary>Khác</summary>
-        <div class="row-action-menu-panel">
-          <button class="table-action-button" type="button" data-payment-action="approve" data-payment-id="${escapeHtml(payment.id)}" ${isProcessing ? 'disabled' : ''}>Xác nhận thủ công</button>
-          <button class="table-action-button" type="button" data-payment-action="edit" data-payment-id="${escapeHtml(payment.id)}" ${isProcessing ? 'disabled' : ''}>Sửa</button>
-          <button class="table-cancel-button" type="button" data-payment-action="cancel" data-payment-id="${escapeHtml(payment.id)}" ${isProcessing ? 'disabled' : ''}>Hủy</button>
-        </div>
-      </details>
-    </div>
-  `;
+function paymentActionButton(action, paymentId, label, icon, { danger = false, disabled = false } = {}) {
+  return `<button class="${danger ? 'is-danger' : ''}" type="button" role="menuitem" data-payment-action="${action}" data-payment-id="${escapeHtml(paymentId)}" ${disabled ? 'disabled' : ''}>${renderIcon(icon)}<span>${label}</span></button>`;
+}
+
+function togglePaymentMenu(trigger) {
+  const menu = trigger.closest('[data-payment-menu]');
+  const dropdown = menu?.querySelector('.payment-action-dropdown');
+  if (!dropdown) return;
+  const shouldOpen = dropdown.classList.contains('hidden');
+  closePaymentMenus();
+  if (!shouldOpen) return;
+  dropdown.classList.remove('hidden');
+  trigger.setAttribute('aria-expanded', 'true');
+  positionPaymentMenu(trigger, dropdown);
+  dropdown.querySelector('button[role="menuitem"]:not([disabled])')?.focus();
+}
+
+function closePaymentMenus() {
+  document.querySelectorAll('[data-payment-menu]').forEach((menu) => {
+    menu.querySelector('.payment-action-dropdown')?.classList.add('hidden');
+    menu.querySelector('[data-payment-menu-trigger]')?.setAttribute('aria-expanded', 'false');
+  });
+}
+
+function positionPaymentMenu(trigger, dropdown) {
+  const rect = trigger.getBoundingClientRect();
+  const width = 210;
+  const left = Math.max(10, Math.min(window.innerWidth - width - 10, rect.right - width));
+  const roomBelow = window.innerHeight - rect.bottom;
+  const menuHeight = dropdown.offsetHeight;
+  dropdown.style.left = `${left}px`;
+  dropdown.style.top = roomBelow < menuHeight + 12
+    ? `${Math.max(10, rect.top - menuHeight - 6)}px`
+    : `${rect.bottom + 6}px`;
+}
+
+function bindPaymentMenuInteractions() {
+  if (paymentMenuInteractionsBound) return;
+  paymentMenuInteractionsBound = true;
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('[data-payment-menu]')) closePaymentMenus();
+  });
+  document.addEventListener('keydown', (event) => {
+    const openMenu = document.querySelector('[data-payment-menu] .payment-action-dropdown:not(.hidden)');
+    if (!openMenu) return;
+    if (event.key === 'Escape') {
+      const trigger = openMenu.closest('[data-payment-menu]')?.querySelector('[data-payment-menu-trigger]');
+      closePaymentMenus();
+      trigger?.focus();
+      return;
+    }
+    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+    const items = [...openMenu.querySelectorAll('button[role="menuitem"]:not([disabled])')];
+    if (!items.length) return;
+    event.preventDefault();
+    const current = Math.max(0, items.indexOf(document.activeElement));
+    items[(current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus();
+  });
+  window.addEventListener('resize', closePaymentMenus);
+  window.addEventListener('scroll', closePaymentMenus, true);
 }
 
 function openPaymentPayos(payment) {
@@ -604,24 +649,77 @@ async function createAdjustment(paymentId, button) {
   }
 }
 
-function renderCustomer(payment) {
-  const name = payment.customers?.facebook_name || '—';
-  if (!payment.customer_id) return escapeHtml(name);
-  return `<a class="table-link" href="#/customer-detail?id=${encodeURIComponent(payment.customer_id)}">${escapeHtml(name)}</a>`;
+function renderPaymentParty(payment) {
+  const kioskName = escapeHtml(payment.kiosks?.facebook_name || 'Kiosk không còn liên kết');
+  const customerName = escapeHtml(payment.customers?.facebook_name || 'Khách hàng không còn liên kết');
+  const kiosk = payment.kiosk_id
+    ? `<a class="payment-primary-link" href="#/kiosk-detail?id=${encodeURIComponent(payment.kiosk_id)}">${kioskName}</a>`
+    : `<strong>${kioskName}</strong>`;
+  const customer = payment.customer_id
+    ? `<a href="#/customer-detail?id=${encodeURIComponent(payment.customer_id)}">${customerName}</a>`
+    : customerName;
+  return `<div class="payment-cell-stack payment-party">${kiosk}<small>${customer}</small></div>`;
 }
 
-function renderKiosk(payment) {
-  const name = payment.kiosks?.facebook_name || '—';
-  if (!payment.kiosk_id) return escapeHtml(name);
-  return `<a class="table-link" href="#/kiosk-detail?id=${encodeURIComponent(payment.kiosk_id)}">${escapeHtml(name)}</a>`;
+function renderPaymentService(payment) {
+  const businessType = escapeHtml(payment.kiosks?.business_types?.name || 'Chưa có dịch vụ');
+  const months = Number(payment.months || 0);
+  return `<div class="payment-cell-stack"><strong class="payment-service-name">${businessType}</strong><small>${months} tháng</small></div>`;
 }
 
-function confirmedBy(payment) {
-  return payment.confirmed_by_name
-    || payment.confirmed_by_email
-    || payment.confirmed_by_user
-    || payment.confirmed_by
-    || '—';
+function renderPaymentAmount(payment) {
+  const discount = Number(payment.discount || 0);
+  return `<div class="payment-cell-stack payment-money">
+    <strong>${formatCurrency(payment.total_amount || 0)}</strong>
+    <small>${formatCurrency(payment.price_per_month || 0)} / tháng</small>
+    ${discount > 0 ? `<small class="payment-discount">Giảm ${formatCurrency(discount)}</small>` : ''}
+  </div>`;
+}
+
+export function paymentConfirmerLabel(payment = {}) {
+  const status = String(payment.payment_status || '').toLowerCase();
+  if (status !== 'completed') return { primary: 'Chưa xác nhận', secondary: '', kind: 'pending' };
+
+  const profile = payment.confirmer_profile;
+  const profileName = profile?.display_name || profile?.username || profile?.email;
+  if (profileName) return { primary: profileName, secondary: 'Xác nhận thủ công', kind: 'person' };
+
+  const storedName = payment.confirmed_by_name || payment.confirmed_by_user || payment.confirmed_by_email;
+  if (storedName) return { primary: storedName, secondary: 'Xác nhận thủ công', kind: 'person' };
+
+  const confirmerId = String(payment.confirmed_by || '').trim();
+  if (confirmerId && isUuid(confirmerId)) {
+    return { primary: 'Tài khoản CRM cũ', secondary: 'Hồ sơ người dùng không còn khả dụng', kind: 'legacy' };
+  }
+
+  if (hasPayosEvidence(payment)) {
+    return { primary: 'PayOS tự động', secondary: 'Ngân hàng đã xác nhận', kind: 'payos' };
+  }
+
+  if (String(payment.payment_method || '').toLowerCase() === 'legacy') {
+    return { primary: 'Quy trình Legacy', secondary: 'Dữ liệu chuyển đổi', kind: 'legacy' };
+  }
+
+  if (confirmerId) {
+    return { primary: 'Quy trình cũ', secondary: 'Định danh cũ không có hồ sơ CRM', kind: 'legacy' };
+  }
+  return { primary: 'Dữ liệu cũ', secondary: 'Không lưu người xác nhận', kind: 'legacy' };
+}
+
+function hasPayosEvidence(payment) {
+  return Boolean(payment.payos_order_code
+    || payment.payos_checkout_state
+    || String(payment.payment_method || '').toLowerCase() === 'payos'
+    || /^payos\b/i.test(String(payment.note || '').trim()));
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function renderConfirmer(payment) {
+  const label = paymentConfirmerLabel(payment);
+  return `<div class="payment-cell-stack payment-confirmer is-${label.kind}"><strong>${escapeHtml(label.primary)}</strong>${label.secondary ? `<small>${escapeHtml(label.secondary)}</small>` : ''}</div>`;
 }
 
 function renderHeaderCell(column) {
@@ -699,15 +797,19 @@ function renderPaymentStatusBadge(status) {
   return StatusBadge(status, { labels: { pending: 'Chờ xác nhận', rejected: 'Bị từ chối' } });
 }
 
-function formatDateTime(value) {
+function renderPaymentTime(value) {
   if (!value) return '—';
-  return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',
+  const date = new Date(value);
+  const dateText = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+  }).format(date);
+  const timeText = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(value));
+  }).format(date);
+  return `<time class="payment-cell-stack payment-time" datetime="${escapeHtml(value)}"><strong>${escapeHtml(dateText)}</strong><small>${escapeHtml(timeText)}</small></time>`;
 }
 
 function setText(id, value) {

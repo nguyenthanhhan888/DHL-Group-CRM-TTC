@@ -37,7 +37,7 @@ test('public layout preserves service routes while homepage body stays focused',
   assert.match(layout, /'register', 'Đăng ký Kiosk'/);
   assert.match(layout, /'legacy-registration', 'Bổ sung Kiosk'/);
   assert.match(layout, /'lookup', 'Tra cứu Kiosk'/);
-  assert.match(layout, /navLink\('login'/);
+  assert.match(layout, /authenticated \? 'Vào CRM' : 'Đăng nhập \/ Đăng ký'/);
   assert.doesNotMatch(home.match(/function renderHomepage[\s\S]*?function renderHero/)?.[0] || '', /renderKioskServices|renderCommunityLinks|renderContact/);
   assert.doesNotMatch(home, /RegistrationService|PaymentService|PayOS/);
 });

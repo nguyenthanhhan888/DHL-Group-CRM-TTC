@@ -6,10 +6,10 @@ export const WorkItemService = {
       p_search: textOrNull(filters.search),
       p_status: textOrNull(filters.status),
       p_work_type: textOrNull(filters.workType),
-      p_assignee_user_id: textOrNull(filters.assigneeUserId),
+      p_assignee_employee_id: positiveIntegerOrNull(filters.assigneeEmployeeId),
       p_from_date: textOrNull(filters.fromDate),
       p_to_date: textOrNull(filters.toDate),
-      p_include_closed: filters.includeClosed === true,
+      p_include_closed: filters.status === 'all',
     }));
   },
 
@@ -20,7 +20,7 @@ export const WorkItemService = {
       p_work_type: String(item.workType || '').trim(),
       p_customer_id: positiveIntegerOrNull(item.customerId),
       p_kiosk_id: positiveIntegerOrNull(item.kioskId),
-      p_assignee_user_id: textOrNull(item.assigneeUserId),
+      p_assignee_employee_id: positiveIntegerOrNull(item.assigneeEmployeeId),
       p_start_date: textOrNull(item.startDate),
       p_due_date: textOrNull(item.dueDate),
       p_status: String(item.status || 'pending').trim(),

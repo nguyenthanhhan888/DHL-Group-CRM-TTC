@@ -25,15 +25,18 @@ export function findBusinessSuggestions(query, categories = [], businessTypes = 
 
 export function BusinessDiscovery({ prefix }) {
   return `<div class="business-discovery" data-business-discovery>
-    <label class="form-group business-search-field"><span>Bạn đang kinh doanh gì? *</span>
-      <span class="business-search-control">${renderIcon('search')}<input class="form-control" type="search" data-business-search autocomplete="off" placeholder="Ví dụ: bán hoa, spa, quán ăn, cafe, điện thoại..." aria-controls="${prefix}-suggestions" aria-describedby="${prefix}-business-help" /></span>
-      <span class="field-helper" id="${prefix}-business-help">Nhập từ khóa gần đúng, hệ thống sẽ gợi ý ngành nghề phù hợp.</span></label>
-    <div class="business-suggestions" id="${prefix}-suggestions" data-business-suggestions aria-live="polite"></div>
-    <button class="business-manual-toggle" type="button" data-business-manual-toggle aria-expanded="false">Chọn thủ công</button>
-    <div class="business-manual-fields hidden" data-business-manual><div class="form-row">
-      <label class="form-group"><span>Danh mục *</span><select class="form-control" data-kiosk-category required><option value="">Đang tải danh mục...</option></select><span class="field-error hidden"></span></label>
-      <label class="form-group"><span>Loại hình kinh doanh *</span><select class="form-control" data-kiosk-business-type required disabled><option value="">Chọn danh mục trước</option></select><span class="field-error hidden"></span></label>
-    </div></div><div class="business-selection hidden" data-business-selection></div>
+    <label class="form-group"><span>Danh mục kinh doanh *</span>
+      <select class="form-control" data-kiosk-category required><option value="">Đang tải danh mục...</option></select>
+      <span class="field-helper">Chọn nhóm gần nhất với sản phẩm hoặc dịch vụ của Kiosk.</span>
+      <span class="field-error hidden"></span>
+    </label>
+    <div class="form-group business-type-field"><span>Loại hình kinh doanh *</span>
+      <span class="business-search-control">${renderIcon('search')}<input class="form-control" type="search" data-business-search autocomplete="off" placeholder="Tìm trong danh mục đã chọn" aria-label="Tìm loại hình kinh doanh" aria-describedby="${prefix}-business-help" disabled /></span>
+      <select class="form-control" data-kiosk-business-type required disabled><option value="">Chọn danh mục trước</option></select>
+      <span class="field-helper" id="${prefix}-business-help">Chọn loại hình mô tả đúng nhất hoạt động của Kiosk.</span>
+      <span class="business-filter-result hidden" data-business-filter-result role="status" aria-live="polite"></span>
+      <span class="field-error hidden"></span>
+    </div>
   </div>`;
 }
 

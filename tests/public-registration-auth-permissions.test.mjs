@@ -5,6 +5,7 @@ import { RegisterPage } from '../src/pages/RegisterPage.js';
 import { AccountRegisterPage } from '../src/pages/AccountRegisterPage.js';
 import { NAV_SECTIONS } from '../src/constants/navigation.js';
 import { canAccessRoute } from '../src/constants/permissions.js';
+import { PublicLayout } from '../src/components/PublicLayout.js';
 
 const source = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -18,6 +19,17 @@ test('public Kiosk registration exposes exactly three requested steps', () => {
   assert.match(html, /Địa chỉ/);
   assert.match(html, /Mã giảm giá/);
   assert.match(html, /register-confirmation/);
+});
+
+test('public navigation shows the CRM entry only for a validated authenticated profile', async () => {
+  const anonymous = PublicLayout({ route: 'home', content: '' });
+  const authenticated = PublicLayout({ route: 'home', content: '', authenticated: true, crmRoute: 'reports' });
+  const app = await source('src/app.js');
+  assert.match(anonymous, /Đăng nhập \/ Đăng ký/);
+  assert.doesNotMatch(anonymous, />Vào CRM</);
+  assert.match(authenticated, /href="#\/reports"[^>]*>Vào CRM</);
+  assert.match(app, /AuthService\.getCurrentProfile\(session\.user\.id\)/);
+  assert.match(app, /initialRoute === 'login' && publicAccessProfile/);
 });
 
 test('step-three payment and regenerated checkout redirect directly to PayOS', async () => {

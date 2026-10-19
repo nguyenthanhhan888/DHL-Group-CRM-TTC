@@ -6,6 +6,7 @@ import {
   filterLegacyBusinessTypes,
   startLegacyBackgroundInitialization,
 } from '../src/pages/LegacyRegistrationPage.js';
+import { normalizeBusinessSearch } from '../src/components/BusinessDiscovery.js';
 
 const source = async (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -119,6 +120,7 @@ test('category dependency exposes only matching services', () => {
   ];
   assert.deepEqual(filterLegacyBusinessTypes(types, 1).map(({ id }) => id), [10, 11]);
   assert.deepEqual(filterLegacyBusinessTypes(types, 3), []);
+  assert.equal(normalizeBusinessSearch('Điện thoại & Đồ uống'), 'dien thoai do uong');
 });
 
 test('Legacy UI has terminal catalog states, Retry, dependencies and multi-Kiosk controls', async () => {
@@ -132,13 +134,23 @@ test('Legacy UI has terminal catalog states, Retry, dependencies and multi-Kiosk
   assert.doesNotMatch(page, /LegacyRegistrationPage\.afterRender = async function/);
   assert.match(page, /startLegacyBackgroundInitialization\(\)/);
   assert.match(settings, /getPublicSettings\(\)[\s\S]*requirePublicSupabaseClient\(\)/);
-  for (const state of ['loading', 'success', 'empty', 'error']) {
+  for (const state of ['loading', 'empty', 'error']) {
     assert.match(page, new RegExp(`${state}:`));
   }
+  assert.match(page, /state\.catalogStatus === 'success'\) return ''/);
   assert.match(page, /data-legacy-catalog-retry/);
   assert.match(page, /categorySelect\.disabled = state\.catalogStatus !== 'success'/);
   assert.match(page, /select\.disabled = !categoryId \|\| !items\.length/);
   assert.match(page, /renderBusinessTypeSelect\(card, categorySelect\.value, selectedBusinessType\)/);
+  assert.match(page, /normalizeBusinessSearch\(search\?\.value\)/);
+  assert.match(page, /delete card\.dataset\.catalogBusinessType/);
+  assert.doesNotMatch(page, /success: \['Đã tải danh mục'/);
+  assert.doesNotMatch(page, /legacy-stepper/);
+  assert.match(page, /noteField\.innerHTML = state\.mode === 'single'/);
+  assert.match(page, /<span>Ghi chú thêm/);
+  assert.match(page, /multiple \? `<label class="form-group legacy-kiosk-note">/);
+  assert.doesNotMatch(page, /Ghi chú chung cho Ban quản trị|Ghi chú \/ Bằng chứng/);
+  assert.match(page, /data-kiosk-field="note"/);
   assert.match(page, /id="legacy-add-kiosk"/);
   assert.match(page, /data-remove-kiosk/);
   assert.match(page, /state\.mode = event\.target\.value/);
@@ -147,7 +159,12 @@ test('Legacy UI has terminal catalog states, Retry, dependencies and multi-Kiosk
   assert.match(page, /Ngày đăng ký/);
   assert.match(page, /Ngày hết hạn/);
 
-  assert.match(css, /\.legacy-registration-v3 \.legacy-kiosk-grid\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
-  assert.match(css, /\.legacy-registration-v3 \.legacy-kiosk-card \.form-group\{[^}]*gap:9px/);
-  assert.match(css, /@media\(max-width:620px\)[^{]*\{[^}]*[\s\S]*?\.legacy-registration-v3 \.legacy-kiosk-grid\{grid-template-columns:1fr/);
+  assert.match(page, /legacy-kiosk-single/);
+  assert.match(page, /legacy-kiosk-multiple/);
+  assert.match(page, /legacy-business-controls/);
+  assert.doesNotMatch(page, /<strong data-kiosk-title>Kiosk \$\{state\.mode === 'single'/);
+  assert.match(css, /\.legacy-registration-v3 \.legacy-kiosk-single \{[^}]*border:0[^}]*background:transparent/);
+  assert.match(css, /\.legacy-registration-v3 \.legacy-kiosk-taxonomy \{ grid-template-columns:minmax\(210px,.72fr\) minmax\(0,1.28fr\)/);
+  assert.match(css, /\.legacy-registration-v3 \.legacy-kiosk-history \{ grid-template-columns:repeat\(3,minmax\(0,1fr\)/);
+  assert.match(css, /@media\(max-width:760px\)[\s\S]*?\.legacy-registration-v3 \.legacy-kiosk-taxonomy,\.legacy-registration-v3 \.legacy-kiosk-history \{ grid-template-columns:1fr/);
 });

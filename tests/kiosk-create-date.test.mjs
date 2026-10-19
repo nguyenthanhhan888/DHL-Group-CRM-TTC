@@ -4,7 +4,6 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import vm from 'node:vm';
 import { createDateValue } from '../src/utils/date.js';
-import { enhanceDateInput } from '../src/components/DateInput.js';
 
 const source = readFileSync(new URL('../src/components/KioskEditForm.js', import.meta.url), 'utf8');
 const now = new Date('2026-10-08T17:00:00Z');
@@ -32,27 +31,10 @@ test('EDIT Kiosk preserves both stored dates, including intentionally empty date
   for (const empty of [null, undefined, '']) assert.deepEqual(formDates({ id: 1, start_date: empty, end_date: empty }), ['', '']);
 });
 
-test('visible DateInput receives the CREATE prefill rather than only a placeholder', () => {
-  class Field {
-    constructor() { this.dataset = {}; this.classList = { contains: () => false }; this.attributes = {}; this.labels = []; this.children = []; }
-    get value() { return this._value || ''; } set value(value) { this._value = value; }
-    setAttribute(key, value) { this.attributes[key] = value; } getAttribute(key) { return this.attributes[key]; }
-    closest() { return null; } before(wrapper) { this.wrapper = wrapper; } append(...children) { this.children.push(...children); }
-    setCustomValidity(message) { this.message = message; } addEventListener() {}
-  }
-  const keys = ['document', 'HTMLInputElement', 'MutationObserver'];
-  const originals = keys.map(key => Object.getOwnPropertyDescriptor(globalThis, key));
-  Object.assign(globalThis, { document: { createElement: () => new Field() }, HTMLInputElement: Field, MutationObserver: class { observe() {} } });
-  try {
-    for (const [index, value] of formDates().entries()) {
-      const field = new Field(); field.type = 'date'; field.value = value;
-      enhanceDateInput(field);
-      assert.equal(field.value, '2026-10-09');
-      assert.equal(field.wrapper.children[1].value, '09/10/2026');
-    }
-  } finally {
-    keys.forEach((key, index) => originals[index] ? Object.defineProperty(globalThis, key, originals[index]) : delete globalThis[key]);
-  }
+test('Kiosk dates remain visible native date controls with ISO prefills', () => {
+  assert.match(source, /id="kiosk-edit-start-date" type="date"/);
+  assert.match(source, /id="kiosk-edit-end-date" type="date"/);
+  assert.deepEqual(formDates(), ['2026-10-09', '2026-10-09']);
 });
 
 test('Kiosk CREATE dates are independent of machine timezone at Vietnam midnight and New Year', () => {

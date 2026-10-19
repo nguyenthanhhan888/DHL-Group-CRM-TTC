@@ -94,6 +94,9 @@ export const RegistrationService = {
     months = 1,
     discount = 0,
     discountReason = '',
+    paymentMode = 'payos',
+    externalPaymentNote = '',
+    idempotencyKey,
   } = {}) {
     if (!customerId) {
       throw new Error('Khách hàng là bắt buộc.');
@@ -107,7 +110,18 @@ export const RegistrationService = {
       throw new Error('Loại hình kinh doanh là bắt buộc.');
     }
 
-    const { data } = await runQuery(requireSupabaseClient().rpc('submit_existing_customer_kiosk', {
+    const normalizedPaymentMode = String(paymentMode || '').trim().toLowerCase();
+    if (!['payos', 'external_paid'].includes(normalizedPaymentMode)) {
+      throw new Error('Hình thức thanh toán không hợp lệ.');
+    }
+    if (!String(idempotencyKey || '').trim()) {
+      throw new Error('Thiếu khóa chống gửi trùng.');
+    }
+    if (normalizedPaymentMode === 'external_paid' && !String(externalPaymentNote || '').trim()) {
+      throw new Error('Cần ghi chú đối soát khoản tiền đã nhận.');
+    }
+
+    const { data } = await runQuery(requireSupabaseClient().rpc('admin_create_existing_customer_kiosk', {
       customer_id_input: Number(customerId),
       kiosk_input: {
         facebook_name: normalizeRequiredText(kiosk.facebook_name, 'Tên Facebook'),
@@ -121,6 +135,9 @@ export const RegistrationService = {
         payment_method: DEFAULT_PAYMENT_METHOD,
         note: normalizeOptionalText(kiosk.note),
       },
+      payment_mode_input: normalizedPaymentMode,
+      idempotency_key_input: String(idempotencyKey).trim(),
+      external_payment_note_input: normalizeOptionalText(externalPaymentNote),
     }));
     return { data };
   },

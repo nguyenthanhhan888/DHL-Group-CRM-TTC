@@ -62,10 +62,11 @@ test('ordinary pending Payment actions omit rejection while historical rejected 
   const actions = page.slice(page.indexOf('function renderApprovalAction'), page.indexOf('function openPaymentPayos'));
   assert.match(actions, /Tạo\/Mở PayOS/);
   assert.match(actions, /Xác nhận thủ công/);
-  assert.match(actions, />Sửa</);
-  assert.match(actions, />Hủy</);
+  assert.match(actions, /'Sửa thanh toán'/);
+  assert.match(actions, /'Hủy thanh toán'/);
   assert.doesNotMatch(actions, /data-payment-action="reject"|>Từ chối</);
-  assert.match(actions, /status === 'rejected'[\s\S]*Đã từ chối/);
+  assert.match(actions, /status === 'pending'[\s\S]*status === 'completed'/);
+  assert.match(actions, /Không có thao tác/);
 });
 
 test('Reports uses the approved reconciliation name and definition', async () => {

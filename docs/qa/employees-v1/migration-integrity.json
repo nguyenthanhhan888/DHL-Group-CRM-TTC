@@ -1,0 +1,29 @@
+{
+  "fixture": "Synthetic mixed attribution fixture; production baseline is separately recorded in production-before.json",
+  "before": {
+    "count": 6,
+    "total": 6350000,
+    "activeTotal": 6150000,
+    "revenue": 12000000,
+    "netProfit": 5850000
+  },
+  "after": {
+    "count": 6,
+    "total": 6350000,
+    "activeTotal": 6150000,
+    "revenue": 12000000,
+    "netProfit": 5850000
+  },
+  "employees": 2,
+  "mappedExpenses": 3,
+  "ambiguous": [
+    {
+      "id": 5,
+      "name": "Tên lịch sử"
+    },
+    {
+      "id": 4,
+      "name": "only-username"
+    }
+  ]
+}

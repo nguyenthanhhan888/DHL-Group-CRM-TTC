@@ -136,8 +136,10 @@ export const PaymentService = {
       }),
     ]);
 
+    const enrichedPayments = await attachConfirmerProfiles(supabase, listResult.data || []);
+
     return {
-      data: listResult.data,
+      data: enrichedPayments,
       count: listResult.count,
       summary: normalizePaymentSummary(summaryResult.data),
     };
@@ -344,6 +346,34 @@ export const PaymentService = {
     return { data };
   },
 };
+
+async function attachConfirmerProfiles(supabase, payments) {
+  const userIds = [...new Set(payments
+    .map((payment) => String(payment.confirmed_by || '').trim())
+    .filter(isUuid))];
+  if (!userIds.length) return payments;
+
+  try {
+    const { data } = await runQuery(
+      supabase
+        .from('user_profiles')
+        .select('user_id,display_name,username,email')
+        .in('user_id', userIds),
+    );
+    const profiles = new Map((data || []).map((profile) => [String(profile.user_id), profile]));
+    return payments.map((payment) => ({
+      ...payment,
+      confirmer_profile: profiles.get(String(payment.confirmed_by)) || null,
+    }));
+  } catch {
+    // Payments remain usable if an older deployment does not expose profile reads.
+    return payments;
+  }
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
 
 function normalizeOptionalText(value) {
   return String(value || '').trim() || null;

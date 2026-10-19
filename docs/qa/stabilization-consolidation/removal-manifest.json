@@ -1,0 +1,52 @@
+{
+  "tables": [
+    "ttc_campaigns",
+    "ttc_checker_accounts",
+    "ttc_checker_sessions",
+    "ttc_interaction_types",
+    "ttc_job_matches",
+    "ttc_target_scans",
+    "ttc_task_check_logs",
+    "ttc_tasks",
+    "ttc_verify_jobs"
+  ],
+  "functions": [
+    "public.admin_create_ttc_campaign_for_user(owner_user_id_input uuid, interaction_type_input text, target_url_input text, target_quantity_input integer, idempotency_key_input text, target_facebook_id_input text, target_label_input text, comment_options_input jsonb, metadata_input jsonb, admin_reason_input text)",
+    "public.admin_post_wallet_ledger(wallet_user_id_input uuid, amount_input numeric, transaction_type_input text, related_table_input text, related_id_input text, idempotency_key_input text, description_input text, reason_input text, metadata_input jsonb)",
+    "public.admin_update_ttc_verify_job(job_id_input bigint, action_input text, reason_input text)",
+    "public.cancel_ttc_campaign(campaign_id_input bigint, reason_input text, idempotency_key_input text)",
+    "public.create_ttc_campaign(interaction_type_input text, target_url_input text, target_quantity_input integer, idempotency_key_input text, target_facebook_id_input text, target_label_input text, comment_options_input jsonb, metadata_input jsonb)",
+    "public.enqueue_ttc_verify_job(task_id_input bigint)",
+    "public.get_my_wallet()",
+    "public.list_available_ttc_tasks(facebook_account_id_input bigint, page_number integer, page_size integer)",
+    "public.submit_ttc_task(task_id_input bigint, evidence_input jsonb)",
+    "public.verify_ttc_task(task_id_input bigint, action_input text, reason_input text, metadata_input jsonb)",
+    "public.claim_ttc_task(campaign_id_input bigint, facebook_account_id_input bigint, idempotency_key_input text)",
+    "public.list_available_ttc_campaigns(facebook_account_id_input bigint, page_number integer, page_size integer)",
+    "public.get_my_wallet_ledger(page_number integer, page_size integer)",
+    "public.list_my_ttc_tasks(status_input text, page_number integer, page_size integer)",
+    "public.system_verify_ttc_task(task_id_input bigint, metadata_input jsonb)",
+    "private.assert_ttc_staff(permission_input text)"
+  ],
+  "permissions": [
+    "ttc",
+    "services",
+    "tasks",
+    "wallet",
+    "pricing",
+    "violations",
+    "admin-ttc"
+  ],
+  "retained": [
+    "private.write_ttc_audit",
+    "wallets",
+    "wallet_ledger",
+    "private.ensure_wallet",
+    "private.post_wallet_ledger",
+    "user_facebook_accounts",
+    "user_profiles",
+    "notifications permission",
+    "PayOS orders/webhooks and settlement functions",
+    "historical audit records and profile metadata"
+  ]
+}

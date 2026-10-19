@@ -11,7 +11,7 @@ const links = [
   ['lookup', 'Tra cứu Kiosk'],
 ];
 
-export function PublicLayout({ route = 'home', content = '' } = {}) {
+export function PublicLayout({ route = 'home', content = '', authenticated = false, crmRoute = 'dashboard' } = {}) {
   return `
     <div class="public-site">
       <header class="portal-header">
@@ -25,7 +25,7 @@ export function PublicLayout({ route = 'home', content = '' } = {}) {
           </button>
           <nav class="portal-nav" aria-label="Điều hướng chính" data-public-nav>
             ${links.map(([key, label]) => navLink(key, label, route)).join('')}
-            ${navLink('login', 'Đăng nhập / Đăng ký', route, 'portal-login-link')}
+            ${navLink(authenticated ? crmRoute : 'login', authenticated ? 'Vào CRM' : 'Đăng nhập / Đăng ký', route, 'portal-login-link')}
           </nav>
         </div>
       </header>

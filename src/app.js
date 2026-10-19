@@ -1,5 +1,4 @@
 import { RegistrationRequestService } from './services/RegistrationRequestService.js';
-import { mountDateInputs } from './components/DateInput.js';
 import { Modal } from './components/Modal.js';
 import { Toast } from './components/Toast.js';
 import { NAV_SECTIONS, PAGE_TITLES } from './constants/navigation.js';
@@ -80,6 +79,7 @@ const routes = {
 const PUBLIC_ROUTES = new Set(['home', 'register', 'legacy-registration', 'lookup', 'login', 'signup']);
 const HIDDEN_WEB_ROUTES = new Set();
 const THEME_STORAGE_KEY = 'dhlThemePreference';
+let publicAccessProfile = null;
 
 async function initApp() {
   const root = document.getElementById('app');
@@ -91,7 +91,26 @@ async function initApp() {
     const initialRoute = normalizePublicPathRoute() || getRouteName() || 'home';
 
     if (PUBLIC_ROUTES.has(initialRoute)) {
-      renderPublicSite(root, initialRoute);
+      publicAccessProfile = null;
+      let publicMessage = '';
+      if (session) {
+        try {
+          const mfaRequirement = await AuthService.getMfaRequirement();
+          if (mfaRequirement.required) {
+            if (initialRoute === 'login') publicMessage = 'Vui lòng xác minh Authenticator để vào hệ thống.';
+          } else {
+            const profile = await AuthService.getCurrentProfile(session.user.id);
+            if (isProfileAllowed(profile)) publicAccessProfile = profile;
+          }
+        } catch {
+          // Public pages remain available when a stale or transient session cannot be validated.
+        }
+      }
+      if (initialRoute === 'login' && publicAccessProfile) {
+        renderAuthenticatedApp(root, publicAccessProfile);
+        return;
+      }
+      renderPublicSite(root, initialRoute, publicMessage);
       return;
     }
 
@@ -708,7 +727,12 @@ function renderPublicSite(root, requestedRoute = 'home', message = '') {
   const route = PUBLIC_ROUTES.has(requestedRoute) ? requestedRoute : 'home';
   const pages = { home: HomePage, register: RegisterPage, 'legacy-registration': LegacyRegistrationPage, lookup: LookupPage, login: LoginPage, signup: AccountRegisterPage };
   const page = pages[route];
-  root.innerHTML = PublicLayout({ route, content: page({ message }) });
+  root.innerHTML = PublicLayout({
+    route,
+    content: page({ message }),
+    authenticated: Boolean(publicAccessProfile),
+    crmRoute: publicAccessProfile ? firstAllowedRoute(publicAccessProfile) : 'dashboard',
+  });
   bindPublicLayout(root);
   HomepageContentService.getPublic().then(({ content }) => applyPublicHomepageContent(content, root)).catch(() => {});
   Modal.mount();
@@ -722,7 +746,8 @@ function renderPublicSite(root, requestedRoute = 'home', message = '') {
 
 function handlePublicHashChange() {
   const route = getRouteName() || 'home';
-  if (PUBLIC_ROUTES.has(route)) renderPublicSite(document.getElementById('app'), route);
+  if (route === 'login' && publicAccessProfile) renderAuthenticatedApp(document.getElementById('app'), publicAccessProfile);
+  else if (PUBLIC_ROUTES.has(route)) renderPublicSite(document.getElementById('app'), route);
   else window.location.reload();
 }
 
@@ -768,4 +793,4 @@ function formatNumber(value) {
   return new Intl.NumberFormat('vi-VN').format(Number(value || 0));
 }
 
-document.addEventListener('DOMContentLoaded', () => { mountDateInputs(); initApp(); });
+document.addEventListener('DOMContentLoaded', initApp);

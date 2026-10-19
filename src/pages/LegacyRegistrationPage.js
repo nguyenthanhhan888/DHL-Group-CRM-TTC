@@ -12,6 +12,7 @@ import { startOfVietnamToday, toDateOnly } from '../utils/date.js';
 import { debounce } from '../utils/dom.js';
 import { duplicateValues, isDigits, isValidDateOnly, setInlineError } from '../utils/formValidation.js';
 import { bindCurrencyInput, parseCurrencyInput } from '../utils/currency.js';
+import { normalizeBusinessSearch } from '../components/BusinessDiscovery.js';
 
 const state = {
   mode: 'single',
@@ -35,7 +36,6 @@ export function LegacyRegistrationPage() {
       description: 'Bổ sung thông tin Kiosk đã đăng ký trước đây nhưng hiện chưa có đầy đủ dữ liệu trên hệ thống.',
     })}
     <section class="registration-card legacy-registration-card">
-      <ol class="registration-stepper legacy-stepper" aria-label="Các bước bổ sung Kiosk"><li class="registration-step active"><span>1</span><strong>Thông tin khách hàng</strong></li><li class="registration-step active"><span>2</span><strong>Kiosk bổ sung</strong></li><li class="registration-step active"><span>3</span><strong>Xác nhận</strong></li></ol>
       <div class="legacy-scope-notice"><p>Điền thông tin Kiosk và gửi bill cũ để Ban quản trị kiểm tra.</p></div>
       <form id="legacy-registration-form" novalidate>
         <div id="legacy-registration-error" class="form-error hidden" role="alert"></div>
@@ -49,10 +49,7 @@ export function LegacyRegistrationPage() {
 
         <section id="legacy-customer-section" class="legacy-flow-section" aria-label="Bước 1: Thông tin khách hàng"></section>
         <section id="legacy-kiosk-section" class="legacy-flow-section" aria-label="Bước 2: Kiosk bổ sung"></section>
-        <label class="form-group">
-          <span>Ghi chú cho Ban quản trị <small class="field-optional">Không bắt buộc</small></span>
-          <textarea class="form-control" id="legacy-customer-note" rows="3"></textarea>
-        </label>
+        <div id="legacy-note-field"></div>
 
         <section class="legacy-confirmations legacy-flow-section" aria-label="Bước 3: Xác nhận">
           <div class="legacy-payment-proof">
@@ -147,11 +144,12 @@ function bindStaticEvents() {
 function renderFlow() {
   const customerSection = document.getElementById('legacy-customer-section');
   const kioskSection = document.getElementById('legacy-kiosk-section');
-  if (!customerSection || !kioskSection) return;
+  const noteField = document.getElementById('legacy-note-field');
+  if (!customerSection || !kioskSection || !noteField) return;
 
   customerSection.innerHTML = state.mode === 'single' ? renderSingleCustomer() : renderMultipleCustomer();
   kioskSection.innerHTML = state.mode === 'single'
-    ? `<div class="form-section-title">Thông tin kiosk</div>${catalogStateMarkup()}${renderKioskCard({ copyCustomer: true })}`
+    ? `<div class="form-section-title">Thông tin Kiosk</div>${catalogStateMarkup()}${renderKioskCard({ copyCustomer: true })}`
     : `
       <div class="legacy-kiosk-heading">
         <div class="form-section-title">Danh sách kiosk</div>
@@ -163,6 +161,13 @@ function renderFlow() {
         <span class="field-helper">Nhập xong kiosk hiện tại rồi bấm để thêm kiosk tiếp theo.</span>
       </div>
     `;
+
+  noteField.innerHTML = state.mode === 'single' ? `
+    <label class="form-group" id="legacy-customer-note-field">
+      <span>Ghi chú thêm <small class="field-optional">Không bắt buộc</small></span>
+      <textarea class="form-control" id="legacy-customer-note" rows="3"></textarea>
+    </label>
+  ` : '';
 
   bindFlowEvents();
 }
@@ -210,12 +215,10 @@ function renderMultipleCustomer() {
 function renderKioskCard({ copyCustomer = false } = {}) {
   const kioskId = ++state.kioskSequence;
   const today = toDateOnly(startOfVietnamToday());
+  const multiple = state.mode === 'multiple';
   return `
-    <section class="form-card legacy-kiosk-card" data-legacy-kiosk="${kioskId}">
-      <div class="legacy-kiosk-card-header">
-        <strong data-kiosk-title>Kiosk ${state.mode === 'single' ? '' : kioskId}</strong>
-        ${state.mode === 'multiple' ? '<button class="btn-secondary" type="button" data-remove-kiosk>Xóa kiosk này</button>' : ''}
-      </div>
+    <section class="legacy-kiosk-fields ${multiple ? 'form-card legacy-kiosk-card legacy-kiosk-multiple' : 'legacy-kiosk-single'}" data-legacy-kiosk="${kioskId}">
+      ${multiple ? `<div class="legacy-kiosk-card-header"><strong data-kiosk-title>Kiosk ${kioskId}</strong><button class="btn-secondary" type="button" data-remove-kiosk>Xóa Kiosk này</button></div>` : ''}
       <div data-kiosk-facebook-fields class="${copyCustomer ? 'hidden' : ''}">
         ${FacebookIdResolverFields({
           urlAttributes: 'data-kiosk-field="link"',
@@ -230,28 +233,32 @@ function renderKioskCard({ copyCustomer = false } = {}) {
         ${nestedField('Tên Facebook', 'name', { required: !copyCustomer })}
       </div>
       <div class="form-row legacy-kiosk-grid legacy-kiosk-taxonomy">
-        <label class="form-group">
-          <span>Danh mục *</span>
+        <label class="form-group legacy-category-field">
+          <span>Danh mục kinh doanh *</span>
           <select class="form-control" data-kiosk-category required>${categoryOptions()}</select>
+          <span class="field-helper">Chọn danh mục trước để lọc loại hình.</span>
         </label>
-        <label class="form-group">
-          <span>Dịch vụ *</span>
-          <select class="form-control" data-kiosk-business-type required disabled>
-            <option value="">Chọn danh mục trước</option>
-          </select>
-        </label>
+        <div class="form-group legacy-business-type-field">
+          <span>Loại hình kinh doanh *</span>
+          <div class="legacy-business-controls">
+            <span class="business-search-control">${renderIcon('search')}<input class="form-control" type="search" data-kiosk-business-search placeholder="Tìm loại hình" aria-label="Tìm loại hình kinh doanh" autocomplete="off" disabled /></span>
+            <select class="form-control" data-kiosk-business-type aria-label="Loại hình kinh doanh" required disabled>
+              <option value="">Chọn danh mục trước</option>
+            </select>
+          </div>
+          <span class="field-helper">Có thể tìm bằng tiếng Việt có hoặc không dấu.</span>
+          <span class="business-filter-result hidden" data-business-filter-result role="status" aria-live="polite"></span>
+        </div>
       </div>
       <div class="form-row legacy-kiosk-grid legacy-kiosk-history">
         ${nestedField('Số tiền đã thanh toán', 'amount', { type: 'text', inputmode: 'numeric', placeholder: '0 VNĐ', required: true })}
         ${nestedField('Ngày đăng ký', 'start', { type: 'date', value: today, required: true })}
-      </div>
-      <div class="form-row legacy-kiosk-grid legacy-kiosk-history">
         ${nestedField('Ngày hết hạn', 'end', { type: 'date', value: today, required: true })}
-        <label class="form-group">
-          <span>Ghi chú / Bằng chứng <small class="field-optional">Không bắt buộc</small></span>
-          <textarea class="form-control" data-kiosk-field="note" rows="2"></textarea>
-        </label>
       </div>
+      ${multiple ? `<label class="form-group legacy-kiosk-note">
+        <span>Ghi chú riêng cho Kiosk <small class="field-optional">Không bắt buộc</small></span>
+        <textarea class="form-control" data-kiosk-field="note" rows="2"></textarea>
+      </label>` : ''}
     </section>
   `;
 }
@@ -291,7 +298,13 @@ function bindKioskInputs(container = document) {
     bindCurrencyInput(card.querySelector('[data-kiosk-field="amount"]'));
     card.querySelector('[data-kiosk-field="name"]')?.addEventListener('input', debounce(checkWarningsAndDuplicates, 500));
     card.querySelector('[data-kiosk-category]')?.addEventListener('change', (event) => {
+      delete card.dataset.catalogBusinessType;
+      const search = card.querySelector('[data-kiosk-business-search]');
+      if (search) search.value = '';
       renderBusinessTypeSelect(card, event.target.value);
+    });
+    card.querySelector('[data-kiosk-business-search]')?.addEventListener('input', () => {
+      renderBusinessTypeSelect(card, card.querySelector('[data-kiosk-category]')?.value, card.querySelector('[data-kiosk-business-type]')?.value);
     });
   });
 }
@@ -420,20 +433,31 @@ function categoryOptions() {
 function renderBusinessTypeSelect(card, categoryId, selectedBusinessType = '') {
   const select = card?.querySelector('[data-kiosk-business-type]');
   if (!select) return;
-  const items = filterLegacyBusinessTypes(state.businessTypes, categoryId);
+  const search = card.querySelector('[data-kiosk-business-search]');
+  const result = card.querySelector('[data-business-filter-result]');
+  const categoryItems = filterLegacyBusinessTypes(state.businessTypes, categoryId);
+  const query = normalizeBusinessSearch(search?.value);
+  const items = categoryItems.filter((item) => !query || normalizeBusinessSearch(item.name).includes(query));
   if (state.catalogStatus !== 'success') {
     select.disabled = true;
-    select.innerHTML = `<option value="">${state.catalogStatus === 'loading' ? 'Đang tải...' : 'Dịch vụ chưa sẵn sàng'}</option>`;
+    if (search) search.disabled = true;
+    select.innerHTML = `<option value="">${state.catalogStatus === 'loading' ? 'Đang tải...' : 'Loại hình chưa sẵn sàng'}</option>`;
     return;
   }
+  if (search) search.disabled = !categoryId || !categoryItems.length;
   select.disabled = !categoryId || !items.length;
   select.innerHTML = categoryId
-    ? `<option value="">${items.length ? 'Chọn dịch vụ' : 'Danh mục này chưa có dịch vụ'}</option>${items
+    ? `<option value="">${items.length ? 'Chọn loại hình kinh doanh' : categoryItems.length ? 'Không có kết quả phù hợp' : 'Danh mục này chưa có loại hình'}</option>${items
       .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`)
       .join('')}`
     : '<option value="">Chọn danh mục trước</option>';
   if (items.some((item) => String(item.id) === String(selectedBusinessType))) {
     select.value = selectedBusinessType;
+  }
+  if (!select.value) delete card.dataset.catalogBusinessType;
+  if (result) {
+    result.textContent = query ? `${items.length} kết quả trong danh mục đã chọn.` : '';
+    result.classList.toggle('hidden', !query);
   }
 }
 
@@ -442,9 +466,9 @@ export function filterLegacyBusinessTypes(businessTypes, categoryId) {
 }
 
 function catalogStateMarkup() {
+  if (state.catalogStatus === 'success') return '';
   const content = {
     loading: ['Đang tải danh mục và dịch vụ…', 'Vui lòng chờ trong giây lát.'],
-    success: ['Đã tải danh mục', 'Chọn danh mục để xem các dịch vụ tương ứng.'],
     empty: ['Chưa có danh mục hoạt động', 'Vui lòng thử tải lại hoặc liên hệ Ban quản trị.'],
     error: ['Không thể tải danh mục', state.catalogError || 'Vui lòng kiểm tra kết nối và thử lại.'],
   }[state.catalogStatus];

@@ -25,6 +25,29 @@ export function formatDate(value) {
   }).format(new Date(value));
 }
 
+export function dateDisplay(iso) {
+  const [date, time] = String(iso || '').split('T');
+  if (!isValidDateOnly(date)) return '';
+  const [year, month, day] = date.split('-');
+  return `${day}/${month}/${year}${time ? ` ${time.slice(0, 5)}` : ''}`;
+}
+
+export function dateIso(display, { withTime = false } = {}) {
+  if (!display) return '';
+  let value = String(display).trim();
+  if (!withTime && /^\d{8}$/.test(value)) value = `${value.slice(0,2)}/${value.slice(2,4)}/${value.slice(4)}`;
+  const match = value.match(withTime
+    ? /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})(?::(\d{2})(\.\d+)?)?$/
+    : /^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return '';
+  const [, day, month, year, hour, minute, second, fraction] = match;
+  const date = `${year}-${month}-${day}`;
+  if (!isValidDateOnly(date)) return '';
+  if (!withTime) return date;
+  if (Number(hour) > 23 || Number(minute) > 59 || Number(second || 0) > 59) return '';
+  return `${date}T${hour}:${minute}${second ? `:${second}${fraction || ''}` : ''}`;
+}
+
 export function formatDateTime(value) {
   if (!value) return '—';
   const date = new Date(value);

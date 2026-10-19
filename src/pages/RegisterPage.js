@@ -3,7 +3,7 @@ import { PaymentActionButtons, PaymentKioskList, PaymentProgress, PaymentStatusH
 import { fetchPayosStatus } from '../components/PayosResultCard.js';
 import { Toast } from '../components/Toast.js';
 import { bindFacebookIdResolvers, FacebookIdResolverFields, validateFacebookResolver } from '../components/FacebookIdResolver.js';
-import { BusinessDiscovery, renderBusinessSelection, renderBusinessSuggestions } from '../components/BusinessDiscovery.js';
+import { BusinessDiscovery, normalizeBusinessSearch } from '../components/BusinessDiscovery.js';
 import { BusinessTypeService } from '../services/BusinessTypeService.js';
 import { CategoryService } from '../services/CategoryService.js';
 import { RegistrationService } from '../services/RegistrationService.js';
@@ -17,7 +17,10 @@ import { setButtonBusy } from '../utils/buttonState.js';
 const state = {
   categories: [], businessTypes: [], sequence: 0, step: 1, submitting: false,
   promotion: null, promotionContextKey: null, promotionRequestId: 0, promotionPending: false,
+  catalogStatus: 'loading', catalogError: '', catalogRequestId: 0,
 };
+
+const CATALOG_TIMEOUT_MS = 15_000;
 
 export function RegisterPage() {
   resetState();
@@ -40,6 +43,7 @@ export function RegisterPage() {
         </section>
         <section class="registration-panel hidden" data-registration-panel="2">
           ${panelHeader(2, 'Kiosk & ngành nghề', 'Nói đơn giản bạn đang bán gì hoặc kinh doanh gì để xem gợi ý.')}
+          <div id="register-catalog-status"></div>
           <div id="register-kiosk-list"></div>
           <button class="btn-secondary register-add-kiosk-bottom" id="register-add-kiosk-button" type="button">${renderIcon('plus')} Thêm Kiosk mới</button>
           <section class="registration-order-summary">
@@ -85,6 +89,9 @@ function bindEvents() {
   document.getElementById('register-facebook-name')?.addEventListener('input', syncCustomerIdentityPreview);
   document.getElementById('register-phone')?.addEventListener('input', invalidatePromotionIfChanged);
   document.getElementById('register-add-kiosk-button')?.addEventListener('click', () => addKiosk());
+  document.getElementById('register-catalog-status')?.addEventListener('click', (event) => {
+    if (event.target.closest('[data-register-catalog-retry]')) loadOptions();
+  });
   document.getElementById('register-apply-promotion')?.addEventListener('click', applyPromotion);
   document.getElementById('register-remove-promotion')?.addEventListener('click', removePromotion);
   document.getElementById('register-kiosk-list')?.addEventListener('click', (event) => {
@@ -142,16 +149,17 @@ function bindKiosk(card) {
     syncCustomerIdentityPreview();
   });
   const discovery = card.querySelector('[data-business-discovery]');
-  discovery.querySelector('[data-business-search]').addEventListener('input', (event) => renderBusinessSuggestions(discovery.querySelector('[data-business-suggestions]'), event.target.value, state.categories, state.businessTypes));
-  discovery.querySelector('[data-business-suggestions]').addEventListener('click', (event) => selectSuggestion(card, event));
-  discovery.querySelector('[data-business-manual-toggle]').addEventListener('click', (event) => {
-    const manual = discovery.querySelector('[data-business-manual]');
-    const open = !manual.classList.toggle('hidden');
-    event.currentTarget.setAttribute('aria-expanded', String(open));
-    event.currentTarget.textContent = open ? 'Ẩn lựa chọn thủ công' : 'Chọn thủ công';
+  discovery.querySelector('[data-business-search]').addEventListener('input', () => {
+    renderBusinessTypes(card, { preserveSelection: true });
+    calculateCard(card);
   });
-  card.querySelector('[data-kiosk-category]').addEventListener('change', () => { renderBusinessTypes(card); calculateCard(card); });
-  card.querySelector('[data-kiosk-business-type]').addEventListener('change', () => { showSelection(card); calculateCard(card); });
+  card.querySelector('[data-kiosk-category]').addEventListener('change', () => {
+    const search = card.querySelector('[data-business-search]');
+    if (search) search.value = '';
+    renderBusinessTypes(card);
+    calculateCard(card);
+  });
+  card.querySelector('[data-kiosk-business-type]').addEventListener('change', () => calculateCard(card));
   card.querySelectorAll('[data-kiosk-months]').forEach((input) => input.addEventListener('change', () => calculateCard(card)));
   card.querySelector('[data-kiosk-months]')?.addEventListener('input', () => calculateCard(card));
   card.querySelector('[data-month-decrease]')?.addEventListener('click', () => adjustMonths(card, -1));
@@ -165,59 +173,88 @@ function adjustMonths(card, delta) {
   input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-function selectSuggestion(card, event) {
-  const choice = event.target.closest('[data-select-business]');
-  if (!choice) return;
-  const type = state.businessTypes.find((item) => String(item.id) === choice.dataset.selectBusiness);
-  if (!type) return;
-  card.querySelector('[data-kiosk-category]').value = type.category_id;
-  renderBusinessTypes(card);
-  card.querySelector('[data-kiosk-business-type]').value = type.id;
-  card.querySelector('[data-business-suggestions]').innerHTML = '';
-  showSelection(card); calculateCard(card);
-}
-
-function showSelection(card) {
-  const type = findBusinessType(card);
-  const category = state.categories.find((item) => String(item.id) === String(type?.category_id));
-  if (type) {
-    const target = card.querySelector('[data-business-selection]');
-    renderBusinessSelection(target, category, type);
-    target.querySelector('[data-change-business]')?.addEventListener('click', () => {
-      card.querySelector('[data-business-search]').focus();
-      card.querySelector('[data-business-search]').select();
-    });
-  }
-}
-
 async function loadOptions() {
+  const requestId = ++state.catalogRequestId;
+  state.catalogStatus = 'loading';
+  state.catalogError = '';
+  updateCatalogUi();
   try {
-    const [categories, types] = await Promise.all([CategoryService.listPublicActive(), BusinessTypeService.listPublicActive()]);
+    const [categories, types] = await withTimeout(Promise.all([CategoryService.listPublicActive(), BusinessTypeService.listPublicActive()]), CATALOG_TIMEOUT_MS);
+    if (requestId !== state.catalogRequestId) return;
     state.categories = sortVietnamese(categories.data || []);
     state.businessTypes = sortVietnamese(types.data || []);
-    if (!state.categories.length) showFormError('Hiện chưa có danh mục hoạt động. Vui lòng liên hệ Ban quản trị.');
+    state.catalogStatus = state.categories.length && state.businessTypes.length ? 'success' : 'empty';
   } catch (error) {
+    if (requestId !== state.catalogRequestId) return;
     console.error('Public registration option loading failed', error);
-    showFormError('Không thể tải danh sách ngành nghề. Vui lòng thử lại.');
-  } finally {
-    document.querySelectorAll('[data-register-kiosk]').forEach(applyOptions);
+    state.categories = [];
+    state.businessTypes = [];
+    state.catalogStatus = 'error';
+    state.catalogError = error?.message === 'Quá thời gian tải danh mục kinh doanh.' ? error.message : 'Không thể tải danh mục. Vui lòng kiểm tra kết nối.';
   }
+  updateCatalogUi();
+}
+
+function withTimeout(promise, timeoutMs) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = globalThis.setTimeout(() => reject(new Error('Quá thời gian tải danh mục kinh doanh.')), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => globalThis.clearTimeout(timeoutId));
+}
+
+function updateCatalogUi() {
+  const target = document.getElementById('register-catalog-status');
+  if (target) target.innerHTML = catalogStateMarkup();
+  document.querySelectorAll('[data-register-kiosk]').forEach(applyOptions);
+}
+
+function catalogStateMarkup() {
+  if (state.catalogStatus === 'success') return '';
+  const content = {
+    loading: ['Đang tải danh mục kinh doanh…', 'Vui lòng chờ trong giây lát.'],
+    empty: ['Chưa có danh mục hoạt động', 'Vui lòng thử lại hoặc liên hệ Ban quản trị.'],
+    error: ['Không thể tải danh mục', state.catalogError || 'Vui lòng kiểm tra kết nối và thử lại.'],
+  }[state.catalogStatus];
+  const retry = ['empty', 'error'].includes(state.catalogStatus)
+    ? '<button class="btn-secondary" type="button" data-register-catalog-retry>Thử lại</button>' : '';
+  return `<div class="registration-catalog-state is-${state.catalogStatus}" data-catalog-state="${state.catalogStatus}" role="${state.catalogStatus === 'error' ? 'alert' : 'status'}" aria-live="polite"><div><strong>${escapeHtml(content[0])}</strong><span>${escapeHtml(content[1])}</span></div>${retry}</div>`;
 }
 
 function applyOptions(card) {
   const select = card.querySelector('[data-kiosk-category]');
   if (!select) return;
-  select.disabled = !state.categories.length;
-  select.innerHTML = `<option value="">Chọn danh mục</option>${state.categories.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join('')}`;
-  renderBusinessTypes(card);
+  const selectedCategory = select.value;
+  if (state.catalogStatus === 'loading') select.innerHTML = '<option value="">Đang tải danh mục...</option>';
+  else if (state.catalogStatus === 'error') select.innerHTML = '<option value="">Không thể tải danh mục</option>';
+  else if (state.catalogStatus === 'empty') select.innerHTML = '<option value="">Chưa có danh mục hoạt động</option>';
+  else select.innerHTML = `<option value="">Chọn danh mục kinh doanh</option>${state.categories.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join('')}`;
+  select.disabled = state.catalogStatus !== 'success';
+  if (state.categories.some((item) => String(item.id) === String(selectedCategory))) select.value = selectedCategory;
+  renderBusinessTypes(card, { preserveSelection: true });
 }
 
-function renderBusinessTypes(card) {
+function renderBusinessTypes(card, { preserveSelection = false } = {}) {
   const categoryId = card.querySelector('[data-kiosk-category]')?.value || '';
   const select = card.querySelector('[data-kiosk-business-type]');
-  const options = state.businessTypes.filter((item) => String(item.category_id) === String(categoryId));
-  select.disabled = !categoryId || !options.length;
-  select.innerHTML = categoryId ? `<option value="">${options.length ? 'Chọn loại hình' : 'Danh mục này chưa có loại hình'}</option>${options.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join('')}` : '<option value="">Chọn danh mục trước</option>';
+  const search = card.querySelector('[data-business-search]');
+  const result = card.querySelector('[data-business-filter-result]');
+  const selectedType = preserveSelection ? select.value : '';
+  const categoryItems = state.businessTypes.filter((item) => String(item.category_id) === String(categoryId));
+  const query = normalizeBusinessSearch(search?.value);
+  const options = categoryItems.filter((item) => !query || normalizeBusinessSearch(item.name).includes(query));
+  search.disabled = state.catalogStatus !== 'success' || !categoryId || !categoryItems.length;
+  if (!categoryId) search.value = '';
+  select.disabled = state.catalogStatus !== 'success' || !categoryId || !options.length;
+  if (state.catalogStatus !== 'success') select.innerHTML = `<option value="">${state.catalogStatus === 'loading' ? 'Đang tải loại hình...' : 'Loại hình chưa sẵn sàng'}</option>`;
+  else if (!categoryId) select.innerHTML = '<option value="">Chọn danh mục trước</option>';
+  else select.innerHTML = `<option value="">${options.length ? 'Chọn loại hình kinh doanh' : categoryItems.length ? 'Không có kết quả phù hợp' : 'Danh mục này chưa có loại hình'}</option>${options.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join('')}`;
+  if (options.some((item) => String(item.id) === String(selectedType))) select.value = selectedType;
+  if (result) {
+    result.textContent = query ? `${options.length} kết quả trong danh mục đã chọn.` : '';
+    result.classList.toggle('hidden', !query);
+  }
+  if (!select.value) card.dataset.subtotal = '0';
 }
 
 function calculateCard(card) {
@@ -524,5 +561,5 @@ function renumberKiosks() { const cards = document.querySelectorAll('[data-regis
 function showFormError(message, target = null) { const error = document.getElementById('registration-form-error'); if (error) { error.textContent = message; error.classList.remove('hidden'); } Toast.show(message, 'error'); const invalid = target || document.querySelector('[aria-invalid="true"], .input-error, :invalid'); invalid?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }); invalid?.focus?.({ preventScroll: true }); }
 function clearFormError() { const error = document.getElementById('registration-form-error'); if (error) { error.textContent = ''; error.classList.add('hidden'); } }
 function setText(id, text) { const element = document.getElementById(id); if (element) element.textContent = text; }
-function resetState() { state.categories = []; state.businessTypes = []; state.sequence = 0; state.step = 1; state.submitting = false; state.promotion = null; state.promotionContextKey = null; state.promotionRequestId = 0; state.promotionPending = false; }
+function resetState() { state.categories = []; state.businessTypes = []; state.sequence = 0; state.step = 1; state.submitting = false; state.promotion = null; state.promotionContextKey = null; state.promotionRequestId = 0; state.promotionPending = false; state.catalogStatus = 'loading'; state.catalogError = ''; state.catalogRequestId += 1; }
 function sortVietnamese(items) { return [...items].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'vi', { sensitivity: 'base' })); }

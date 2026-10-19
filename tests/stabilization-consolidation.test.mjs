@@ -4,8 +4,7 @@ import {readFileSync,existsSync,readdirSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import vm from 'node:vm';
 import {reportPeriod} from '../src/utils/reportPeriod.js';
-import {createDateValue,formatDateTime,vietnamDateRangeYearToDate,toVietnamDateTimeInput,fromVietnamDateTimeInput} from '../src/utils/date.js';
-import {dateDisplay,enhanceDateInput} from '../src/components/DateInput.js';
+import {createDateValue,dateDisplay,formatDateTime,vietnamDateRangeYearToDate,toVietnamDateTimeInput,fromVietnamDateTimeInput} from '../src/utils/date.js';
 import {promotionDateDefaults} from '../src/utils/promotionForm.js';
 import {ALL_PERMISSIONS,canAccessRoute} from '../src/constants/permissions.js';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
@@ -64,24 +63,13 @@ test('create form bindings explicitly default start/expense dates; edit date fie
  assert.match(read('src/components/HistoricalPaymentEditForm.js'),/payment.start_date \|\| ''/);
  assert.match(read('src/utils/promotionForm.js'),/if \(item.id\) return/);
 });
-test('shared date input displays Vietnam prefill and keeps original ISO timestamp untouched until edited',()=>{
- class Field {
-  constructor(){this.dataset={};this.className='form-control';this.classList={contains:()=>false};this.attributes={};this.events={};this.children=[];this.labels=[];}
-  get value(){return this._value||'';}set value(v){this._value=v;}
-  setAttribute(k,v){this.attributes[k]=v;}getAttribute(k){return this.attributes[k];}closest(){return null;}
-  before(wrapper){this.wrapper=wrapper;}append(...nodes){this.children.push(...nodes);}setCustomValidity(v){this.validityMessage=v;}
-  checkValidity(){return !this.validityMessage;}reportValidity(){return this.checkValidity();}focus(){}
-  addEventListener(k,f){this.events[k]=f;}dispatchEvent(){}
- }
- const saved={document:globalThis.document,HTMLInputElement:globalThis.HTMLInputElement,MutationObserver:globalThis.MutationObserver};
- globalThis.HTMLInputElement=Field;globalThis.document={createElement:()=>new Field()};globalThis.MutationObserver=class{observe(){}};
- try {
-  const field=new Field();field.type='date';field.value=createDateValue(null,null,now);enhanceDateInput(field);
-  const display=field.wrapper.children[1];assert.equal(display.value,'04/10/2026');assert.equal(field.value,'2026-10-04');
-  display.value='20/11/2026';display.events.input();assert.equal(field.value,'2026-11-20');
-  const edit=new Field();edit.type='datetime-local';edit.value='2025-06-15T08:30:45.123';enhanceDateInput(edit);
-  assert.equal(edit.wrapper.children[1].value,'15/06/2025 08:30');assert.equal(edit.value,'2025-06-15T08:30:45.123');
- } finally {Object.assign(globalThis,saved);}
+test('native date controls replace the global date enhancement architecture',()=>{
+ const app=read('src/app.js'),styles=read('src/styles/app.css');
+ assert.doesNotMatch(app,/mountDateInputs|MutationObserver/);
+ assert.equal(existsSync(new URL('../src/components/DateInput.js',import.meta.url)),false);
+ assert.doesNotMatch(styles,/date-input-(field|calendar|native)/);
+ for(const path of ['src/pages/EmployeesPage.js','src/pages/ExpensesPage.js','src/pages/WorkItemsPage.js','src/components/KioskEditForm.js'])assert.match(read(path),/type="date"/);
+ assert.match(read('src/components/PromotionForm.js'),/type="datetime-local"/);
 });
 test('shared datetime conversion preserves explicit offsets and optional scheduling stays empty',()=>{
  assert.equal(toVietnamDateTimeInput(null),'');assert.equal(fromVietnamDateTimeInput(''),null);

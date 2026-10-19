@@ -5,9 +5,10 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 export async function startChrome(){
 const profile=await mkdtemp(join(tmpdir(),'dhl-permission-uat-'));
+const browserBinary=process.env.BROWSER_BINARY||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const apiErrors=[];
-const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', [
+const chrome = spawn(browserBinary, [
   '--headless=new', '--disable-gpu', '--no-sandbox', '--no-first-run', '--no-default-browser-check', '--disable-background-networking',
   '--disable-component-update', '--disable-sync', '--hide-scrollbars', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank',
 ], { stdio: ['ignore', 'ignore', 'ignore'] });

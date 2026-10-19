@@ -1,6 +1,6 @@
 import {test,afterEach} from 'node:test';import assert from 'node:assert/strict';import {createRequire} from 'node:module';import {execFileSync} from 'node:child_process';
 import {formatDate,formatDateTime} from '../src/utils/date.js';
-import {dateDisplay,dateIso} from '../src/components/DateInput.js';import {reportPeriod} from '../src/utils/reportPeriod.js';
+import {dateDisplay,dateIso} from '../src/utils/date.js';import {reportPeriod} from '../src/utils/reportPeriod.js';
 import {FacebookIdService} from '../src/services/FacebookIdService.js';
 const require=createRequire(import.meta.url),handler=require('../api/facebook-id.js');
 const originalFetch=globalThis.fetch;afterEach(()=>{globalThis.fetch=originalFetch;});
@@ -14,7 +14,7 @@ test('date field supports display, keyboard digits, null/empty, leap date and IS
  assert.equal(dateIso('03/10/2026 25:00',{withTime:true}),'');
 });
 test('calendar display/payload/default period is identical in Germany/US/Vietnam at VN day boundary',()=>{
- const code="import {dateDisplay,dateIso} from './src/components/DateInput.js';import {vietnamDateRangeYearToDate} from './src/utils/date.js';console.log(JSON.stringify([dateDisplay('2026-08-01'),dateIso('01/08/2026'),vietnamDateRangeYearToDate(new Date('2026-07-31T17:00:00Z'))]));";
+ const code="import {dateDisplay,dateIso,vietnamDateRangeYearToDate} from './src/utils/date.js';console.log(JSON.stringify([dateDisplay('2026-08-01'),dateIso('01/08/2026'),vietnamDateRangeYearToDate(new Date('2026-07-31T17:00:00Z'))]));";
  const values=['Europe/Berlin','America/Los_Angeles','Asia/Ho_Chi_Minh'].map(TZ=>execFileSync(process.execPath,['--input-type=module','-e',code],{env:{...process.env,TZ},encoding:'utf8'}));
  assert.equal(new Set(values).size,1);assert.deepEqual(JSON.parse(values[0]),['01/08/2026','2026-08-01',{from:'2026-01-01',to:'2026-08-01'}]);
 });

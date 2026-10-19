@@ -1,13 +1,15 @@
-import { formatDate } from '../utils/date.js';
+import { formatDate, parseDateOnly, toDateOnly } from '../utils/date.js';
 import { AuthService } from '../services/AuthService.js';
-import { canAddCustomerKiosk } from '../constants/permissions.js';
+import { PERMISSIONS, canAccessPermission, canAddCustomerKiosk } from '../constants/permissions.js';
 import { Modal } from './Modal.js';
+import { bindPayosCopyButtons, PayosResultCard, watchPayosPaymentStatus } from './PayosResultCard.js';
 import { Toast } from './Toast.js';
 import { BusinessTypeService } from '../services/BusinessTypeService.js';
 import { CategoryService } from '../services/CategoryService.js';
 import { CustomerService } from '../services/CustomerService.js';
 import { KioskService } from '../services/KioskService.js';
 import { RegistrationService } from '../services/RegistrationService.js';
+import { PayosService } from '../services/PayosService.js';
 import { bindFacebookIdResolvers, FacebookIdResolverFields, validateFacebookResolver } from './FacebookIdResolver.js';
 import { bindCurrencyInput, formatCurrency, parseCurrencyInput } from '../utils/currency.js';
 import { debounce } from '../utils/dom.js';
@@ -18,16 +20,21 @@ let customers = [];
 let categories = [];
 let businessTypes = [];
 let preferredCustomerId = '';
+let submissionIdempotencyKey = '';
+let submissionStarted = false;
 
 export async function openKioskForm({ customer = null, onSaved } = {}) {
   let profile;
   try { profile = await AuthService.getCurrentStaffProfile(); }
   catch { Toast.show('Không thể kiểm tra quyền.'); return; }
   if (!canAddCustomerKiosk(profile)) { Toast.show('Cần quyền Khách hàng và Kiosk để đăng ký thêm.'); return; }
+  if (!canAccessPermission(profile, PERMISSIONS.PAYMENTS)) { Toast.show('Cần quyền Thanh toán để đăng ký Kiosk theo hình thức thanh toán.'); return; }
   customers = [];
   categories = [];
   businessTypes = [];
   preferredCustomerId = customer?.id || '';
+  submissionIdempotencyKey = createIdempotencyKey();
+  submissionStarted = false;
 
   Modal.open({
     title: 'Đăng ký thêm Kiosk',
@@ -52,6 +59,8 @@ function bindKioskForm(onSaved) {
   document.getElementById('add-kiosk-business-type')?.addEventListener('change', updateKioskPreview);
   document.getElementById('add-kiosk-months')?.addEventListener('input', updateKioskPreview);
   document.getElementById('add-kiosk-discount')?.addEventListener('input', updateKioskPreview);
+  document.querySelectorAll('input[name="add-kiosk-payment-mode"]').forEach((radio) => radio.addEventListener('change', updatePaymentMode));
+  updatePaymentMode();
 
   document.getElementById('add-kiosk-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -68,18 +77,27 @@ function bindKioskForm(onSaved) {
 
     try {
       const payload = readKioskPayload();
-      if (await KioskService.isFacebookIdInUse(payload.kiosk.facebook_id)) {
-        throw new Error('Facebook ID này đã tồn tại trong Kiosk hoặc yêu cầu đang chờ.');
+      if (!submissionStarted) {
+        if (await KioskService.isFacebookIdInUse(payload.kiosk.facebook_id)) {
+          throw new Error('Facebook ID này đã tồn tại trong Kiosk hoặc yêu cầu đang chờ.');
+        }
+        const { data: nameWarnings } = await KioskService.findNameWarnings(payload.kiosk.facebook_name);
+        if (nameWarnings.length && !confirm(
+          `Cảnh báo: Có ${nameWarnings.length} Kiosk trùng tên Facebook. Bạn vẫn muốn tiếp tục?`,
+        )) return;
       }
-      const { data: nameWarnings } = await KioskService.findNameWarnings(payload.kiosk.facebook_name);
-      if (nameWarnings.length && !confirm(
-        `Cảnh báo: Có ${nameWarnings.length} Kiosk trùng tên Facebook. Bạn vẫn muốn tiếp tục?`,
-      )) return;
 
+      // Keep this key and bypass stale pre-checks on a retry after an uncertain
+      // network response. The RPC remains the final duplicate authority.
+      submissionStarted = true;
       const result = await RegistrationService.submitExistingCustomerKiosk(payload);
-      Modal.close();
-      Toast.show('Đã tạo kiosk chờ xác nhận thanh toán.');
       await onSaved?.(result.data);
+      if (payload.paymentMode === 'external_paid') {
+        Modal.close();
+        Toast.show('Đã ghi nhận thanh toán và kích hoạt Kiosk.', 'success');
+      } else {
+        await openKioskPayos(result.data, onSaved);
+      }
     } catch (error) {
       showFormError(error?.message || 'Không thể tạo kiosk.');
     } finally {
@@ -159,6 +177,16 @@ function renderKioskForm() {
       <div class="renew-calculation" id="add-kiosk-preview">
         ${renderPreviewState('Chọn loại hình kinh doanh để tính tiền.')}
       </div>
+
+      <fieldset class="renew-payment-paths"><legend>Hình thức thanh toán</legend>
+        <label><input type="radio" name="add-kiosk-payment-mode" value="payos" checked><span><strong>PayOS — chờ thanh toán</strong><small>Tạo thanh toán Pending; Kiosk chỉ kích hoạt sau khi webhook PayOS xác nhận.</small></span></label>
+        <label><input type="radio" name="add-kiosk-payment-mode" value="external_paid"><span><strong>Đã nhận tiền ngoài PayOS</strong><small>Ghi nhận khoản tiền đã đối soát và kích hoạt Kiosk ngay.</small></span></label>
+      </fieldset>
+
+      <label class="form-group hidden" data-add-kiosk-external-note>
+        <span>Ghi chú đối soát *</span>
+        <textarea class="form-control" id="add-kiosk-external-note" rows="2" placeholder="Ví dụ: Đã kiểm tra chuyển khoản ngân hàng"></textarea>
+      </label>
 
       <div class="modal-actions">
         <button class="btn-secondary" type="button" data-kiosk-cancel>Hủy</button>
@@ -298,6 +326,7 @@ function updateKioskPreview() {
       months: readNumber('add-kiosk-months'),
       discount: parseCurrencyInput(readValue('add-kiosk-discount')),
     });
+    const inclusiveEndDate = kioskPeriodEnd(preview.startDate, preview.months);
 
     previewElement.innerHTML = `
       <div class="setting-item">
@@ -306,7 +335,7 @@ function updateKioskPreview() {
       </div>
       <div class="setting-item">
         <span class="setting-name">Ngày hết hạn</span>
-        <span class="setting-value">${escapeHtml(formatDate(preview.endDate))}</span>
+          <span class="setting-value">${escapeHtml(formatDate(inclusiveEndDate))}</span>
       </div>
       <div class="setting-item">
         <span class="setting-name">Giá/tháng</span>
@@ -335,12 +364,16 @@ function renderPreviewState(message) {
 }
 
 function readKioskPayload() {
+  const paymentMode = document.querySelector('input[name="add-kiosk-payment-mode"]:checked')?.value || 'payos';
   return {
     customerId: readValue('add-kiosk-customer'),
     businessTypeId: readValue('add-kiosk-business-type'),
     months: readNumber('add-kiosk-months'),
     discount: parseCurrencyInput(readValue('add-kiosk-discount')),
     discountReason: readValue('add-kiosk-discount-reason'),
+    paymentMode,
+    externalPaymentNote: paymentMode === 'external_paid' ? readValue('add-kiosk-external-note') : '',
+    idempotencyKey: submissionIdempotencyKey,
     kiosk: {
       facebook_name: readValue('add-kiosk-facebook-name'),
       facebook_id: optionalValue('add-kiosk-facebook-id'),
@@ -395,6 +428,11 @@ function validateKioskForm() {
     return { valid: false, message: 'Cần nhập lý do khi áp dụng giảm giá.' };
   }
 
+  if (document.querySelector('input[name="add-kiosk-payment-mode"]:checked')?.value === 'external_paid'
+    && !readValue('add-kiosk-external-note')) {
+    return { valid: false, message: 'Cần nhập ghi chú đối soát khoản tiền đã nhận.' };
+  }
+
   const facebookLink = optionalValue('add-kiosk-facebook-link');
   if (facebookLink && !isValidUrl(facebookLink)) {
     return { valid: false, message: 'Link Facebook không hợp lệ.' };
@@ -437,7 +475,73 @@ function isValidUrl(value) {
 function setSaving(button, saving) {
   if (!button) return;
   button.disabled = saving;
-  button.textContent = saving ? 'Đang lưu...' : 'Tạo Kiosk';
+  if (saving) button.textContent = 'Đang xử lý...';
+  else button.textContent = document.querySelector('input[name="add-kiosk-payment-mode"]:checked')?.value === 'external_paid'
+    ? 'Xác nhận tiền & Kích hoạt'
+    : 'Tạo Kiosk & PayOS';
+}
+
+function updatePaymentMode() {
+  const external = document.querySelector('input[name="add-kiosk-payment-mode"]:checked')?.value === 'external_paid';
+  document.querySelector('[data-add-kiosk-external-note]')?.classList.toggle('hidden', !external);
+  setSaving(document.getElementById('add-kiosk-save-button'), false);
+}
+
+async function openKioskPayos(data, onSaved) {
+  const payment = data?.payment || {};
+  const paymentId = Number(payment.id || 0);
+  const amount = Number(payment.total_amount || 0);
+  if (!paymentId || !Number.isFinite(amount) || amount <= 0) {
+    throw new Error('Đã tạo Kiosk chờ thanh toán nhưng chưa đọc được thông tin Payment.');
+  }
+
+  Modal.open({
+    title: 'PayOS cho Kiosk mới',
+    body: `<div class="approval-message"><p>Kiosk và thanh toán Pending đã được lưu an toàn. Kiosk chỉ kích hoạt khi webhook PayOS xác nhận tiền.</p><div id="add-kiosk-payos-result"><p class="muted-text">Đang tạo link PayOS...</p></div></div><div class="modal-actions"><button class="btn-secondary" type="button" data-kiosk-cancel>Đóng</button></div>`,
+  });
+  document.querySelector('[data-kiosk-cancel]')?.addEventListener('click', Modal.close);
+
+  try {
+    const { data: payos } = await PayosService.createCrmPayment({
+      paymentId,
+      amount,
+      description: `DHL${paymentId}`,
+      returnUrl: kioskPayosRoute(),
+      cancelUrl: kioskPayosRoute(),
+    });
+    const container = document.getElementById('add-kiosk-payos-result');
+    if (container) {
+      container.innerHTML = PayosResultCard({ ...payos, note: 'Gửi link cho khách hàng. Webhook PayOS sẽ kích hoạt Kiosk đúng một lần.' });
+      bindPayosCopyButtons(container);
+      watchPayosPaymentStatus(container, {
+        onPaid: async () => { Toast.show('PayOS đã xác nhận và kích hoạt Kiosk.', 'success'); await onSaved?.(data); },
+      });
+    }
+    if (payos.checkoutUrl) window.open(payos.checkoutUrl, '_blank', 'noopener,noreferrer');
+    Toast.show(payos.reused ? 'Đã mở lại PayOS hiện có.' : 'Đã tạo Kiosk và thanh toán PayOS Pending.', 'success');
+  } catch (error) {
+    const container = document.getElementById('add-kiosk-payos-result');
+    if (container) container.innerHTML = `<p class="form-error">${escapeHtml(error?.message || 'Không tạo được link PayOS.')}</p><p class="muted-text">Kiosk và Payment vẫn đang Pending. Có thể tạo lại PayOS tại trang Thanh toán.</p>`;
+    Toast.show('Đã lưu Kiosk Pending nhưng chưa tạo được link PayOS.', 'warning');
+  }
+}
+
+function createIdempotencyKey() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `kiosk-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function kioskPayosRoute() {
+  return `${window.location.origin}${window.location.pathname}#/payments`;
+}
+
+function kioskPeriodEnd(startDate, months) {
+  const start = parseDateOnly(startDate);
+  const targetMonth = start.getMonth() + Number(months || 0);
+  const lastDay = new Date(start.getFullYear(), targetMonth + 1, 0).getDate();
+  const end = new Date(start.getFullYear(), targetMonth, Math.min(start.getDate(), lastDay));
+  end.setDate(end.getDate() - 1);
+  return toDateOnly(end);
 }
 
 function showFormError(message) {

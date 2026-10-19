@@ -1,10 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import vm from 'node:vm';
-import { createDateValue } from '../src/utils/date.js';
-import { dateDisplay, dateIso, enhanceDateInput } from '../src/components/DateInput.js';
+import { createDateValue, dateDisplay, dateIso } from '../src/utils/date.js';
 import { promotionDraft, promotionDateDefaults, promotionPayload, promotionInstant } from '../src/utils/promotionForm.js';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -61,31 +60,14 @@ test('create prefills are identical outside Vietnam, including midnight and New 
   assert.deepEqual(JSON.parse(results[0]), [['2026-10-03', '2026-10-03T23:59'], ['2026-10-04', '2026-10-04T00:00'], ['2027-01-01', '2027-01-01T00:00']]);
 });
 
-test('shared DateInput shows existing prefill and allows day/month edits while keeping ISO values', () => {
-  class Field {
-    constructor() { this.dataset = {}; this.classList = { contains: () => false }; this.attributes = {}; this.handlers = {}; this.labels = []; this.children = []; }
-    get value() { return this._value || ''; } set value(value) { this._value = value; }
-    setAttribute(key, value) { this.attributes[key] = value; } getAttribute(key) { return this.attributes[key]; }
-    closest() { return null; } before(wrapper) { this.wrapper = wrapper; } append(...children) { this.children.push(...children); }
-    setCustomValidity(message) { this.message = message; } checkValidity() { return !this.message; } reportValidity() { return this.checkValidity(); } focus() {}
-    addEventListener(type, handler) { this.handlers[type] = handler; } dispatchEvent() {}
-  }
-  const keys = ['document', 'HTMLInputElement', 'MutationObserver'];
-  const originals = keys.map(key => Object.getOwnPropertyDescriptor(globalThis, key));
-  Object.assign(globalThis, { document: { createElement: () => new Field() }, HTMLInputElement: Field, MutationObserver: class { observe() {} } });
-  try {
-    const field = new Field(); field.type = 'date'; field.value = employeeForm();
-    enhanceDateInput(field);
-    const display = field.wrapper.children[1];
-    assert.equal(display.value, '04/10/2026'); assert.equal(field.value, '2026-10-04');
-    display.value = '20/10/2026'; display.handlers.input(); assert.equal(field.value, '2026-10-20');
-    display.value = '20/11/2026'; display.handlers.change(); assert.equal(field.value, '2026-11-20');
-    assert.equal(display.value, '20/11/2026');
-    const blankEdit = new Field(); blankEdit.type = 'date'; blankEdit.value = ''; enhanceDateInput(blankEdit);
-    assert.equal(blankEdit.value, ''); assert.equal(blankEdit.wrapper.children[1].value, '');
-  } finally {
-    keys.forEach((key, index) => originals[index] ? Object.defineProperty(globalThis, key, originals[index]) : delete globalThis[key]);
-  }
+test('date fields stay native and keep their ISO value contract', () => {
+  const employeeSource = read('src/pages/EmployeesPage.js');
+  const appSource = read('src/app.js');
+  assert.match(employeeSource, /name="startDate" type="date"/);
+  assert.doesNotMatch(appSource, /mountDateInputs|MutationObserver/);
+  assert.equal(existsSync(new URL('../src/components/DateInput.js', import.meta.url)), false);
+  assert.equal(employeeForm(), '2026-10-04');
+  assert.equal(employeeForm({ id: 1, start_date: '' }), '');
 });
 
 test('changing the visible date preserves the year and rejects invalid calendar dates', () => {
@@ -96,6 +78,7 @@ test('changing the visible date preserves the year and rejects invalid calendar 
 test('Kiosk creation retains its formatted calculated preview without adding an editable date field', () => {
   const source = read('src/components/KioskForm.js');
   assert.match(source, /formatDate\(preview.startDate\)/);
-  assert.match(source, /formatDate\(preview.endDate\)/);
+  assert.match(source, /formatDate\(inclusiveEndDate\)/);
+  assert.match(source, /kioskPeriodEnd\(preview.startDate, preview.months\)/);
   assert.doesNotMatch(source, /type="(?:date|datetime-local)"/);
 });

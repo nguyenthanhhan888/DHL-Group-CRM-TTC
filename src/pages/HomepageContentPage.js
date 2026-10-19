@@ -1,4 +1,4 @@
-import { dateDisplay } from '../components/DateInput.js';
+import { dateDisplay } from '../utils/date.js';
 import { EmptyState } from '../components/EmptyState.js';
 import { Modal } from '../components/Modal.js';
 import { PageHeader } from '../components/PageHeader.js';

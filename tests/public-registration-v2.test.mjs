@@ -16,13 +16,13 @@ test('public stepper uses three responsive segments without connector lines', as
   assert.match(css, /\.public-site \.registration-step strong \{[^}]*white-space:normal/);
 });
 
-test('Register and Legacy share the same stepper styles while Legacy remains one form', async () => {
+test('Register keeps its checkout stepper while Legacy remains one simpler form', async () => {
   const [register, legacy] = await Promise.all([
     readFile(new URL('../src/pages/RegisterPage.js', import.meta.url), 'utf8'),
     readFile(new URL('../src/pages/LegacyRegistrationPage.js', import.meta.url), 'utf8'),
   ]);
   assert.match(register, /class="registration-stepper"/);
-  assert.match(legacy, /class="registration-stepper legacy-stepper"/);
+  assert.doesNotMatch(legacy, /legacy-stepper/);
   assert.equal((legacy.match(/<form id="legacy-registration-form"/g) || []).length, 1);
   assert.doesNotMatch(legacy, /data-registration-panel|data-next-step|data-previous-step/);
   assert.doesNotMatch(register, /PublicSupport/);
