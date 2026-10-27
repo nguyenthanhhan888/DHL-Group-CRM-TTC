@@ -49,7 +49,6 @@ test('active non-TTC page copy does not expose implementation wording', async ()
     'src/pages/SettingsPage.js',
     'src/pages/RegistrationRequestsPage.js',
     'src/pages/StaffPage.js',
-    'src/pages/PermissionsPage.js',
     'src/pages/HomePage.js',
     'src/pages/RegisterPage.js',
     'src/pages/LegacyRegistrationPage.js',

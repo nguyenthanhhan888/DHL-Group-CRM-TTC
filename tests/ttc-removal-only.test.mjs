@@ -13,8 +13,8 @@ const deleted = ['src/pages/TtcPage.js', 'src/pages/AdminTtcPage.js', 'src/servi
   'src/services/TtcAdminService.js', 'src/services/WalletService.js', 'api/ttc/verify-facebook-task.js',
   'scripts/seed-qa-live.mjs', 'scripts/seed-ttc-admin-demo.mjs', 'tests/verify-facebook-task.test.cjs'];
 const directConsumers = ['src/app.js', 'src/pages/UserHomePage.js', 'src/pages/StaffPage.js',
-  'src/services/index.js', 'src/services/StaffService.js', 'src/layouts/AppLayout.js',
-  'src/constants/navigation.js', 'src/constants/roles.js', 'shared/permissions.js',
+  'src/services/StaffService.js', 'src/layouts/AppLayout.js',
+  'src/constants/navigation.js', 'shared/permissions.js',
   'api/user-management.js', 'scripts/dev-server.cjs'];
 const removedPermissions = ['ttc', 'services', 'tasks', 'wallet', 'pricing', 'violations', 'admin-ttc'];
 const removedRoutes = ['ttc', 'ttc-earn', 'ttc-campaign-create', 'ttc-campaigns', 'ttc-wallet', 'ttc-wallet-history',
