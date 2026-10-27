@@ -91,7 +91,7 @@ function renderCustomerDetail(customer, kiosks, payments) {
         ? '<button class="btn-danger" id="customer-deactivate-button" type="button">Vô hiệu hóa</button>'
         : '<button class="btn-secondary" id="customer-activate-button" type="button">Kích hoạt lại</button>'
       }
-      <a class="btn-secondary link-button" href="#/customers">Quay lại</a>
+      <a class="btn-secondary link-button" href="#/customers" data-list-back="customers">Quay lại</a>
     `,
   });
 
@@ -349,7 +349,7 @@ function renderCustomerDetailState(title, message) {
   if (header) {
     header.innerHTML = PageHeader({
       title: 'Chi tiết khách hàng',
-      actions: '<a class="btn-secondary link-button" href="#/customers">Quay lại</a>',
+      actions: '<a class="btn-secondary link-button" href="#/customers" data-list-back="customers">Quay lại</a>',
     });
   }
 

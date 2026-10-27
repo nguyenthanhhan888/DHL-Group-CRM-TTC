@@ -5,6 +5,11 @@ config.local.js
 # Thư mục chứa các gói phụ thuộc
 /node_modules
 
+# Metadata macOS và output QA có thể tái tạo
+.DS_Store
+/docs/qa/final-admin-ui/
+/docs/qa/predeploy-ui/
+
 # Cấu hình của các trình soạn thảo code
 .vscode/
 .idea/

@@ -44,7 +44,7 @@ function renderDetails(payment) {
 
   header.innerHTML = PageHeader({
     title: `Chi tiết thanh toán #${payment.id}`,
-    actions: '<a class="btn-secondary link-button" href="#/payments">Quay lại danh sách</a>',
+    actions: '<a class="btn-secondary link-button" href="#/payments" data-list-back="payments">Quay lại danh sách</a>',
   });
 
   content.innerHTML = `
@@ -102,7 +102,7 @@ function renderState(title, message) {
   if (header) {
     header.innerHTML = PageHeader({
       title: 'Chi tiết thanh toán',
-      actions: '<a class="btn-secondary link-button" href="#/payments">Quay lại danh sách</a>',
+      actions: '<a class="btn-secondary link-button" href="#/payments" data-list-back="payments">Quay lại danh sách</a>',
     });
   }
   if (content) {

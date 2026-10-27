@@ -17,6 +17,12 @@ import { bindCurrencyInput, formatCurrency, parseCurrencyInput } from '../utils/
 import { debounce } from '../utils/dom.js';
 import { escapeHtml } from '../utils/html.js';
 import { vietnamDateRangeYearToDate } from '../utils/date.js';
+import {
+  clearListNavigationState,
+  readListNavigationState,
+  restoreListScroll,
+  writeListNavigationState,
+} from '../utils/listNavigationState.js';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
 const PAYMENT_COLUMNS = [
@@ -38,7 +44,7 @@ const PAYMENT_STATUSES = [
 ];
 
 const initialRange = vietnamDateRangeYearToDate();
-const state = {
+const PAYMENT_DEFAULTS = {
   searchTerm: '',
   status: '',
   businessTypeId: '',
@@ -46,6 +52,10 @@ const state = {
   page: 1,
   pageSize: 10,
   sort: { column: 'business_at', ascending: false },
+};
+const state = {
+  ...PAYMENT_DEFAULTS,
+  sort: { ...PAYMENT_DEFAULTS.sort },
   total: 0,
   requestId: 0,
   businessTypes: [],
@@ -53,8 +63,10 @@ const state = {
   processingPaymentId: null,
 };
 let paymentMenuInteractionsBound = false;
+let navigationProfile = null;
 
-export function PaymentsPage() {
+export function PaymentsPage({ profile } = {}) {
+  hydratePaymentState(profile);
   return `
     ${PageHeader({
       title: 'Thanh toán',
@@ -82,6 +94,7 @@ export function PaymentsPage() {
           </select>
         </label>
         ${DateRangeFields({ fromId: 'payment-from-date', toId: 'payment-to-date', fromLabel: 'Từ ngày', toLabel: 'Đến ngày' })}
+        <button class="btn-secondary" id="payment-filter-reset" type="button">Đặt lại</button>
       `,
     })}
     <div class="payments-summary">
@@ -109,8 +122,8 @@ PaymentsPage.afterRender = function afterRenderPayments() {
   bindPaymentEvents();
   bindPaymentMenuInteractions();
   bindPagination('payments', {
-    onPage: (page) => { state.page = page; loadPayments(); },
-    onPageSize: (pageSize) => { state.pageSize = pageSize; state.page = 1; loadPayments(); },
+    onPage: (page) => { state.page = page; persistPaymentState(); loadPayments(); },
+    onPageSize: (pageSize) => { state.pageSize = pageSize; state.page = 1; persistPaymentState(); loadPayments(); },
   });
   loadBusinessTypeOptions();
   loadPayments();
@@ -130,28 +143,34 @@ function syncPaymentControls() {
 }
 
 function bindPaymentEvents() {
-  for (const [id,key] of [['payment-from-date','fromDate'],['payment-to-date','toDate']]) document.getElementById(id)?.addEventListener('change', (event) => { state[key]=event.target.value; state.page=1; loadPayments(); });
   const searchInput = document.getElementById('payment-search');
   const statusFilter = document.getElementById('payment-status-filter');
   const businessTypeFilter = document.getElementById('payment-business-type-filter');
   const pageSizeSelect = document.getElementById('payments-page-size');
   const tableBody = document.getElementById('payments-table-body');
 
+  document.getElementById('payment-filter-reset')?.addEventListener('click', resetPaymentFilters);
+
+  for (const [id,key] of [['payment-from-date','fromDate'],['payment-to-date','toDate']]) document.getElementById(id)?.addEventListener('change', (event) => { state[key]=event.target.value; state.page=1; persistPaymentState(); loadPayments(); });
+
   searchInput?.addEventListener('input', debounce((event) => {
     state.searchTerm = event.target.value.trim();
     state.page = 1;
+    persistPaymentState();
     loadPayments();
   }, 300));
 
   statusFilter?.addEventListener('change', (event) => {
     state.status = event.target.value;
     state.page = 1;
+    persistPaymentState();
     loadPayments();
   });
 
   businessTypeFilter?.addEventListener('change', (event) => {
     state.businessTypeId = event.target.value;
     state.page = 1;
+    persistPaymentState();
     loadPayments();
   });
 
@@ -165,6 +184,7 @@ function bindPaymentEvents() {
         state.sort = { column, ascending: true };
       }
       state.page = 1;
+      persistPaymentState();
       loadPayments();
     });
   });
@@ -243,11 +263,18 @@ async function loadPayments() {
     if (requestId !== state.requestId) return;
 
     state.total = count || 0;
+    const lastPage = Math.max(1, Math.ceil(state.total / state.pageSize));
+    if (state.page > lastPage) {
+      state.page = lastPage;
+      persistPaymentState();
+      return loadPayments();
+    }
     state.items = data || [];
     renderSummary(summary);
     renderPayments(data || []);
     renderPagination();
     renderSortState();
+    restoreListScroll('payments', navigationProfile);
   } catch (error) {
     if (requestId !== state.requestId) return;
     renderError(error);
@@ -281,18 +308,55 @@ function renderPayments(payments) {
 
   closePaymentMenus();
   const startIndex = (state.page - 1) * state.pageSize;
-  body.innerHTML = payments.map((payment, index) => `
+  body.innerHTML = payments.map((payment, index) => {
+    const rowNumber = startIndex + index + 1;
+    return `
     <tr>
-      <td data-label="STT"><a class="payment-row-number" href="#/payment-detail?id=${encodeURIComponent(payment.id)}">${startIndex + index + 1}</a></td>
-      <td data-label="Kiosk / Khách hàng">${renderPaymentParty(payment)}</td>
-      <td data-label="Dịch vụ / Kỳ hạn">${renderPaymentService(payment)}</td>
-      <td data-label="Thanh toán">${renderPaymentAmount(payment)}</td>
-      <td data-label="Trạng thái">${renderPaymentStatusBadge(payment.payment_status)}</td>
-      <td data-label="Người xác nhận">${renderConfirmer(payment)}</td>
-      <td data-label="Thời gian">${renderPaymentTime(payment.payment_status === 'completed' ? payment.confirmed_at : payment.created_at)}</td>
-      <td data-label="Thao tác">${renderApprovalAction(payment)}</td>
+      <td class="payment-desktop-cell payment-card-index" data-label="STT"><a class="payment-row-number" href="#/payment-detail?id=${encodeURIComponent(payment.id)}">${rowNumber}</a></td>
+      <td class="payment-desktop-cell payment-card-party" data-label="Kiosk / Khách hàng">${renderPaymentParty(payment)}</td>
+      <td class="payment-desktop-cell payment-card-service" data-label="Dịch vụ / Kỳ hạn">${renderPaymentService(payment)}</td>
+      <td class="payment-desktop-cell payment-card-amount" data-label="Thanh toán">${renderPaymentAmount(payment)}</td>
+      <td class="payment-desktop-cell payment-card-status" data-label="Trạng thái">${renderPaymentStatusBadge(payment.payment_status)}</td>
+      <td class="payment-desktop-cell payment-card-confirmer" data-label="Người xác nhận">${renderConfirmer(payment)}</td>
+      <td class="payment-desktop-cell payment-card-time" data-label="Thời gian">${renderPaymentTime(payment.payment_status === 'completed' ? payment.confirmed_at : payment.created_at)}</td>
+      <td class="payment-desktop-cell payment-card-actions" data-label="Thao tác">${renderApprovalAction(payment)}</td>
+      ${renderMobilePaymentCard(payment, rowNumber)}
     </tr>
-  `).join('');
+  `;
+  }).join('');
+}
+
+function renderMobilePaymentCard(payment, rowNumber) {
+  const detailHref = `#/payment-detail?id=${encodeURIComponent(payment.id)}`;
+  const timeValue = payment.payment_status === 'completed' ? payment.confirmed_at : payment.created_at;
+  return `
+    <td class="payment-mobile-card" colspan="${PAYMENT_COLUMNS.length}">
+      <div class="payment-mobile-content">
+        <div class="payment-mobile-header">
+          <a class="payment-mobile-index" href="${detailHref}" aria-label="Mở thanh toán số ${rowNumber}"><span>STT</span><strong>${rowNumber}</strong></a>
+          <div class="payment-mobile-status">${renderPaymentStatusBadge(payment.payment_status)}</div>
+          <div class="payment-mobile-actions">${renderApprovalAction(payment)}</div>
+        </div>
+        <div class="payment-mobile-party">${renderPaymentParty(payment)}</div>
+        <div class="payment-mobile-section payment-mobile-amount">
+          <span class="payment-mobile-label">Tổng tiền</span>
+          ${renderPaymentAmount(payment)}
+        </div>
+        <div class="payment-mobile-section">
+          <span class="payment-mobile-label">Dịch vụ · Kỳ hạn</span>
+          ${renderPaymentService(payment)}
+        </div>
+        <div class="payment-mobile-section">
+          <span class="payment-mobile-label">Người xác nhận</span>
+          ${renderConfirmer(payment)}
+        </div>
+        <div class="payment-mobile-section payment-mobile-time">
+          <span class="payment-mobile-label">Thời gian</span>
+          ${renderPaymentTime(timeValue)}
+        </div>
+      </div>
+    </td>
+  `;
 }
 
 function renderSummary(summary = {}) {
@@ -316,7 +380,7 @@ function renderApprovalAction(payment) {
     ` : '<span class="payment-action-empty" role="menuitem" aria-disabled="true">Không có thao tác</span>';
 
   return `<div class="payment-action-menu" data-payment-menu>
-    <button class="payment-action-trigger" type="button" data-payment-menu-trigger aria-haspopup="menu" aria-expanded="false" aria-label="Mở thao tác thanh toán ${escapeHtml(payment.id)}" title="Thao tác"><span aria-hidden="true">…</span></button>
+    <button class="payment-action-trigger" type="button" data-payment-menu-trigger aria-haspopup="menu" aria-expanded="false" aria-label="Mở thao tác thanh toán" title="Thao tác"><span aria-hidden="true">…</span></button>
     <div class="payment-action-dropdown hidden" role="menu" aria-label="Thao tác thanh toán ${escapeHtml(payment.id)}">${actions}</div>
   </div>`;
 }
@@ -753,6 +817,58 @@ function renderError(error) {
   }
 
   renderPagination();
+  restoreListScroll('payments', navigationProfile);
+}
+
+function hydratePaymentState(profile) {
+  navigationProfile = profile || null;
+  const saved = readListNavigationState('payments', PAYMENT_DEFAULTS, navigationProfile);
+  state.searchTerm = typeof saved.searchTerm === 'string' ? saved.searchTerm : '';
+  state.status = typeof saved.status === 'string' ? saved.status : '';
+  state.businessTypeId = typeof saved.businessTypeId === 'string' ? saved.businessTypeId : '';
+  state.fromDate = validDateFilter(saved.fromDate, PAYMENT_DEFAULTS.fromDate);
+  state.toDate = validDateFilter(saved.toDate, PAYMENT_DEFAULTS.toDate);
+  state.page = positiveInteger(saved.page, PAYMENT_DEFAULTS.page);
+  state.pageSize = PAGE_SIZE_OPTIONS.includes(Number(saved.pageSize)) ? Number(saved.pageSize) : PAYMENT_DEFAULTS.pageSize;
+  state.sort = normalizePaymentSort(saved.sort);
+}
+
+function persistPaymentState() {
+  writeListNavigationState('payments', {
+    searchTerm: state.searchTerm,
+    status: state.status,
+    businessTypeId: state.businessTypeId,
+    fromDate: state.fromDate,
+    toDate: state.toDate,
+    page: state.page,
+    pageSize: state.pageSize,
+    sort: state.sort,
+  }, navigationProfile);
+}
+
+function resetPaymentFilters() {
+  clearListNavigationState('payments', navigationProfile);
+  Object.assign(state, PAYMENT_DEFAULTS, { sort: { ...PAYMENT_DEFAULTS.sort } });
+  syncPaymentControls();
+  persistPaymentState();
+  loadPayments();
+}
+
+function normalizePaymentSort(sort) {
+  const columns = PAYMENT_COLUMNS.map((column) => column.key).filter(Boolean);
+  return {
+    column: columns.includes(sort?.column) ? sort.column : PAYMENT_DEFAULTS.sort.column,
+    ascending: typeof sort?.ascending === 'boolean' ? sort.ascending : PAYMENT_DEFAULTS.sort.ascending,
+  };
+}
+
+function validDateFilter(value, fallback) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? String(value) : fallback;
+}
+
+function positiveInteger(value, fallback) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : fallback;
 }
 
 function renderTableState(title, message) {

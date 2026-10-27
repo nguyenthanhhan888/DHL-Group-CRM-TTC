@@ -1,5 +1,0 @@
-
-> build
-> node scripts/generate-config.mjs
-
-Generated browser configuration: config.js

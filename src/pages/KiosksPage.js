@@ -15,6 +15,12 @@ import { debounce } from '../utils/dom.js';
 import { escapeHtml } from '../utils/html.js';
 import { deriveKioskStatus } from '../utils/kioskStatus.js';
 import { PERMISSIONS, canAccessPermission } from '../constants/permissions.js';
+import {
+  clearListNavigationState,
+  readListNavigationState,
+  restoreListScroll,
+  writeListNavigationState,
+} from '../utils/listNavigationState.js';
 
 const PAGE_SIZE_OPTIONS = [12, 24, 48];
 function kioskStatusOptions() {
@@ -26,21 +32,24 @@ function kioskStatusOptions() {
   ];
 }
 
-const state = {
+const KIOSK_DEFAULTS = {
   searchTerm: '',
   status: 'active',
   businessTypeId: '',
   page: 1,
   pageSize: 12,
+};
+const state = {
+  ...KIOSK_DEFAULTS,
   total: 0,
   requestId: 0,
   businessTypes: [],
   profile: null,
 };
+let navigationProfile = null;
 
-export function KiosksPage() {
-  state.status = 'active';
-  state.page = 1;
+export function KiosksPage({ profile } = {}) {
+  hydrateKioskState(profile);
   return `
     ${PageHeader({
       title: 'Kiosk',
@@ -64,6 +73,7 @@ export function KiosksPage() {
           <option value="">Tất cả trạng thái</option>
           ${kioskStatusOptions().map((status) => `<option value="${status.value}">${status.label}</option>`).join('')}
         </select>
+        <button class="btn-secondary" id="kiosk-filter-reset" type="button">Đặt lại</button>
       `,
     })}
     <div class="kiosk-grid" id="kiosk-grid">
@@ -81,8 +91,8 @@ KiosksPage.afterRender = function afterRenderKiosks({ profile } = {}) {
   syncKioskControls();
   bindKioskEvents();
   bindPagination('kiosks', {
-    onPage: (page) => { state.page = page; loadKiosks(); },
-    onPageSize: (pageSize) => { state.pageSize = pageSize; state.page = 1; loadKiosks(); },
+    onPage: (page) => { state.page = page; persistKioskState(); loadKiosks(); },
+    onPageSize: (pageSize) => { state.pageSize = pageSize; state.page = 1; persistKioskState(); loadKiosks(); },
   });
   loadBusinessTypeOptions();
   loadKiosks();
@@ -107,12 +117,11 @@ function bindKioskEvents() {
   const pageSizeSelect = document.getElementById('kiosks-page-size');
   const grid = document.getElementById('kiosk-grid');
 
+  document.getElementById('kiosk-filter-reset')?.addEventListener('click', resetKioskFilters);
+
   document.getElementById('add-kiosk-button')?.addEventListener('click', () => {
     openKioskEditForm({
       onSaved: async () => {
-        state.status = 'active';
-        state.page = 1;
-        syncKioskControls();
         await loadKiosks();
       },
     });
@@ -121,18 +130,21 @@ function bindKioskEvents() {
   searchInput?.addEventListener('input', debounce((event) => {
     state.searchTerm = event.target.value.trim();
     state.page = 1;
+    persistKioskState();
     loadKiosks();
   }, 300));
 
   statusFilter?.addEventListener('change', (event) => {
     state.status = event.target.value;
     state.page = 1;
+    persistKioskState();
     loadKiosks();
   });
 
   businessTypeFilter?.addEventListener('change', (event) => {
     state.businessTypeId = event.target.value;
     state.page = 1;
+    persistKioskState();
     loadKiosks();
   });
 
@@ -184,8 +196,15 @@ async function loadKiosks() {
     if (requestId !== state.requestId) return;
 
     state.total = count || 0;
+    const lastPage = Math.max(1, Math.ceil(state.total / state.pageSize));
+    if (state.page > lastPage) {
+      state.page = lastPage;
+      persistKioskState();
+      return loadKiosks();
+    }
     renderKiosks(data || []);
     renderPagination();
+    restoreListScroll('kiosks', navigationProfile);
   } catch (error) {
     if (requestId !== state.requestId) return;
     renderError(error);
@@ -283,6 +302,40 @@ function renderError(error) {
     });
   }
   renderPagination();
+  restoreListScroll('kiosks', navigationProfile);
+}
+
+function hydrateKioskState(profile) {
+  navigationProfile = profile || null;
+  const saved = readListNavigationState('kiosks', KIOSK_DEFAULTS, navigationProfile);
+  state.searchTerm = typeof saved.searchTerm === 'string' ? saved.searchTerm : '';
+  state.status = typeof saved.status === 'string' ? saved.status : KIOSK_DEFAULTS.status;
+  state.businessTypeId = typeof saved.businessTypeId === 'string' ? saved.businessTypeId : '';
+  state.page = positiveInteger(saved.page, KIOSK_DEFAULTS.page);
+  state.pageSize = PAGE_SIZE_OPTIONS.includes(Number(saved.pageSize)) ? Number(saved.pageSize) : KIOSK_DEFAULTS.pageSize;
+}
+
+function persistKioskState() {
+  writeListNavigationState('kiosks', {
+    searchTerm: state.searchTerm,
+    status: state.status,
+    businessTypeId: state.businessTypeId,
+    page: state.page,
+    pageSize: state.pageSize,
+  }, navigationProfile);
+}
+
+function resetKioskFilters() {
+  clearListNavigationState('kiosks', navigationProfile);
+  Object.assign(state, KIOSK_DEFAULTS);
+  syncKioskControls();
+  persistKioskState();
+  loadKiosks();
+}
+
+function positiveInteger(value, fallback) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : fallback;
 }
 
 function renderPagination() {

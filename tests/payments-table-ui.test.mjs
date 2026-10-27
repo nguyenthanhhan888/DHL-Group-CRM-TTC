@@ -25,10 +25,18 @@ test('Payments exposes the approved eight-column compact table', async () => {
   assert.doesNotMatch(page, /\(VN\)|giờ VN/);
   assert.match(page, /data-payment-menu-trigger aria-haspopup="menu" aria-expanded="false"/);
   assert.match(page, /const startIndex = \(state\.page - 1\) \* state\.pageSize/);
-  assert.match(page, /\$\{startIndex \+ index \+ 1\}/);
+  assert.match(page, /const rowNumber = startIndex \+ index \+ 1/);
   assert.match(page, /function positionPaymentMenu/);
   assert.match(page, /event\.key === 'Escape'/);
   assert.match(page, /\['ArrowDown', 'ArrowUp'\]/);
+  assert.match(page, /class="payment-desktop-cell payment-card-index"/);
+  assert.match(page, /class="payment-desktop-cell payment-card-party"/);
+  assert.match(page, /class="payment-desktop-cell payment-card-actions"/);
+  assert.match(page, /class="payment-mobile-card" colspan="\$\{PAYMENT_COLUMNS\.length\}"/);
+  assert.match(page, /class="payment-mobile-index"[^>]*href="\$\{detailHref\}"/);
+  assert.match(page, /class="payment-mobile-status"/);
+  assert.match(page, /class="payment-mobile-actions"/);
+  assert.doesNotMatch(page, /aria-label="Mở thao tác thanh toán \$\{escapeHtml\(payment\.id\)\}"/);
 });
 
 test('confirmer labels distinguish CRM people, PayOS and historical records without UUID output', () => {
@@ -53,9 +61,17 @@ test('Payments resolves confirmer profiles in a read-only batch and has mobile c
   assert.match(service, /from\('user_profiles'\)[\s\S]*select\('user_id,display_name,username,email'\)[\s\S]*\.in\('user_id', userIds\)/);
   assert.match(css, /\.payments-summary\s*\{[\s\S]*?margin: 18px 0 20px/);
   assert.match(css, /@media \(max-width: 980px\)[\s\S]*?\.payments-table thead \{ display:none; \}/);
-  assert.match(css, /\.payments-table td::before \{ content:attr\(data-label\)/);
   assert.match(css, /\.payment-action-dropdown \{ position:fixed; z-index:260/);
   assert.match(css, /\.payment-primary-link \{[^}]*color:var\(--text-link\)[^}]*font-weight:800[^}]*text-decoration:none/);
   assert.match(css, /\.payment-party small a \{[^}]*color:var\(--text-muted\)[^}]*font-weight:400[^}]*text-decoration:none/);
   assert.match(css, /\.payment-primary-link:focus-visible,\.payment-party small a:focus-visible/);
+  assert.match(css, /@media \(max-width: 980px\)[\s\S]*?\.payments-table td\.payment-desktop-cell \{ display:none; \}/);
+  assert.match(css, /\.payments-table td\.payment-mobile-card \{[^}]*width:100%[^}]*min-width:0[^}]*display:block/);
+  assert.match(css, /\.payment-mobile-header \{[^}]*grid-template-columns:auto minmax\(0,1fr\) auto/);
+  assert.match(css, /\.payment-mobile-section \{[^}]*display:block/);
+  assert.match(css, /\.payment-mobile-card \.payment-primary-link \{[^}]*word-break:normal[^}]*overflow-wrap:break-word/);
+  assert.doesNotMatch(css, /\.payment-mobile-card[^}]*overflow-wrap:anywhere/);
+  assert.doesNotMatch(css, /\.payments-table tr \{[^}]*grid-template-columns:repeat\(12/);
+  assert.match(css, /\.payment-action-trigger \{ width:44px; height:44px/);
+  assert.match(css, /\.payments-table tr>td\[colspan\]:not\(\.payment-mobile-card\) \{[^}]*display:block/);
 });

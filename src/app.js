@@ -13,6 +13,7 @@ import { formatDateTime } from './utils/date.js';
 import { escapeHtml } from './utils/html.js';
 import { renderIcon } from './utils/icons.js';
 import { syncThemeLogos } from './utils/themeLogo.js';
+import { clearAccountNavigationState } from './utils/listNavigationState.js';
 import { BusinessTypesPage } from './pages/BusinessTypesPage.js';
 import { CategoriesPage } from './pages/CategoriesPage.js';
 import { PromotionsPage } from './pages/PromotionsPage.js';
@@ -128,6 +129,7 @@ async function initApp() {
     const profile = await AuthService.getCurrentProfile(session.user.id);
     if (!isProfileAllowed(profile)) {
       await AuthService.signOut();
+      clearAccountNavigationState(profile);
       renderLogin(root, 'Tài khoản chưa được cấp quyền hoặc đã bị khóa.');
       return;
     }
@@ -225,6 +227,7 @@ function renderAuthenticatedApp(root, profile) {
       button.textContent = 'Đang đăng xuất...';
       try {
         await AuthService.signOut();
+        clearAccountNavigationState(profile);
         router.stop();
         window.location.hash = '#/login';
         window.location.reload();

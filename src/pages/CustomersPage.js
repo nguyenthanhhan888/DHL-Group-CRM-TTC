@@ -8,6 +8,12 @@ import { getExpiryWarningDays } from '../config/organization.js';
 import { CustomerService } from '../services/CustomerService.js';
 import { debounce } from '../utils/dom.js';
 import { escapeHtml } from '../utils/html.js';
+import {
+  clearListNavigationState,
+  readListNavigationState,
+  restoreListScroll,
+  writeListNavigationState,
+} from '../utils/listNavigationState.js';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
 const CUSTOMER_COLUMNS = [
@@ -20,19 +26,25 @@ const CUSTOMER_COLUMNS = [
   { label: 'Hành động', key: null },
 ];
 
-const state = {
+const CUSTOMER_DEFAULTS = {
   searchTerm: '',
   status: '',
   kioskState: '',
   page: 1,
   pageSize: 10,
   sort: { column: 'created_at', ascending: false },
+};
+const state = {
+  ...CUSTOMER_DEFAULTS,
+  sort: { ...CUSTOMER_DEFAULTS.sort },
   total: 0,
   requestId: 0,
   items: [],
 };
+let navigationProfile = null;
 
-export function CustomersPage() {
+export function CustomersPage({ profile } = {}) {
+  hydrateCustomerState(profile);
   return `
     ${PageHeader({
       title: 'Khách hàng',
@@ -61,6 +73,7 @@ export function CustomersPage() {
         <option value="warning">Có Kiosk sắp hết hạn (≤${getExpiryWarningDays()} ngày)</option>
         <option value="expired">Có Kiosk đã hết hạn</option>
       </select>
+      <button class="btn-secondary" id="customer-filter-reset" type="button">Đặt lại</button>
     </div>
     <div class="table-card">
       <table class="data-table">
@@ -80,8 +93,8 @@ CustomersPage.afterRender = function afterRenderCustomers() {
   syncCustomerControls();
   bindCustomerEvents();
   bindPagination('customers', {
-    onPage: (page) => { state.page = page; loadCustomers(); },
-    onPageSize: (pageSize) => { state.pageSize = pageSize; state.page = 1; loadCustomers(); },
+    onPage: (page) => { state.page = page; persistCustomerState(); loadCustomers(); },
+    onPageSize: (pageSize) => { state.pageSize = pageSize; state.page = 1; persistCustomerState(); loadCustomers(); },
   });
   loadCustomers();
 };
@@ -95,7 +108,6 @@ function syncCustomerControls() {
   document.getElementById('add-customer-button')?.addEventListener('click', () => {
     openCustomerForm({
       onSaved: async () => {
-        state.page = 1;
         await loadCustomers();
       },
     });
@@ -114,21 +126,26 @@ function bindCustomerEvents() {
   const pageSizeSelect = document.getElementById('customers-page-size');
   const tableBody = document.getElementById('customers-table-body');
 
+  document.getElementById('customer-filter-reset')?.addEventListener('click', resetCustomerFilters);
+
   searchInput?.addEventListener('input', debounce((event) => {
     state.searchTerm = event.target.value.trim();
     state.page = 1;
+    persistCustomerState();
     loadCustomers();
   }, 300));
 
   statusFilter?.addEventListener('change', (event) => {
     state.status = event.target.value;
     state.page = 1;
+    persistCustomerState();
     loadCustomers();
   });
 
   kioskStateFilter?.addEventListener('change', (event) => {
     state.kioskState = event.target.value;
     state.page = 1;
+    persistCustomerState();
     loadCustomers();
   });
 
@@ -142,6 +159,7 @@ function bindCustomerEvents() {
         state.sort = { column, ascending: true };
       }
       state.page = 1;
+      persistCustomerState();
       loadCustomers();
     });
   });
@@ -177,10 +195,17 @@ async function loadCustomers() {
     if (requestId !== state.requestId) return;
 
     state.total = count || 0;
+    const lastPage = Math.max(1, Math.ceil(state.total / state.pageSize));
+    if (state.page > lastPage) {
+      state.page = lastPage;
+      persistCustomerState();
+      return loadCustomers();
+    }
     state.items = data || [];
     renderCustomers(data || []);
     renderPagination();
     renderSortState();
+    restoreListScroll('customers', navigationProfile);
   } catch (error) {
     if (requestId !== state.requestId) return;
     renderError(error);
@@ -258,6 +283,50 @@ function renderError(error) {
     );
   }
   renderPagination();
+  restoreListScroll('customers', navigationProfile);
+}
+
+function hydrateCustomerState(profile) {
+  navigationProfile = profile || null;
+  const saved = readListNavigationState('customers', CUSTOMER_DEFAULTS, navigationProfile);
+  state.searchTerm = typeof saved.searchTerm === 'string' ? saved.searchTerm : '';
+  state.status = typeof saved.status === 'string' ? saved.status : '';
+  state.kioskState = typeof saved.kioskState === 'string' ? saved.kioskState : '';
+  state.page = positiveInteger(saved.page, CUSTOMER_DEFAULTS.page);
+  state.pageSize = PAGE_SIZE_OPTIONS.includes(Number(saved.pageSize)) ? Number(saved.pageSize) : CUSTOMER_DEFAULTS.pageSize;
+  state.sort = normalizeCustomerSort(saved.sort);
+}
+
+function persistCustomerState() {
+  writeListNavigationState('customers', {
+    searchTerm: state.searchTerm,
+    status: state.status,
+    kioskState: state.kioskState,
+    page: state.page,
+    pageSize: state.pageSize,
+    sort: state.sort,
+  }, navigationProfile);
+}
+
+function resetCustomerFilters() {
+  clearListNavigationState('customers', navigationProfile);
+  Object.assign(state, CUSTOMER_DEFAULTS, { sort: { ...CUSTOMER_DEFAULTS.sort } });
+  syncCustomerControls();
+  persistCustomerState();
+  loadCustomers();
+}
+
+function normalizeCustomerSort(sort) {
+  const columns = CUSTOMER_COLUMNS.map((column) => column.key).filter(Boolean);
+  return {
+    column: columns.includes(sort?.column) ? sort.column : CUSTOMER_DEFAULTS.sort.column,
+    ascending: typeof sort?.ascending === 'boolean' ? sort.ascending : CUSTOMER_DEFAULTS.sort.ascending,
+  };
+}
+
+function positiveInteger(value, fallback) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : fallback;
 }
 
 function renderTableState(title, message) {

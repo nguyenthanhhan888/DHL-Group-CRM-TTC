@@ -82,7 +82,7 @@ function renderKioskDetail(kiosk, payments, customerStatus = null) {
   const customer = { ...(kiosk.customers || {}), ...(customerStatus || {}) };
   header.innerHTML = `
     <header class="kiosk-detail-hero">
-      <a class="kiosk-detail-back" href="#/kiosks">${renderIcon('chevron-left')}<span>Danh sách Kiosk</span></a>
+      <a class="kiosk-detail-back" href="#/kiosks" data-list-back="kiosks">${renderIcon('chevron-left')}<span>Danh sách Kiosk</span></a>
       <div class="kiosk-detail-heading-row">
         <div class="kiosk-detail-title">
           <h1>${escapeHtml(kiosk.facebook_name || 'Kiosk')}</h1>
@@ -464,7 +464,7 @@ function renderKioskDetailState(title, message) {
   if (header) {
     header.innerHTML = PageHeader({
       title: 'Chi tiết Kiosk',
-      actions: '<a class="btn-secondary link-button" href="#/kiosks">Quay lại</a>',
+      actions: '<a class="btn-secondary link-button" href="#/kiosks" data-list-back="kiosks">Quay lại</a>',
     });
   }
 
