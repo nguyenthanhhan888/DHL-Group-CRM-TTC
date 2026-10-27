@@ -36,5 +36,18 @@
   <div id="app"></div>
   <noscript>DHL Management System cần JavaScript để hoạt động.</noscript>
   <script type="module" src="./src/app.js?v=20260914-homepage"></script>
+  <script>
+    window.va = window.va || function () {
+      (window.vaq = window.vaq || []).push(arguments);
+    };
+
+    window.va('beforeSend', (event) => {
+      const url = new URL(event.url);
+      url.search = '';
+      url.hash = '';
+      return { ...event, url: url.toString() };
+    });
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>
